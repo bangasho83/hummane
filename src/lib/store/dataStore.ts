@@ -1,4 +1,4 @@
-import type { User, Company, Employee, Department, DataStoreSchema, LeaveRecord, Role } from '@/types'
+import type { User, Company, Employee, Department, DataStoreSchema, LeaveRecord, Role, Job, Applicant } from '@/types'
 import { hashPassword, verifyPassword, sanitizeInput, sanitizeEmail } from '@/lib/security/crypto'
 
 /**
@@ -24,6 +24,8 @@ export class DataStore {
                     departments: [],
                     leaves: [],
                     roles: [],
+                    jobs: [],
+                    applicants: [],
                     currentUser: null
                 }
                 localStorage.setItem(this.STORAGE_KEY, JSON.stringify(initialData))
@@ -57,6 +59,8 @@ export class DataStore {
                 departments: Array.isArray(parsed.departments) ? parsed.departments : [],
                 leaves: Array.isArray(parsed.leaves) ? parsed.leaves : [],
                 roles: Array.isArray(parsed.roles) ? parsed.roles : [],
+                jobs: Array.isArray(parsed.jobs) ? parsed.jobs : [],
+                applicants: Array.isArray(parsed.applicants) ? parsed.applicants : [],
                 currentUser: parsed.currentUser || null
             }
         } catch (error) {
@@ -73,6 +77,8 @@ export class DataStore {
             departments: [],
             leaves: [],
             roles: [],
+            jobs: [],
+            applicants: [],
             currentUser: null
         }
     }
@@ -542,6 +548,198 @@ export class DataStore {
             this.saveData(data)
         } catch (error) {
             console.error('Error deleting role:', error)
+            throw error
+        }
+    }
+
+    // Job Management
+    getJobsByCompanyId(companyId: string): Job[] {
+        try {
+            const data = this.getData()
+            if (!data.jobs) return []
+            return data.jobs.filter(job => job.companyId === companyId)
+        } catch (error) {
+            console.error('Error getting jobs:', error)
+            return []
+        }
+    }
+
+    createJob(companyId: string, jobData: Omit<Job, 'id' | 'companyId' | 'createdAt'>): Job {
+        try {
+            const data = this.getData()
+            if (!data.jobs) data.jobs = []
+
+            const newJob: Job = {
+                id: `id_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`,
+                companyId,
+                title: sanitizeInput(jobData.title),
+                roleId: jobData.roleId,
+                salary: jobData.salary,
+                experience: sanitizeInput(jobData.experience),
+                status: jobData.status || 'open',
+                createdAt: new Date().toISOString(),
+                updatedAt: new Date().toISOString()
+            }
+
+            data.jobs.push(newJob)
+            this.saveData(data)
+            return newJob
+        } catch (error) {
+            console.error('Error creating job:', error)
+            throw error
+        }
+    }
+
+    updateJob(jobId: string, jobData: Partial<Omit<Job, 'id' | 'companyId' | 'createdAt'>>): Job | null {
+        try {
+            const data = this.getData()
+            if (!data.jobs) return null
+
+            const jobIndex = data.jobs.findIndex(job => job.id === jobId)
+            if (jobIndex === -1) {
+                throw new Error('Job not found')
+            }
+
+            const updatedJob: Job = {
+                ...data.jobs[jobIndex],
+                ...jobData,
+                title: jobData.title ? sanitizeInput(jobData.title) : data.jobs[jobIndex].title,
+                experience: jobData.experience ? sanitizeInput(jobData.experience) : data.jobs[jobIndex].experience,
+                updatedAt: new Date().toISOString()
+            }
+
+            data.jobs[jobIndex] = updatedJob
+            this.saveData(data)
+            return updatedJob
+        } catch (error) {
+            console.error('Error updating job:', error)
+            throw error
+        }
+    }
+
+    deleteJob(jobId: string): void {
+        try {
+            const data = this.getData()
+            if (!data.jobs) return
+
+            const initialLength = data.jobs.length
+            data.jobs = data.jobs.filter(job => job.id !== jobId)
+
+            if (data.jobs.length === initialLength) {
+                throw new Error('Job not found')
+            }
+
+            this.saveData(data)
+        } catch (error) {
+            console.error('Error deleting job:', error)
+            throw error
+        }
+    }
+
+    // Applicant Management
+    getApplicantsByCompanyId(companyId: string): Applicant[] {
+        try {
+            const data = this.getData()
+            if (!data.applicants) return []
+            return data.applicants.filter(applicant => applicant.companyId === companyId)
+        } catch (error) {
+            console.error('Error getting applicants:', error)
+            return []
+        }
+    }
+
+    getApplicantById(applicantId: string): Applicant | null {
+        try {
+            const data = this.getData()
+            if (!data.applicants) return null
+            return data.applicants.find(applicant => applicant.id === applicantId) || null
+        } catch (error) {
+            console.error('Error getting applicant:', error)
+            return null
+        }
+    }
+
+    createApplicant(companyId: string, applicantData: Omit<Applicant, 'id' | 'companyId' | 'createdAt'>): Applicant {
+        try {
+            const data = this.getData()
+            if (!data.applicants) data.applicants = []
+
+            const newApplicant: Applicant = {
+                id: `id_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`,
+                companyId,
+                jobId: applicantData.jobId,
+                fullName: sanitizeInput(applicantData.fullName),
+                email: sanitizeEmail(applicantData.email),
+                phone: sanitizeInput(applicantData.phone),
+                positionApplied: sanitizeInput(applicantData.positionApplied),
+                yearsOfExperience: applicantData.yearsOfExperience,
+                currentSalary: sanitizeInput(applicantData.currentSalary),
+                expectedSalary: sanitizeInput(applicantData.expectedSalary),
+                noticePeriod: sanitizeInput(applicantData.noticePeriod),
+                resumeUrl: applicantData.resumeUrl,
+                linkedinUrl: applicantData.linkedinUrl,
+                status: applicantData.status || 'new',
+                appliedDate: applicantData.appliedDate,
+                createdAt: new Date().toISOString(),
+                updatedAt: new Date().toISOString()
+            }
+
+            data.applicants.push(newApplicant)
+            this.saveData(data)
+            return newApplicant
+        } catch (error) {
+            console.error('Error creating applicant:', error)
+            throw error
+        }
+    }
+
+    updateApplicant(applicantId: string, applicantData: Partial<Omit<Applicant, 'id' | 'companyId' | 'createdAt'>>): Applicant | null {
+        try {
+            const data = this.getData()
+            if (!data.applicants) return null
+
+            const applicantIndex = data.applicants.findIndex(applicant => applicant.id === applicantId)
+            if (applicantIndex === -1) {
+                throw new Error('Applicant not found')
+            }
+
+            const updatedApplicant: Applicant = {
+                ...data.applicants[applicantIndex],
+                ...applicantData,
+                fullName: applicantData.fullName ? sanitizeInput(applicantData.fullName) : data.applicants[applicantIndex].fullName,
+                email: applicantData.email ? sanitizeEmail(applicantData.email) : data.applicants[applicantIndex].email,
+                phone: applicantData.phone ? sanitizeInput(applicantData.phone) : data.applicants[applicantIndex].phone,
+                positionApplied: applicantData.positionApplied ? sanitizeInput(applicantData.positionApplied) : data.applicants[applicantIndex].positionApplied,
+                currentSalary: applicantData.currentSalary ? sanitizeInput(applicantData.currentSalary) : data.applicants[applicantIndex].currentSalary,
+                expectedSalary: applicantData.expectedSalary ? sanitizeInput(applicantData.expectedSalary) : data.applicants[applicantIndex].expectedSalary,
+                noticePeriod: applicantData.noticePeriod ? sanitizeInput(applicantData.noticePeriod) : data.applicants[applicantIndex].noticePeriod,
+                updatedAt: new Date().toISOString()
+            }
+
+            data.applicants[applicantIndex] = updatedApplicant
+            this.saveData(data)
+            return updatedApplicant
+        } catch (error) {
+            console.error('Error updating applicant:', error)
+            throw error
+        }
+    }
+
+    deleteApplicant(applicantId: string): void {
+        try {
+            const data = this.getData()
+            if (!data.applicants) return
+
+            const initialLength = data.applicants.length
+            data.applicants = data.applicants.filter(applicant => applicant.id !== applicantId)
+
+            if (data.applicants.length === initialLength) {
+                throw new Error('Applicant not found')
+            }
+
+            this.saveData(data)
+        } catch (error) {
+            console.error('Error deleting applicant:', error)
             throw error
         }
     }

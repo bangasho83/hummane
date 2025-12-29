@@ -55,6 +55,42 @@ export interface Role {
     createdAt: string
 }
 
+export interface Job {
+    id: string
+    companyId: string
+    title: string
+    roleId?: string
+    salary: {
+        min: number
+        max: number
+        currency: string
+    }
+    experience: string
+    status: 'open' | 'closed'
+    createdAt: string
+    updatedAt?: string
+}
+
+export interface Applicant {
+    id: string
+    companyId: string
+    jobId?: string
+    fullName: string
+    email: string
+    phone: string
+    positionApplied: string
+    yearsOfExperience: number
+    currentSalary: string
+    expectedSalary: string
+    noticePeriod: string
+    resumeUrl?: string
+    linkedinUrl?: string
+    status: 'new' | 'screening' | 'interview' | 'offer' | 'rejected' | 'hired'
+    appliedDate: string
+    createdAt: string
+    updatedAt?: string
+}
+
 export interface DataStoreSchema {
     users: User[]
     companies: Company[]
@@ -62,5 +98,7 @@ export interface DataStoreSchema {
     departments: Department[]
     leaves: LeaveRecord[]
     roles: Role[]
+    jobs: Job[]
+    applicants: Applicant[]
     currentUser: string | null
 }

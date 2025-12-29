@@ -12,7 +12,8 @@ import {
     Wallet,
     HelpCircle,
     LogOut,
-    Briefcase
+    Briefcase,
+    FileText
 } from 'lucide-react'
 import { useApp } from '@/lib/context/AppContext'
 
@@ -23,6 +24,11 @@ const menuItems = [
     { name: 'Departments', href: '/dashboard/departments', icon: Building2 },
     { name: 'Attendance', href: '/dashboard/attendance', icon: Calendar },
     { name: 'Payroll', href: '/dashboard/payroll', icon: Wallet },
+]
+
+const hiringItems = [
+    { name: 'Jobs', href: '/dashboard/jobs', icon: FileText },
+    { name: 'Applicants', href: '/dashboard/applicants', icon: Users },
 ]
 
 const secondaryItems = [
@@ -85,6 +91,17 @@ export function Sidebar() {
                         </p>
                         <nav>
                             {menuItems.map((item) => (
+                                <NavLink key={item.name} item={item} />
+                            ))}
+                        </nav>
+                    </div>
+
+                    <div>
+                        <p className="text-[10px] font-extrabold text-slate-400 uppercase tracking-widest mb-4 px-3">
+                            Hiring
+                        </p>
+                        <nav>
+                            {hiringItems.map((item) => (
                                 <NavLink key={item.name} item={item} />
                             ))}
                         </nav>

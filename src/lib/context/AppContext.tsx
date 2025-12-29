@@ -1,7 +1,7 @@
 'use client'
 
 import React, { createContext, useContext, useState, useEffect, type ReactNode } from 'react'
-import type { User, Company, Employee, Department, LeaveRecord, Role } from '@/types'
+import type { User, Company, Employee, Department, LeaveRecord, Role, Job, Applicant } from '@/types'
 import { dataStore } from '@/lib/store/dataStore'
 interface AppContextType {
     currentUser: User | null
@@ -10,6 +10,8 @@ interface AppContextType {
     departments: Department[]
     leaves: LeaveRecord[]
     roles: Role[]
+    jobs: Job[]
+    applicants: Applicant[]
     login: (email: string, password: string) => Promise<{ success: boolean; message: string }>
     signup: (name: string, email: string, password: string) => Promise<{ success: boolean; message: string }>
     logout: () => void
@@ -27,6 +29,14 @@ interface AppContextType {
     updateRole: (id: string, roleData: Partial<Omit<Role, 'id' | 'companyId' | 'createdAt'>>) => Promise<Role | null>
     deleteRole: (id: string) => void
     refreshRoles: () => void
+    createJob: (jobData: Omit<Job, 'id' | 'companyId' | 'createdAt'>) => Promise<Job>
+    updateJob: (id: string, jobData: Partial<Omit<Job, 'id' | 'companyId' | 'createdAt'>>) => Promise<Job | null>
+    deleteJob: (id: string) => void
+    refreshJobs: () => void
+    createApplicant: (applicantData: Omit<Applicant, 'id' | 'companyId' | 'createdAt'>) => Promise<Applicant>
+    updateApplicant: (id: string, applicantData: Partial<Omit<Applicant, 'id' | 'companyId' | 'createdAt'>>) => Promise<Applicant | null>
+    deleteApplicant: (id: string) => void
+    refreshApplicants: () => void
 }
 
 const AppContext = createContext<AppContextType | undefined>(undefined)
@@ -38,6 +48,8 @@ export function AppProvider({ children }: { children: ReactNode }) {
     const [departments, setDepartments] = useState<Department[]>([])
     const [leaves, setLeaves] = useState<LeaveRecord[]>([])
     const [roles, setRoles] = useState<Role[]>([])
+    const [jobs, setJobs] = useState<Job[]>([])
+    const [applicants, setApplicants] = useState<Applicant[]>([])
     const [mounted, setMounted] = useState(false)
 
     useEffect(() => {
@@ -53,6 +65,8 @@ export function AppProvider({ children }: { children: ReactNode }) {
                 setDepartments(dataStore.getDepartmentsByCompanyId(company.id))
                 setLeaves(dataStore.getLeavesByCompanyId(company.id))
                 setRoles(dataStore.getRolesByCompanyId(company.id))
+                setJobs(dataStore.getJobsByCompanyId(company.id))
+                setApplicants(dataStore.getApplicantsByCompanyId(company.id))
             }
         }
     }, [])
@@ -76,6 +90,8 @@ export function AppProvider({ children }: { children: ReactNode }) {
                 setDepartments(dataStore.getDepartmentsByCompanyId(company.id))
                 setLeaves(dataStore.getLeavesByCompanyId(company.id))
                 setRoles(dataStore.getRolesByCompanyId(company.id))
+                setJobs(dataStore.getJobsByCompanyId(company.id))
+                setApplicants(dataStore.getApplicantsByCompanyId(company.id))
             }
 
             return { success: true, message: 'Welcome back!' }
@@ -305,6 +321,104 @@ export function AppProvider({ children }: { children: ReactNode }) {
         }
     }
 
+    const createJob = async (jobData: Omit<Job, 'id' | 'companyId' | 'createdAt'>): Promise<Job> => {
+        try {
+            if (!currentCompany) {
+                throw new Error('No company found')
+            }
+            const job = dataStore.createJob(currentCompany.id, jobData)
+            setJobs(dataStore.getJobsByCompanyId(currentCompany.id))
+            return job
+        } catch (error) {
+            console.error('Create job error:', error)
+            throw error
+        }
+    }
+
+    const updateJob = async (id: string, jobData: Partial<Omit<Job, 'id' | 'companyId' | 'createdAt'>>): Promise<Job | null> => {
+        try {
+            const job = dataStore.updateJob(id, jobData)
+            if (currentCompany) {
+                setJobs(dataStore.getJobsByCompanyId(currentCompany.id))
+            }
+            return job
+        } catch (error) {
+            console.error('Update job error:', error)
+            throw error
+        }
+    }
+
+    const deleteJob = (id: string) => {
+        try {
+            dataStore.deleteJob(id)
+            if (currentCompany) {
+                setJobs(dataStore.getJobsByCompanyId(currentCompany.id))
+            }
+        } catch (error) {
+            console.error('Delete job error:', error)
+            throw error
+        }
+    }
+
+    const refreshJobs = () => {
+        try {
+            if (currentCompany) {
+                setJobs(dataStore.getJobsByCompanyId(currentCompany.id))
+            }
+        } catch (error) {
+            console.error('Refresh jobs error:', error)
+        }
+    }
+
+    const createApplicant = async (applicantData: Omit<Applicant, 'id' | 'companyId' | 'createdAt'>): Promise<Applicant> => {
+        try {
+            if (!currentCompany) {
+                throw new Error('No company found')
+            }
+            const applicant = dataStore.createApplicant(currentCompany.id, applicantData)
+            setApplicants(dataStore.getApplicantsByCompanyId(currentCompany.id))
+            return applicant
+        } catch (error) {
+            console.error('Create applicant error:', error)
+            throw error
+        }
+    }
+
+    const updateApplicant = async (id: string, applicantData: Partial<Omit<Applicant, 'id' | 'companyId' | 'createdAt'>>): Promise<Applicant | null> => {
+        try {
+            const applicant = dataStore.updateApplicant(id, applicantData)
+            if (currentCompany) {
+                setApplicants(dataStore.getApplicantsByCompanyId(currentCompany.id))
+            }
+            return applicant
+        } catch (error) {
+            console.error('Update applicant error:', error)
+            throw error
+        }
+    }
+
+    const deleteApplicant = (id: string) => {
+        try {
+            dataStore.deleteApplicant(id)
+            if (currentCompany) {
+                setApplicants(dataStore.getApplicantsByCompanyId(currentCompany.id))
+            }
+        } catch (error) {
+            console.error('Delete applicant error:', error)
+            throw error
+        }
+    }
+
+    const refreshApplicants = () => {
+        try {
+            if (currentCompany) {
+                setApplicants(dataStore.getApplicantsByCompanyId(currentCompany.id))
+            }
+        } catch (error) {
+            console.error('Refresh applicants error:', error)
+        }
+    }
+
     if (!mounted) {
         return null // Prevent SSR mismatch
     }
@@ -318,6 +432,8 @@ export function AppProvider({ children }: { children: ReactNode }) {
                 departments,
                 leaves,
                 roles,
+                jobs,
+                applicants,
                 login,
                 signup,
                 logout,
@@ -334,7 +450,15 @@ export function AppProvider({ children }: { children: ReactNode }) {
                 createRole,
                 updateRole,
                 deleteRole,
-                refreshRoles
+                refreshRoles,
+                createJob,
+                updateJob,
+                deleteJob,
+                refreshJobs,
+                createApplicant,
+                updateApplicant,
+                deleteApplicant,
+                refreshApplicants
             }}
         >
             {children}
