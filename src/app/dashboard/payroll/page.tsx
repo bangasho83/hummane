@@ -2,7 +2,7 @@
 
 import { useState } from 'react'
 import { DashboardShell } from '@/components/layout/DashboardShell'
-import { Wallet, Calculator, Search } from 'lucide-react'
+import { Wallet, Calculator, Search, DollarSign } from 'lucide-react'
 import { useApp } from '@/lib/context/AppContext'
 import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
@@ -65,10 +65,10 @@ export default function PayrollPage() {
                     <Card className="border-none shadow-premium bg-white rounded-3xl col-span-1 lg:col-span-4">
                         <CardContent className="p-8">
                             <div className="flex items-center gap-3 mb-6">
-                                <div className="w-10 h-10 bg-indigo-50 rounded-xl flex items-center justify-center">
-                                    <Calculator className="w-5 h-5 text-indigo-600" />
+                                <div className="w-10 h-10 bg-blue-50 rounded-2xl flex items-center justify-center">
+                                    <Calculator className="w-5 h-5 text-blue-600" />
                                 </div>
-                                <h3 className="text-lg font-bold text-slate-900">Configuration</h3>
+                                <h3 className="text-lg font-bold text-slate-900">Payroll Configuration</h3>
                             </div>
 
                             <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
@@ -130,8 +130,20 @@ export default function PayrollPage() {
                         <TableBody>
                             {filteredEmployees.length === 0 ? (
                                 <TableRow>
-                                    <TableCell colSpan={5} className="text-center py-20 text-slate-500">
-                                        No employees found matching your search.
+                                    <TableCell colSpan={5} className="border-0">
+                                        <div className="p-20 flex flex-col items-center justify-center text-center">
+                                            <div className="w-20 h-20 bg-slate-50 rounded-3xl flex items-center justify-center mb-6">
+                                                <DollarSign className="w-10 h-10 text-slate-200" />
+                                            </div>
+                                            <h2 className="text-2xl font-bold text-slate-900 mb-2">
+                                                {searchTerm ? 'No results found' : 'No Employees Yet'}
+                                            </h2>
+                                            <p className="text-slate-500 font-medium max-w-sm">
+                                                {searchTerm
+                                                    ? `We couldn't find any employees matching "${searchTerm}".`
+                                                    : 'Add employees to start calculating payroll.'}
+                                            </p>
+                                        </div>
                                     </TableCell>
                                 </TableRow>
                             ) : (
@@ -141,25 +153,25 @@ export default function PayrollPage() {
                                         <TableRow key={emp.id} className="hover:bg-slate-50/50 group border-slate-50">
                                             <TableCell className="pl-8 py-5">
                                                 <div className="flex items-center gap-3">
-                                                    <div className="w-10 h-10 rounded-2xl bg-gradient-to-tr from-green-100 to-green-50 flex items-center justify-center text-green-600 font-bold">
+                                                    <div className="w-10 h-10 rounded-2xl bg-blue-50 text-blue-600 flex items-center justify-center font-bold text-sm">
                                                         {emp.name[0]}
                                                     </div>
                                                     <div>
-                                                        <p className="font-bold text-slate-900">{emp.name}</p>
-                                                        <p className="text-xs text-slate-500">{emp.position}</p>
+                                                        <p className="font-bold text-slate-900 text-base">{emp.name}</p>
+                                                        <p className="text-xs text-slate-400 font-medium">{emp.position}</p>
                                                     </div>
                                                 </div>
                                             </TableCell>
-                                            <TableCell className="text-right font-extrabold text-slate-900">
+                                            <TableCell className="text-right font-bold text-slate-900">
                                                 {formatMoney(salary.annual)}
                                             </TableCell>
-                                            <TableCell className="text-right font-medium text-slate-600">
+                                            <TableCell className="text-right font-medium text-slate-500">
                                                 {formatMoney(salary.monthly)}
                                             </TableCell>
-                                            <TableCell className="text-right font-medium text-slate-600">
+                                            <TableCell className="text-right font-medium text-slate-500">
                                                 {formatMoney(salary.daily)}
                                             </TableCell>
-                                            <TableCell className="text-right pr-8 font-medium text-slate-600">
+                                            <TableCell className="text-right pr-8 font-medium text-slate-500">
                                                 {formatMoney(salary.hourly)}
                                             </TableCell>
                                         </TableRow>

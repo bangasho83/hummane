@@ -52,13 +52,10 @@ export default function SettingsPage() {
     return (
         <DashboardShell>
             <div className="animate-in fade-in duration-500 slide-in-from-bottom-4">
-                <div className="flex items-center gap-4 mb-8">
-                    <div className="w-12 h-12 bg-white rounded-2xl flex items-center justify-center shadow-sm border border-slate-100">
-                        <Settings className="w-6 h-6 text-slate-600" />
-                    </div>
+                <div className="flex justify-between items-end mb-8">
                     <div>
                         <h1 className="text-3xl font-extrabold text-slate-900 tracking-tight">
-                            System Settings
+                            Settings
                         </h1>
                         <p className="text-slate-500 font-medium">
                             Manage your workspace preferences and company profile.
