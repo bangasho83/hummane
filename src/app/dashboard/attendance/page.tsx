@@ -76,36 +76,32 @@ export default function AttendancePage() {
     return (
         <DashboardShell>
             <div className="animate-in fade-in duration-500 slide-in-from-bottom-4">
-                <div className="flex flex-col md:flex-row md:items-center justify-between gap-4 mb-8">
-                    <div className="flex items-center gap-4">
-                        <div className="w-12 h-12 bg-white rounded-2xl flex items-center justify-center shadow-sm border border-slate-100">
-                            <CalendarIcon className="w-6 h-6 text-orange-600" />
-                        </div>
-                        <div>
-                            <h1 className="text-3xl font-extrabold text-slate-900 tracking-tight">
-                                Attendance
-                            </h1>
-                            <p className="text-slate-500 font-medium">
-                                Track daily presence and manage employee leaves.
-                            </p>
-                        </div>
+                <div className="flex justify-between items-end mb-8">
+                    <div>
+                        <h1 className="text-3xl font-extrabold text-slate-900 tracking-tight">
+                            Attendance
+                        </h1>
+                        <p className="text-slate-500 font-medium">
+                            Track daily presence and manage employee leaves.
+                        </p>
                     </div>
+
                     <Dialog open={isDialogOpen} onOpenChange={setIsDialogOpen}>
                         <DialogTrigger asChild>
-                            <Button className="bg-slate-900 text-white font-bold rounded-xl px-6 h-12 shadow-lg hover:bg-slate-800 transition-all">
+                            <Button className="bg-blue-600 hover:bg-blue-700 text-white rounded-2xl font-bold shadow-lg shadow-blue-500/20 px-6 py-6 h-auto">
                                 <Plus className="w-5 h-5 mr-2" />
                                 Register Leave
                             </Button>
                         </DialogTrigger>
-                        <DialogContent className="bg-white rounded-3xl p-0 overflow-hidden border-none shadow-2xl max-w-md">
-                            <DialogHeader className="p-8 pb-4 bg-slate-50 border-b border-slate-100">
-                                <DialogTitle className="text-xl font-black text-slate-900">Register Leave</DialogTitle>
+                        <DialogContent className="sm:max-w-md rounded-3xl bg-white border-slate-200">
+                            <DialogHeader>
+                                <DialogTitle className="text-2xl font-bold text-slate-900">Register Leave</DialogTitle>
                             </DialogHeader>
-                            <div className="p-8 space-y-6">
+                            <form onSubmit={(e) => { e.preventDefault(); handleAddLeave(); }} className="space-y-4 py-4">
                                 <div className="space-y-2">
-                                    <Label>Employee</Label>
+                                    <label className="text-sm font-bold text-slate-700 px-1">Employee</label>
                                     <Select value={selectedEmployee} onValueChange={setSelectedEmployee}>
-                                        <SelectTrigger className="h-12 rounded-xl bg-slate-50 border-slate-200">
+                                        <SelectTrigger className="h-12 rounded-xl border-slate-200">
                                             <SelectValue placeholder="Select Employee" />
                                         </SelectTrigger>
                                         <SelectContent>
@@ -116,18 +112,19 @@ export default function AttendancePage() {
                                     </Select>
                                 </div>
                                 <div className="space-y-2">
-                                    <Label>Date</Label>
+                                    <label className="text-sm font-bold text-slate-700 px-1">Date</label>
                                     <Input
                                         type="date"
-                                        className="h-12 rounded-xl bg-slate-50 border-slate-200"
+                                        className="h-12 rounded-xl border-slate-200"
                                         value={selectedDate}
                                         onChange={(e) => setSelectedDate(e.target.value)}
+                                        required
                                     />
                                 </div>
                                 <div className="space-y-2">
-                                    <Label>Type</Label>
+                                    <label className="text-sm font-bold text-slate-700 px-1">Leave Type</label>
                                     <Select value={selectedType} onValueChange={setSelectedType}>
-                                        <SelectTrigger className="h-12 rounded-xl bg-slate-50 border-slate-200">
+                                        <SelectTrigger className="h-12 rounded-xl border-slate-200">
                                             <SelectValue placeholder="Select Type" />
                                         </SelectTrigger>
                                         <SelectContent>
@@ -138,16 +135,15 @@ export default function AttendancePage() {
                                         </SelectContent>
                                     </Select>
                                 </div>
-                            </div>
-                            <DialogFooter className="p-8 pt-4 bg-slate-50 border-t border-slate-100">
-                                <Button
-                                    className="w-full h-12 rounded-xl font-bold bg-slate-900 text-white hover:bg-slate-800"
-                                    onClick={handleAddLeave}
-                                    disabled={loading}
-                                >
-                                    {loading ? 'Registering...' : 'Confirm Leave'}
-                                </Button>
-                            </DialogFooter>
+                                <div className="flex justify-end gap-3 mt-6">
+                                    <Button type="button" variant="outline" onClick={() => setIsDialogOpen(false)} className="rounded-xl font-bold border-slate-200 h-12 px-6">
+                                        Cancel
+                                    </Button>
+                                    <Button type="submit" className="bg-blue-600 hover:bg-blue-700 text-white rounded-xl font-bold h-12 px-6" disabled={loading}>
+                                        {loading ? 'Registering...' : 'Register Leave'}
+                                    </Button>
+                                </div>
+                            </form>
                         </DialogContent>
                     </Dialog>
                 </div>
@@ -182,8 +178,18 @@ export default function AttendancePage() {
                             <TableBody>
                                 {employees.length === 0 ? (
                                     <TableRow>
-                                        <TableCell colSpan={dates.length + 1} className="text-center py-20 text-slate-500">
-                                            No employees found. Add employees to start tracking attendance.
+                                        <TableCell colSpan={dates.length + 1} className="border-0">
+                                            <div className="p-20 flex flex-col items-center justify-center text-center">
+                                                <div className="w-20 h-20 bg-slate-50 rounded-3xl flex items-center justify-center mb-6">
+                                                    <CalendarIcon className="w-10 h-10 text-slate-200" />
+                                                </div>
+                                                <h2 className="text-2xl font-bold text-slate-900 mb-2">
+                                                    No Employees Yet
+                                                </h2>
+                                                <p className="text-slate-500 font-medium max-w-sm">
+                                                    Add employees to start tracking attendance and managing leaves.
+                                                </p>
+                                            </div>
                                         </TableCell>
                                     </TableRow>
                                 ) : (
@@ -213,6 +219,11 @@ export default function AttendancePage() {
                                 )}
                             </TableBody>
                         </Table>
+                    </div>
+                    <div className="p-8 border-t border-slate-50 bg-slate-50/30">
+                        <p className="text-xs font-bold text-slate-400 uppercase tracking-widest">
+                            {employees.length} {employees.length === 1 ? 'Employee' : 'Employees'} Tracked
+                        </p>
                     </div>
                 </div>
             </div>

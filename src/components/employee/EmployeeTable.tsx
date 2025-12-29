@@ -6,7 +6,7 @@ import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@
 import { Input } from '@/components/ui/input'
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select'
 import { Button } from '@/components/ui/button'
-import { Pencil, Trash2, Search, Filter } from 'lucide-react'
+import { Pencil, Trash2, Search, Filter, Users } from 'lucide-react'
 import type { Employee } from '@/types'
 import { formatCurrency, formatDate } from '@/lib/utils'
 import { useApp } from '@/lib/context/AppContext'
@@ -69,14 +69,14 @@ export function EmployeeTable({ employees }: EmployeeTableProps) {
 
     return (
         <div className="space-y-0">
-            {/* Table Header / Filters */}
-            <div className="p-8 pb-4">
+            {/* Search and Filters */}
+            <div className="p-8 border-b border-slate-100">
                 <div className="flex items-center gap-4 flex-wrap">
                     <div className="flex-1 min-w-[300px]">
                         <div className="relative group">
                             <Search className="absolute left-4 top-1/2 transform -translate-y-1/2 w-4 h-4 text-slate-400 group-focus-within:text-blue-500 transition-colors" />
                             <Input
-                                placeholder="Search employees by name, role, email..."
+                                placeholder="Search employees..."
                                 value={searchTerm}
                                 onChange={(e) => setSearchTerm(e.target.value)}
                                 className="pl-11 bg-slate-50 border-slate-100 h-12 rounded-2xl focus-visible:ring-blue-500/20"
@@ -139,45 +139,51 @@ export function EmployeeTable({ employees }: EmployeeTableProps) {
                     <TableBody>
                         {filteredEmployees.length === 0 ? (
                             <TableRow>
-                                <TableCell colSpan={6} className="text-center py-20">
-                                    <div className="flex flex-col items-center gap-2 max-w-xs mx-auto">
-                                        <div className="w-16 h-16 bg-slate-50 rounded-full flex items-center justify-center mb-2">
-                                            <Search className="w-8 h-8 text-slate-200" />
+                                <TableCell colSpan={6} className="border-0">
+                                    <div className="p-20 flex flex-col items-center justify-center text-center">
+                                        <div className="w-20 h-20 bg-slate-50 rounded-3xl flex items-center justify-center mb-6">
+                                            <Users className="w-10 h-10 text-slate-200" />
                                         </div>
-                                        <h4 className="font-bold text-slate-900">No results found</h4>
-                                        <p className="text-sm text-slate-500">
-                                            We couldn't find any employees matching your current filters or search terms.
+                                        <h2 className="text-2xl font-bold text-slate-900 mb-2">
+                                            {searchTerm || hasActiveFilters ? 'No results found' : 'No Employees Yet'}
+                                        </h2>
+                                        <p className="text-slate-500 font-medium max-w-sm">
+                                            {searchTerm || hasActiveFilters
+                                                ? `We couldn't find any employees matching your search criteria.`
+                                                : 'Add your first employee to start building your team.'}
                                         </p>
-                                        <Button
-                                            variant="outline"
-                                            size="sm"
-                                            onClick={clearFilters}
-                                            className="mt-4 rounded-xl"
-                                        >
-                                            Clear all filters
-                                        </Button>
+                                        {hasActiveFilters && (
+                                            <Button
+                                                variant="outline"
+                                                size="sm"
+                                                onClick={clearFilters}
+                                                className="mt-4 rounded-xl"
+                                            >
+                                                Clear all filters
+                                            </Button>
+                                        )}
                                     </div>
                                 </TableCell>
                             </TableRow>
                         ) : (
                             filteredEmployees.map((employee) => (
                                 <TableRow key={employee.id} className="hover:bg-slate-50/50 group border-slate-50">
-                                    <TableCell className="pl-8 py-4">
+                                    <TableCell className="pl-8 py-5">
                                         <div className="flex items-center gap-3">
-                                            <div className="w-10 h-10 rounded-2xl bg-gradient-to-tr from-slate-100 to-slate-200 flex items-center justify-center text-slate-600 font-bold group-hover:from-blue-100 group-hover:to-blue-50 group-hover:text-blue-600 transition-all duration-300">
+                                            <div className="w-10 h-10 rounded-2xl bg-blue-50 text-blue-600 flex items-center justify-center font-bold text-sm">
                                                 {employee.name?.[0].toUpperCase()}
                                             </div>
                                             <div>
-                                                <p className="font-bold text-slate-900">{employee.name}</p>
+                                                <p className="font-bold text-slate-900 text-base">{employee.name}</p>
                                                 <p className="text-xs text-slate-400 font-medium">{employee.email}</p>
                                             </div>
                                         </div>
                                     </TableCell>
                                     <TableCell>
-                                        <span className="text-sm font-semibold text-slate-600">{employee.position}</span>
+                                        <span className="text-sm font-medium text-slate-500">{employee.position}</span>
                                     </TableCell>
                                     <TableCell>
-                                        <Badge variant="success" className="bg-blue-50 text-blue-600 border-none px-3 py-1">
+                                        <Badge className="bg-blue-50 text-blue-600 hover:bg-blue-100 border-none px-4 py-1.5 rounded-full font-bold">
                                             {employee.department}
                                         </Badge>
                                     </TableCell>
@@ -185,25 +191,25 @@ export function EmployeeTable({ employees }: EmployeeTableProps) {
                                         <span className="text-sm font-medium text-slate-500">{formatDate(employee.startDate)}</span>
                                     </TableCell>
                                     <TableCell className="text-right">
-                                        <span className="font-extrabold text-slate-900">{formatCurrency(employee.salary)}</span>
+                                        <span className="font-bold text-slate-900">{formatCurrency(employee.salary)}</span>
                                     </TableCell>
                                     <TableCell className="text-right pr-8">
-                                        <div className="flex items-center justify-end gap-1 opacity-0 group-hover:opacity-100 transition-opacity duration-200">
+                                        <div className="flex items-center justify-end gap-2">
                                             <Button
                                                 variant="ghost"
                                                 size="icon"
-                                                className="h-9 w-9 bg-white shadow-sm border border-slate-100 rounded-xl hover:text-blue-600"
+                                                className="h-10 w-10 text-slate-300 hover:text-blue-600 hover:bg-blue-50 rounded-xl transition-all"
                                                 onClick={() => router.push(`/dashboard/employees/edit/${employee.id}`)}
                                             >
-                                                <Pencil className="w-4 h-4" />
+                                                <Pencil className="w-5 h-5" />
                                             </Button>
                                             <Button
                                                 variant="ghost"
                                                 size="icon"
-                                                className="h-9 w-9 bg-white shadow-sm border border-slate-100 rounded-xl hover:text-red-600 hover:bg-red-50"
+                                                className="h-10 w-10 text-slate-300 hover:text-red-600 hover:bg-red-50 rounded-xl transition-all"
                                                 onClick={() => handleDelete(employee)}
                                             >
-                                                <Trash2 className="w-4 h-4" />
+                                                <Trash2 className="w-5 h-5" />
                                             </Button>
                                         </div>
                                     </TableCell>
@@ -214,14 +220,10 @@ export function EmployeeTable({ employees }: EmployeeTableProps) {
                 </Table>
             </div>
 
-            <div className="p-8 border-t border-slate-50 bg-slate-50/30 flex justify-between items-center">
+            <div className="p-8 border-t border-slate-50 bg-slate-50/30">
                 <p className="text-xs font-bold text-slate-400 uppercase tracking-widest">
-                    Showing {filteredEmployees.length} of {employees.length} employees
+                    {filteredEmployees.length} {filteredEmployees.length === 1 ? 'Employee' : 'Employees'} {searchTerm || hasActiveFilters ? 'Found' : 'Managed'}
                 </p>
-                <div className="flex items-center gap-2">
-                    <Button variant="outline" size="sm" disabled className="h-9 rounded-xl px-4 opacity-50">Previous</Button>
-                    <Button variant="outline" size="sm" disabled className="h-9 rounded-xl px-4 opacity-50">Next</Button>
-                </div>
             </div>
         </div>
     )

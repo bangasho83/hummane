@@ -28,31 +28,30 @@ export default function EmployeesPage() {
 
     return (
         <DashboardShell>
-            <section className="animate-in fade-in duration-700 slide-in-from-bottom-6">
-                <div className="bg-white rounded-3xl shadow-premium border border-slate-100 overflow-hidden">
-                    <div className="p-8 border-b border-slate-100 flex justify-between items-center bg-white/50 backdrop-blur-sm">
-                        <div>
-                            <h3 className="text-xl font-bold text-slate-900">
-                                Employee Directory
-                            </h3>
-                            <p className="text-sm text-slate-500 font-medium">
-                                Detailed list of all active employees in your organization.
-                            </p>
-                        </div>
-                        <Button
-                            onClick={handleAddEmployee}
-                            className="bg-blue-600 hover:bg-blue-700 text-white shadow-lg shadow-blue-500/20 px-6 py-6 rounded-2xl font-bold transition-all hover:scale-105 active:scale-95"
-                        >
-                            <Plus className="w-5 h-5 mr-2" />
-                            Add New Employee
-                        </Button>
+            <div className="animate-in fade-in duration-500 slide-in-from-bottom-4">
+                <div className="flex justify-between items-end mb-8">
+                    <div>
+                        <h1 className="text-3xl font-extrabold text-slate-900 tracking-tight">
+                            Employees
+                        </h1>
+                        <p className="text-slate-500 font-medium">
+                            Manage your team members and their information.
+                        </p>
                     </div>
 
-                    <div className="p-0">
-                        <EmployeeTable employees={employees} />
-                    </div>
+                    <Button
+                        onClick={handleAddEmployee}
+                        className="bg-blue-600 hover:bg-blue-700 text-white rounded-2xl font-bold shadow-lg shadow-blue-500/20 px-6 py-6 h-auto"
+                    >
+                        <Plus className="w-5 h-5 mr-2" />
+                        Add Employee
+                    </Button>
                 </div>
-            </section>
+
+                <div className="bg-white rounded-3xl shadow-premium border border-slate-100 overflow-hidden">
+                    <EmployeeTable employees={employees} />
+                </div>
+            </div>
         </DashboardShell>
     )
 }
