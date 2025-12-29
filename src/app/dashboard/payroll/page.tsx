@@ -53,58 +53,54 @@ export default function PayrollPage() {
                 <div className="flex justify-between items-end mb-8">
                     <div>
                         <h1 className="text-3xl font-extrabold text-slate-900 tracking-tight">
-                            Payroll Calculator
+                            Payroll
                         </h1>
                         <p className="text-slate-500 font-medium">
-                            Real-time salary breakdown based on customizable work schedules.
+                            Calculate salary breakdowns based on customizable work schedules.
                         </p>
                     </div>
                 </div>
 
-                <div className="grid grid-cols-1 lg:grid-cols-4 gap-6 mb-6">
-                    <Card className="border-none shadow-premium bg-white rounded-3xl col-span-1 lg:col-span-4">
-                        <CardContent className="p-8">
-                            <div className="flex items-center gap-3 mb-6">
-                                <div className="w-10 h-10 bg-blue-50 rounded-2xl flex items-center justify-center">
-                                    <Calculator className="w-5 h-5 text-blue-600" />
-                                </div>
-                                <h3 className="text-lg font-bold text-slate-900">Payroll Configuration</h3>
-                            </div>
-
-                            <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
-                                <div className="space-y-2">
-                                    <Label className="text-xs font-bold text-slate-400 uppercase tracking-widest">Months / Year</Label>
-                                    <Input
-                                        type="number"
-                                        value={config.monthsPerYear}
-                                        onChange={(e) => setConfig({ ...config, monthsPerYear: Number(e.target.value) })}
-                                        className="h-12 rounded-xl bg-slate-50 border-slate-200 font-bold text-slate-900"
-                                    />
-                                </div>
-                                <div className="space-y-2">
-                                    <Label className="text-xs font-bold text-slate-400 uppercase tracking-widest">Days / Month</Label>
-                                    <Input
-                                        type="number"
-                                        value={config.daysPerMonth}
-                                        onChange={(e) => setConfig({ ...config, daysPerMonth: Number(e.target.value) })}
-                                        className="h-12 rounded-xl bg-slate-50 border-slate-200 font-bold text-slate-900"
-                                    />
-                                </div>
-                                <div className="space-y-2">
-                                    <Label className="text-xs font-bold text-slate-400 uppercase tracking-widest">Hours / Day</Label>
-                                    <Input
-                                        type="number"
-                                        value={config.hoursPerDay}
-                                        onChange={(e) => setConfig({ ...config, hoursPerDay: Number(e.target.value) })}
-                                        className="h-12 rounded-xl bg-slate-50 border-slate-200 font-bold text-slate-900"
-                                    />
-                                </div>
-                            </div>
-                        </CardContent>
-                    </Card>
-                </div>
-
                 <div className="bg-white rounded-3xl shadow-premium border border-slate-100 overflow-hidden">
+                    <div className="p-8 border-b border-slate-100">
+                        <div className="flex items-center gap-3 mb-6">
+                            <div className="w-10 h-10 bg-blue-50 rounded-2xl flex items-center justify-center">
+                                <Calculator className="w-5 h-5 text-blue-600" />
+                            </div>
+                            <h3 className="text-lg font-bold text-slate-900">Payroll Configuration</h3>
+                        </div>
+
+                        <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
+                            <div className="space-y-2">
+                                <Label className="text-xs font-bold text-slate-400 uppercase tracking-widest">Months / Year</Label>
+                                <Input
+                                    type="number"
+                                    value={config.monthsPerYear}
+                                    onChange={(e) => setConfig({ ...config, monthsPerYear: Number(e.target.value) })}
+                                    className="h-12 rounded-xl bg-slate-50 border-slate-200 font-bold text-slate-900"
+                                />
+                            </div>
+                            <div className="space-y-2">
+                                <Label className="text-xs font-bold text-slate-400 uppercase tracking-widest">Days / Month</Label>
+                                <Input
+                                    type="number"
+                                    value={config.daysPerMonth}
+                                    onChange={(e) => setConfig({ ...config, daysPerMonth: Number(e.target.value) })}
+                                    className="h-12 rounded-xl bg-slate-50 border-slate-200 font-bold text-slate-900"
+                                />
+                            </div>
+                            <div className="space-y-2">
+                                <Label className="text-xs font-bold text-slate-400 uppercase tracking-widest">Hours / Day</Label>
+                                <Input
+                                    type="number"
+                                    value={config.hoursPerDay}
+                                    onChange={(e) => setConfig({ ...config, hoursPerDay: Number(e.target.value) })}
+                                    className="h-12 rounded-xl bg-slate-50 border-slate-200 font-bold text-slate-900"
+                                />
+                            </div>
+                        </div>
+                    </div>
+
                     <div className="p-8 border-b border-slate-100 flex items-center gap-4">
                         <div className="relative flex-1 group">
                             <Search className="absolute left-4 top-1/2 transform -translate-y-1/2 w-4 h-4 text-slate-400 group-focus-within:text-blue-500 transition-colors" />
@@ -183,7 +179,7 @@ export default function PayrollPage() {
 
                     <div className="p-8 border-t border-slate-50 bg-slate-50/30">
                         <p className="text-xs font-bold text-slate-400 uppercase tracking-widest">
-                            {filteredEmployees.length} Employees Processed
+                            {filteredEmployees.length} {filteredEmployees.length === 1 ? 'Employee' : 'Employees'} • Payroll Calculated
                         </p>
                     </div>
                 </div>
