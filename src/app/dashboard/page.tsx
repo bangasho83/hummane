@@ -24,7 +24,7 @@ export default function DashboardPage() {
     }
 
     const handleAddEmployee = () => {
-        router.push('/dashboard/employees/add')
+        router.push('/dashboard/team/add')
     }
 
     return (

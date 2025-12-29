@@ -36,7 +36,7 @@ export default function EditEmployeePage() {
             setEmployee(emp)
         } else if (employees.length > 0) {
             toast('Employee not found', 'error')
-            router.push('/dashboard/employees')
+            router.push('/dashboard/team')
         }
     }, [employeeId, employees, router])
 
@@ -46,7 +46,7 @@ export default function EditEmployeePage() {
         try {
             await updateEmployee(employee.id, data)
             toast('Employee updated successfully', 'success')
-            router.push('/dashboard/employees')
+            router.push('/dashboard/team')
         } catch (error) {
             toast('Failed to update employee', 'error')
         } finally {
@@ -55,7 +55,7 @@ export default function EditEmployeePage() {
     }
 
     const handleCancel = () => {
-        router.push('/dashboard/employees')
+        router.push('/dashboard/team')
     }
 
     if (!employee && employees.length === 0) {

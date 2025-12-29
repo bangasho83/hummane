@@ -228,7 +228,7 @@ export function EmployeeForm({
                     </>
                 ) : (
                     <div className="text-sm p-3 bg-slate-50 border border-dashed border-slate-200 rounded-xl text-slate-500">
-                        No roles defined. <Link href="/dashboard/employees/roles" className="text-blue-600 font-bold hover:underline">Create one</Link> to assign job descriptions.
+                        No roles defined. <Link href="/dashboard/team/roles" className="text-blue-600 font-bold hover:underline">Create one</Link> to assign job descriptions.
                     </div>
                 )}
             </div>

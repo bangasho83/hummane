@@ -17,7 +17,7 @@ import { useApp } from '@/lib/context/AppContext'
 
 const menuItems = [
     { name: 'Dashboard', href: '/dashboard', icon: LayoutDashboard, exact: true },
-    { name: 'Employees', href: '/dashboard/employees', icon: Users },
+    { name: 'Team', href: '/dashboard/team', icon: Users },
     { name: 'Departments', href: '/dashboard/departments', icon: Building2 },
     { name: 'Attendance', href: '/dashboard/attendance', icon: Calendar },
     { name: 'Payroll', href: '/dashboard/payroll', icon: Wallet },

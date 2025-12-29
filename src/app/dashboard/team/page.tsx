@@ -25,10 +25,10 @@ export default function EmployeesPage() {
     }
 
     const handleAddEmployee = () => {
-        router.push('/dashboard/employees/add')
+        router.push('/dashboard/team/add')
     }
 
-    const isEmployeesTab = pathname === '/dashboard/employees'
+    const isTeamTab = pathname === '/dashboard/team'
 
     return (
         <DashboardShell>
@@ -36,7 +36,7 @@ export default function EmployeesPage() {
                 <div className="flex justify-between items-end mb-8">
                     <div>
                         <h1 className="text-3xl font-extrabold text-slate-900 tracking-tight">
-                            Employees
+                            Team
                         </h1>
                         <p className="text-slate-500 font-medium">
                             Manage your team members and their information.
@@ -54,11 +54,11 @@ export default function EmployeesPage() {
 
                 {/* Tab Navigation */}
                 <div className="flex gap-2 mb-6">
-                    <Link href="/dashboard/employees">
+                    <Link href="/dashboard/team">
                         <Button
-                            variant={isEmployeesTab ? "default" : "outline"}
+                            variant={isTeamTab ? "default" : "outline"}
                             className={`rounded-2xl font-bold h-12 px-6 ${
-                                isEmployeesTab
+                                isTeamTab
                                     ? 'bg-blue-600 hover:bg-blue-700 text-white shadow-lg shadow-blue-500/20'
                                     : 'border-slate-200 text-slate-600 hover:bg-slate-50'
                             }`}
@@ -67,11 +67,11 @@ export default function EmployeesPage() {
                             Team Members
                         </Button>
                     </Link>
-                    <Link href="/dashboard/employees/roles">
+                    <Link href="/dashboard/team/roles">
                         <Button
-                            variant={!isEmployeesTab ? "default" : "outline"}
+                            variant={!isTeamTab ? "default" : "outline"}
                             className={`rounded-2xl font-bold h-12 px-6 ${
-                                !isEmployeesTab
+                                !isTeamTab
                                     ? 'bg-blue-600 hover:bg-blue-700 text-white shadow-lg shadow-blue-500/20'
                                     : 'border-slate-200 text-slate-600 hover:bg-slate-50'
                             }`}

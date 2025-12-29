@@ -20,7 +20,7 @@ export default function AddEmployeePage() {
         try {
             await createEmployee(data)
             toast('Employee added successfully', 'success')
-            router.push('/dashboard/employees')
+            router.push('/dashboard/team')
         } catch (error) {
             toast('Failed to add employee', 'error')
         } finally {
@@ -29,7 +29,7 @@ export default function AddEmployeePage() {
     }
 
     const handleCancel = () => {
-        router.push('/dashboard/employees')
+        router.push('/dashboard/team')
     }
 
     return (

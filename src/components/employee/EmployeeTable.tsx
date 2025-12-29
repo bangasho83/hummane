@@ -199,7 +199,7 @@ export function EmployeeTable({ employees }: EmployeeTableProps) {
                                                 variant="ghost"
                                                 size="icon"
                                                 className="h-10 w-10 text-slate-300 hover:text-blue-600 hover:bg-blue-50 rounded-xl transition-all"
-                                                onClick={() => router.push(`/dashboard/employees/edit/${employee.id}`)}
+                                                onClick={() => router.push(`/dashboard/team/edit/${employee.id}`)}
                                             >
                                                 <Pencil className="w-5 h-5" />
                                             </Button>
