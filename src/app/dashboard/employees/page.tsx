@@ -1,14 +1,16 @@
 'use client'
 
-import { useRouter } from 'next/navigation'
+import { useRouter, usePathname } from 'next/navigation'
 import { useApp } from '@/lib/context/AppContext'
 import { Button } from '@/components/ui/button'
-import { Plus } from 'lucide-react'
+import { Plus, Users, Briefcase } from 'lucide-react'
 import { EmployeeTable } from '@/components/employee/EmployeeTable'
 import { DashboardShell } from '@/components/layout/DashboardShell'
+import Link from 'next/link'
 
 export default function EmployeesPage() {
     const router = useRouter()
+    const pathname = usePathname()
     const { currentUser, currentCompany, employees } = useApp()
 
     // Redirect if not logged in or no company
@@ -25,6 +27,8 @@ export default function EmployeesPage() {
     const handleAddEmployee = () => {
         router.push('/dashboard/employees/add')
     }
+
+    const isEmployeesTab = pathname === '/dashboard/employees'
 
     return (
         <DashboardShell>
@@ -46,6 +50,36 @@ export default function EmployeesPage() {
                         <Plus className="w-5 h-5 mr-2" />
                         Add Employee
                     </Button>
+                </div>
+
+                {/* Tab Navigation */}
+                <div className="flex gap-2 mb-6">
+                    <Link href="/dashboard/employees">
+                        <Button
+                            variant={isEmployeesTab ? "default" : "outline"}
+                            className={`rounded-2xl font-bold h-12 px-6 ${
+                                isEmployeesTab
+                                    ? 'bg-blue-600 hover:bg-blue-700 text-white shadow-lg shadow-blue-500/20'
+                                    : 'border-slate-200 text-slate-600 hover:bg-slate-50'
+                            }`}
+                        >
+                            <Users className="w-4 h-4 mr-2" />
+                            Team Members
+                        </Button>
+                    </Link>
+                    <Link href="/dashboard/employees/roles">
+                        <Button
+                            variant={!isEmployeesTab ? "default" : "outline"}
+                            className={`rounded-2xl font-bold h-12 px-6 ${
+                                !isEmployeesTab
+                                    ? 'bg-blue-600 hover:bg-blue-700 text-white shadow-lg shadow-blue-500/20'
+                                    : 'border-slate-200 text-slate-600 hover:bg-slate-50'
+                            }`}
+                        >
+                            <Briefcase className="w-4 h-4 mr-2" />
+                            Roles & JDs
+                        </Button>
+                    </Link>
                 </div>
 
                 <div className="bg-white rounded-3xl shadow-premium border border-slate-100 overflow-hidden">

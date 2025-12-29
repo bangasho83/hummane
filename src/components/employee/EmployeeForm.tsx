@@ -24,6 +24,7 @@ interface EmployeeFormProps {
         email: string
         position: string
         department: string
+        roleId?: string
         startDate: string
         salary: number
     }) => Promise<void>
@@ -39,12 +40,13 @@ export function EmployeeForm({
     submitLabel = 'Save Employee',
     loading = false
 }: EmployeeFormProps) {
-    const { departments } = useApp()
+    const { departments, roles } = useApp()
     const [formData, setFormData] = useState({
         name: '',
         email: '',
         position: '',
         department: '',
+        roleId: '',
         startDate: '',
         salary: ''
     })
@@ -57,6 +59,7 @@ export function EmployeeForm({
                 email: employee.email,
                 position: employee.position,
                 department: employee.department,
+                roleId: employee.roleId || '',
                 startDate: employee.startDate,
                 salary: employee.salary.toString()
             })
@@ -66,6 +69,7 @@ export function EmployeeForm({
                 email: '',
                 position: '',
                 department: '',
+                roleId: '',
                 startDate: '',
                 salary: ''
             })
@@ -83,6 +87,7 @@ export function EmployeeForm({
                 email: formData.email,
                 position: formData.position,
                 department: formData.department,
+                roleId: formData.roleId || undefined,
                 startDate: formData.startDate,
                 salary: parseFloat(formData.salary)
             }
@@ -193,6 +198,39 @@ export function EmployeeForm({
                         </div>
                     )}
                 </div>
+            </div>
+
+            <div className="space-y-2">
+                <Label htmlFor="role">Role / Job Description (Optional)</Label>
+                {roles.length > 0 ? (
+                    <>
+                        <Select
+                            value={formData.roleId}
+                            onValueChange={(value) => handleChange('roleId', value)}
+                        >
+                            <SelectTrigger id="role" className="rounded-xl border-slate-200">
+                                <SelectValue placeholder="Select Role" />
+                            </SelectTrigger>
+                            <SelectContent>
+                                <SelectItem value="">None</SelectItem>
+                                {roles.map((role) => (
+                                    <SelectItem key={role.id} value={role.id}>
+                                        {role.title}
+                                    </SelectItem>
+                                ))}
+                            </SelectContent>
+                        </Select>
+                        {formData.roleId && roles.find(r => r.id === formData.roleId) && (
+                            <p className="text-xs text-slate-500 mt-2 p-3 bg-slate-50 rounded-xl border border-slate-100">
+                                <span className="font-bold">JD:</span> {roles.find(r => r.id === formData.roleId)?.description}
+                            </p>
+                        )}
+                    </>
+                ) : (
+                    <div className="text-sm p-3 bg-slate-50 border border-dashed border-slate-200 rounded-xl text-slate-500">
+                        No roles defined. <Link href="/dashboard/employees/roles" className="text-blue-600 font-bold hover:underline">Create one</Link> to assign job descriptions.
+                    </div>
+                )}
             </div>
 
             <div className="grid grid-cols-2 gap-4">

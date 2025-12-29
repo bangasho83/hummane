@@ -1,4 +1,4 @@
-import type { User, Company, Employee, Department, DataStoreSchema, LeaveRecord } from '@/types'
+import type { User, Company, Employee, Department, DataStoreSchema, LeaveRecord, Role } from '@/types'
 import { hashPassword, verifyPassword, sanitizeInput, sanitizeEmail } from '@/lib/security/crypto'
 
 /**
@@ -23,6 +23,7 @@ export class DataStore {
                     employees: [],
                     departments: [],
                     leaves: [],
+                    roles: [],
                     currentUser: null
                 }
                 localStorage.setItem(this.STORAGE_KEY, JSON.stringify(initialData))
@@ -55,6 +56,7 @@ export class DataStore {
                 employees: Array.isArray(parsed.employees) ? parsed.employees : [],
                 departments: Array.isArray(parsed.departments) ? parsed.departments : [],
                 leaves: Array.isArray(parsed.leaves) ? parsed.leaves : [],
+                roles: Array.isArray(parsed.roles) ? parsed.roles : [],
                 currentUser: parsed.currentUser || null
             }
         } catch (error) {
@@ -70,6 +72,7 @@ export class DataStore {
             employees: [],
             departments: [],
             leaves: [],
+            roles: [],
             currentUser: null
         }
     }
@@ -446,6 +449,100 @@ export class DataStore {
         } catch (error) {
             console.error('Error getting leaves:', error)
             return []
+        }
+    }
+
+    // Role operations
+    createRole(roleData: Omit<Role, 'id' | 'companyId' | 'createdAt'>, companyId: string): Role {
+        try {
+            const data = this.getData()
+
+            // Sanitize inputs
+            const sanitizedTitle = sanitizeInput(roleData.title)
+            const sanitizedDescription = sanitizeInput(roleData.description)
+
+            const role: Role = {
+                id: this.generateId(),
+                companyId,
+                title: sanitizedTitle,
+                description: sanitizedDescription,
+                createdAt: new Date().toISOString()
+            }
+
+            if (!data.roles) data.roles = []
+            data.roles.push(role)
+            this.saveData(data)
+            return role
+        } catch (error) {
+            console.error('Error creating role:', error)
+            throw error
+        }
+    }
+
+    getRolesByCompanyId(companyId: string): Role[] {
+        try {
+            const data = this.getData()
+            if (!data.roles) return []
+            return data.roles.filter(role => role.companyId === companyId)
+        } catch (error) {
+            console.error('Error getting roles:', error)
+            return []
+        }
+    }
+
+    getRoleById(roleId: string): Role | null {
+        try {
+            const data = this.getData()
+            if (!data.roles) return null
+            return data.roles.find(role => role.id === roleId) || null
+        } catch (error) {
+            console.error('Error getting role:', error)
+            return null
+        }
+    }
+
+    updateRole(roleId: string, roleData: Partial<Omit<Role, 'id' | 'companyId' | 'createdAt'>>): Role | null {
+        try {
+            const data = this.getData()
+            if (!data.roles) return null
+
+            const roleIndex = data.roles.findIndex(r => r.id === roleId)
+            if (roleIndex === -1) {
+                throw new Error('Role not found')
+            }
+
+            const updatedRole = {
+                ...data.roles[roleIndex],
+                ...roleData,
+                title: roleData.title ? sanitizeInput(roleData.title) : data.roles[roleIndex].title,
+                description: roleData.description ? sanitizeInput(roleData.description) : data.roles[roleIndex].description
+            }
+
+            data.roles[roleIndex] = updatedRole
+            this.saveData(data)
+            return updatedRole
+        } catch (error) {
+            console.error('Error updating role:', error)
+            throw error
+        }
+    }
+
+    deleteRole(roleId: string): void {
+        try {
+            const data = this.getData()
+            if (!data.roles) return
+
+            const initialLength = data.roles.length
+            data.roles = data.roles.filter(role => role.id !== roleId)
+
+            if (data.roles.length === initialLength) {
+                throw new Error('Role not found')
+            }
+
+            this.saveData(data)
+        } catch (error) {
+            console.error('Error deleting role:', error)
+            throw error
         }
     }
 

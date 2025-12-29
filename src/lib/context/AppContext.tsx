@@ -1,7 +1,7 @@
 'use client'
 
 import React, { createContext, useContext, useState, useEffect, type ReactNode } from 'react'
-import type { User, Company, Employee, Department, LeaveRecord } from '@/types'
+import type { User, Company, Employee, Department, LeaveRecord, Role } from '@/types'
 import { dataStore } from '@/lib/store/dataStore'
 interface AppContextType {
     currentUser: User | null
@@ -9,6 +9,7 @@ interface AppContextType {
     employees: Employee[]
     departments: Department[]
     leaves: LeaveRecord[]
+    roles: Role[]
     login: (email: string, password: string) => Promise<{ success: boolean; message: string }>
     signup: (name: string, email: string, password: string) => Promise<{ success: boolean; message: string }>
     logout: () => void
@@ -22,6 +23,10 @@ interface AppContextType {
     deleteDepartment: (id: string) => void
     refreshDepartments: () => void
     addLeave: (leaveData: Omit<LeaveRecord, 'id' | 'companyId' | 'createdAt'>) => Promise<LeaveRecord>
+    createRole: (roleData: Omit<Role, 'id' | 'companyId' | 'createdAt'>) => Promise<Role>
+    updateRole: (id: string, roleData: Partial<Omit<Role, 'id' | 'companyId' | 'createdAt'>>) => Promise<Role | null>
+    deleteRole: (id: string) => void
+    refreshRoles: () => void
 }
 
 const AppContext = createContext<AppContextType | undefined>(undefined)
@@ -32,6 +37,7 @@ export function AppProvider({ children }: { children: ReactNode }) {
     const [employees, setEmployees] = useState<Employee[]>([])
     const [departments, setDepartments] = useState<Department[]>([])
     const [leaves, setLeaves] = useState<LeaveRecord[]>([])
+    const [roles, setRoles] = useState<Role[]>([])
     const [mounted, setMounted] = useState(false)
 
     useEffect(() => {
@@ -46,6 +52,7 @@ export function AppProvider({ children }: { children: ReactNode }) {
                 setEmployees(dataStore.getEmployeesByCompanyId(company.id))
                 setDepartments(dataStore.getDepartmentsByCompanyId(company.id))
                 setLeaves(dataStore.getLeavesByCompanyId(company.id))
+                setRoles(dataStore.getRolesByCompanyId(company.id))
             }
         }
     }, [])
@@ -68,6 +75,7 @@ export function AppProvider({ children }: { children: ReactNode }) {
                 setEmployees(dataStore.getEmployeesByCompanyId(company.id))
                 setDepartments(dataStore.getDepartmentsByCompanyId(company.id))
                 setLeaves(dataStore.getLeavesByCompanyId(company.id))
+                setRoles(dataStore.getRolesByCompanyId(company.id))
             }
 
             return { success: true, message: 'Welcome back!' }
@@ -249,6 +257,54 @@ export function AppProvider({ children }: { children: ReactNode }) {
         }
     }
 
+    const createRole = async (roleData: Omit<Role, 'id' | 'companyId' | 'createdAt'>): Promise<Role> => {
+        try {
+            if (!currentCompany) throw new Error('No company set up')
+
+            const role = dataStore.createRole(roleData, currentCompany.id)
+            setRoles(dataStore.getRolesByCompanyId(currentCompany.id))
+            return role
+        } catch (error) {
+            console.error('Create role error:', error)
+            throw error
+        }
+    }
+
+    const updateRole = async (id: string, roleData: Partial<Omit<Role, 'id' | 'companyId' | 'createdAt'>>): Promise<Role | null> => {
+        try {
+            const role = dataStore.updateRole(id, roleData)
+            if (currentCompany) {
+                setRoles(dataStore.getRolesByCompanyId(currentCompany.id))
+            }
+            return role
+        } catch (error) {
+            console.error('Update role error:', error)
+            throw error
+        }
+    }
+
+    const deleteRole = (id: string) => {
+        try {
+            dataStore.deleteRole(id)
+            if (currentCompany) {
+                setRoles(dataStore.getRolesByCompanyId(currentCompany.id))
+            }
+        } catch (error) {
+            console.error('Delete role error:', error)
+            throw error
+        }
+    }
+
+    const refreshRoles = () => {
+        try {
+            if (currentCompany) {
+                setRoles(dataStore.getRolesByCompanyId(currentCompany.id))
+            }
+        } catch (error) {
+            console.error('Refresh roles error:', error)
+        }
+    }
+
     if (!mounted) {
         return null // Prevent SSR mismatch
     }
@@ -261,6 +317,7 @@ export function AppProvider({ children }: { children: ReactNode }) {
                 employees,
                 departments,
                 leaves,
+                roles,
                 login,
                 signup,
                 logout,
@@ -273,7 +330,11 @@ export function AppProvider({ children }: { children: ReactNode }) {
                 createDepartment,
                 deleteDepartment,
                 refreshDepartments,
-                addLeave
+                addLeave,
+                createRole,
+                updateRole,
+                deleteRole,
+                refreshRoles
             }}
         >
             {children}

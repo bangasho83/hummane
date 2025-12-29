@@ -23,6 +23,7 @@ export interface Employee {
     email: string
     position: string
     department: string
+    roleId?: string
     startDate: string
     salary: number
     createdAt: string
@@ -46,6 +47,13 @@ export interface LeaveRecord {
     createdAt: string
 }
 
+export interface Role {
+    id: string
+    companyId: string
+    title: string
+    description: string
+    createdAt: string
+}
 
 export interface DataStoreSchema {
     users: User[]
@@ -53,5 +61,6 @@ export interface DataStoreSchema {
     employees: Employee[]
     departments: Department[]
     leaves: LeaveRecord[]
+    roles: Role[]
     currentUser: string | null
 }
