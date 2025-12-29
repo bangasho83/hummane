@@ -205,14 +205,14 @@ export function EmployeeForm({
                 {roles.length > 0 ? (
                     <>
                         <Select
-                            value={formData.roleId}
-                            onValueChange={(value) => handleChange('roleId', value)}
+                            value={formData.roleId || "none"}
+                            onValueChange={(value) => handleChange('roleId', value === "none" ? "" : value)}
                         >
                             <SelectTrigger id="role" className="rounded-xl border-slate-200">
                                 <SelectValue placeholder="Select Role" />
                             </SelectTrigger>
                             <SelectContent>
-                                <SelectItem value="">None</SelectItem>
+                                <SelectItem value="none">None</SelectItem>
                                 {roles.map((role) => (
                                     <SelectItem key={role.id} value={role.id}>
                                         {role.title}
@@ -220,7 +220,7 @@ export function EmployeeForm({
                                 ))}
                             </SelectContent>
                         </Select>
-                        {formData.roleId && roles.find(r => r.id === formData.roleId) && (
+                        {formData.roleId && formData.roleId !== "none" && roles.find(r => r.id === formData.roleId) && (
                             <p className="text-xs text-slate-500 mt-2 p-3 bg-slate-50 rounded-xl border border-slate-100">
                                 <span className="font-bold">JD:</span> {roles.find(r => r.id === formData.roleId)?.description}
                             </p>
