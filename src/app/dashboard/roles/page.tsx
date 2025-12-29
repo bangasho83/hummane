@@ -1,9 +1,9 @@
 'use client'
 
 import { useState } from 'react'
-import { useRouter, usePathname } from 'next/navigation'
+import { useRouter } from 'next/navigation'
 import { DashboardShell } from '@/components/layout/DashboardShell'
-import { Plus, Trash2, Briefcase, Search, Users } from 'lucide-react'
+import { Plus, Trash2, Briefcase, Search } from 'lucide-react'
 import { useApp } from '@/lib/context/AppContext'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
@@ -12,18 +12,14 @@ import { toast } from '@/components/ui/toast'
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table'
 import { Label } from '@/components/ui/label'
 import { Textarea } from '@/components/ui/textarea'
-import Link from 'next/link'
 
 export default function RolesPage() {
     const router = useRouter()
-    const pathname = usePathname()
     const { roles, createRole, deleteRole, employees } = useApp()
     const [isAddOpen, setIsAddOpen] = useState(false)
     const [loading, setLoading] = useState(false)
     const [searchTerm, setSearchTerm] = useState('')
     const [newRole, setNewRole] = useState({ title: '', description: '' })
-
-    const isTeamTab = pathname === '/dashboard/team'
 
     const filteredRoles = roles.filter(role =>
         role.title.toLowerCase().includes(searchTerm.toLowerCase()) ||
@@ -66,10 +62,10 @@ export default function RolesPage() {
                 <div className="flex justify-between items-end mb-8">
                     <div>
                         <h1 className="text-3xl font-extrabold text-slate-900 tracking-tight">
-                            Team
+                            Roles & Job Descriptions
                         </h1>
                         <p className="text-slate-500 font-medium">
-                            Manage your team members and their information.
+                            Define roles and job descriptions for your organization.
                         </p>
                     </div>
 
@@ -115,36 +111,6 @@ export default function RolesPage() {
                             </form>
                         </DialogContent>
                     </Dialog>
-                </div>
-
-                {/* Tab Navigation */}
-                <div className="flex gap-2 mb-6">
-                    <Link href="/dashboard/team">
-                        <Button
-                            variant={isTeamTab ? "default" : "outline"}
-                            className={`rounded-2xl font-bold h-12 px-6 ${
-                                isTeamTab
-                                    ? 'bg-blue-600 hover:bg-blue-700 text-white shadow-lg shadow-blue-500/20'
-                                    : 'border-slate-200 text-slate-600 hover:bg-slate-50'
-                            }`}
-                        >
-                            <Users className="w-4 h-4 mr-2" />
-                            Team Members
-                        </Button>
-                    </Link>
-                    <Link href="/dashboard/team/roles">
-                        <Button
-                            variant={!isTeamTab ? "default" : "outline"}
-                            className={`rounded-2xl font-bold h-12 px-6 ${
-                                !isTeamTab
-                                    ? 'bg-blue-600 hover:bg-blue-700 text-white shadow-lg shadow-blue-500/20'
-                                    : 'border-slate-200 text-slate-600 hover:bg-slate-50'
-                            }`}
-                        >
-                            <Briefcase className="w-4 h-4 mr-2" />
-                            Roles & JDs
-                        </Button>
-                    </Link>
                 </div>
 
                 <div className="bg-white rounded-3xl shadow-premium border border-slate-100 overflow-hidden">
