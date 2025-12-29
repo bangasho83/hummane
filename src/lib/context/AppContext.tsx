@@ -51,129 +51,202 @@ export function AppProvider({ children }: { children: ReactNode }) {
     }, [])
 
     const login = async (email: string, password: string): Promise<{ success: boolean; message: string }> => {
-        const user = dataStore.getUserByEmail(email)
+        try {
+            // Verify user credentials with hashed password
+            const user = await dataStore.verifyUserPassword(email, password)
 
-        if (!user) {
-            return { success: false, message: 'No account found with this email' }
+            if (!user) {
+                return { success: false, message: 'Invalid email or password' }
+            }
+
+            dataStore.setCurrentUser(user.id)
+            setCurrentUser(user)
+
+            const company = dataStore.getCompanyByOwnerId(user.id)
+            if (company) {
+                setCurrentCompany(company)
+                setEmployees(dataStore.getEmployeesByCompanyId(company.id))
+                setDepartments(dataStore.getDepartmentsByCompanyId(company.id))
+                setLeaves(dataStore.getLeavesByCompanyId(company.id))
+            }
+
+            return { success: true, message: 'Welcome back!' }
+        } catch (error) {
+            console.error('Login error:', error)
+            return { success: false, message: 'An error occurred during login. Please try again.' }
         }
-
-        if (user.password !== password) {
-            return { success: false, message: 'Incorrect password' }
-        }
-
-        dataStore.setCurrentUser(user.id)
-        setCurrentUser(user)
-
-        const company = dataStore.getCompanyByOwnerId(user.id)
-        if (company) {
-            setCurrentCompany(company)
-            setEmployees(dataStore.getEmployeesByCompanyId(company.id))
-            setDepartments(dataStore.getDepartmentsByCompanyId(company.id))
-            setLeaves(dataStore.getLeavesByCompanyId(company.id))
-        }
-
-        return { success: true, message: 'Welcome back!' }
     }
 
     const signup = async (name: string, email: string, password: string): Promise<{ success: boolean; message: string }> => {
-        // Validate password length
-        if (password.length < 6) {
-            return { success: false, message: 'Password must be at least 6 characters' }
+        try {
+            // Enhanced password validation
+            if (password.length < 8) {
+                return { success: false, message: 'Password must be at least 8 characters' }
+            }
+
+            if (!/[A-Z]/.test(password)) {
+                return { success: false, message: 'Password must contain at least one uppercase letter' }
+            }
+
+            if (!/[a-z]/.test(password)) {
+                return { success: false, message: 'Password must contain at least one lowercase letter' }
+            }
+
+            if (!/[0-9]/.test(password)) {
+                return { success: false, message: 'Password must contain at least one number' }
+            }
+
+            // Check if email already exists
+            if (dataStore.getUserByEmail(email)) {
+                return { success: false, message: 'An account with this email already exists' }
+            }
+
+            // Create user with hashed password
+            const user = await dataStore.createUser({ name, email, password })
+            dataStore.setCurrentUser(user.id)
+            setCurrentUser(user)
+
+            return { success: true, message: 'Account created successfully!' }
+        } catch (error) {
+            console.error('Signup error:', error)
+            return { success: false, message: 'An error occurred during signup. Please try again.' }
         }
-
-        // Check if email already exists
-        if (dataStore.getUserByEmail(email)) {
-            return { success: false, message: 'An account with this email already exists' }
-        }
-
-        const user = dataStore.createUser({ name, email, password })
-        dataStore.setCurrentUser(user.id)
-        setCurrentUser(user)
-
-        return { success: true, message: 'Account created successfully!' }
     }
 
     const logout = () => {
-        dataStore.logout()
-        setCurrentUser(null)
-        setCurrentCompany(null)
-        setEmployees([])
-        setDepartments([])
-        setLeaves([])
+        try {
+            dataStore.logout()
+            setCurrentUser(null)
+            setCurrentCompany(null)
+            setEmployees([])
+            setDepartments([])
+            setLeaves([])
+        } catch (error) {
+            console.error('Logout error:', error)
+            throw new Error('Failed to logout. Please try again.')
+        }
     }
 
     const createCompany = async (name: string, industry: string, size: string): Promise<Company> => {
-        if (!currentUser) throw new Error('No user logged in')
+        try {
+            if (!currentUser) throw new Error('No user logged in')
 
-        const company = dataStore.createCompany({ name, industry, size }, currentUser.id)
-        setCurrentCompany(company)
-        return company
+            const company = dataStore.createCompany({ name, industry, size }, currentUser.id)
+            setCurrentCompany(company)
+            return company
+        } catch (error) {
+            console.error('Create company error:', error)
+            throw error
+        }
     }
 
     const updateCompany = async (id: string, companyData: Partial<Omit<Company, 'id' | 'ownerId' | 'createdAt'>>): Promise<Company | null> => {
-        const company = dataStore.updateCompany(id, companyData)
-        if (company) {
-            setCurrentCompany(company)
+        try {
+            const company = dataStore.updateCompany(id, companyData)
+            if (company) {
+                setCurrentCompany(company)
+            }
+            return company
+        } catch (error) {
+            console.error('Update company error:', error)
+            throw error
         }
-        return company
     }
 
     const createEmployee = async (employeeData: Omit<Employee, 'id' | 'companyId' | 'createdAt'>): Promise<Employee> => {
-        if (!currentCompany) throw new Error('No company set up')
+        try {
+            if (!currentCompany) throw new Error('No company set up')
 
-        const employee = dataStore.createEmployee(employeeData, currentCompany.id)
-        setEmployees(dataStore.getEmployeesByCompanyId(currentCompany.id))
-        return employee
+            const employee = dataStore.createEmployee(employeeData, currentCompany.id)
+            setEmployees(dataStore.getEmployeesByCompanyId(currentCompany.id))
+            return employee
+        } catch (error) {
+            console.error('Create employee error:', error)
+            throw error
+        }
     }
 
     const updateEmployee = async (id: string, employeeData: Partial<Omit<Employee, 'id' | 'companyId' | 'createdAt'>>): Promise<Employee | null> => {
-        const employee = dataStore.updateEmployee(id, employeeData)
-        if (currentCompany) {
-            setEmployees(dataStore.getEmployeesByCompanyId(currentCompany.id))
+        try {
+            const employee = dataStore.updateEmployee(id, employeeData)
+            if (currentCompany) {
+                setEmployees(dataStore.getEmployeesByCompanyId(currentCompany.id))
+            }
+            return employee
+        } catch (error) {
+            console.error('Update employee error:', error)
+            throw error
         }
-        return employee
     }
 
     const deleteEmployee = (id: string) => {
-        dataStore.deleteEmployee(id)
-        if (currentCompany) {
-            setEmployees(dataStore.getEmployeesByCompanyId(currentCompany.id))
+        try {
+            dataStore.deleteEmployee(id)
+            if (currentCompany) {
+                setEmployees(dataStore.getEmployeesByCompanyId(currentCompany.id))
+            }
+        } catch (error) {
+            console.error('Delete employee error:', error)
+            throw error
         }
     }
 
     const refreshEmployees = () => {
-        if (currentCompany) {
-            setEmployees(dataStore.getEmployeesByCompanyId(currentCompany.id))
+        try {
+            if (currentCompany) {
+                setEmployees(dataStore.getEmployeesByCompanyId(currentCompany.id))
+            }
+        } catch (error) {
+            console.error('Refresh employees error:', error)
         }
     }
 
     const createDepartment = async (departmentData: Omit<Department, 'id' | 'companyId' | 'createdAt'>): Promise<Department> => {
-        if (!currentCompany) throw new Error('No company set up')
+        try {
+            if (!currentCompany) throw new Error('No company set up')
 
-        const department = dataStore.createDepartment(departmentData, currentCompany.id)
-        setDepartments(dataStore.getDepartmentsByCompanyId(currentCompany.id))
-        return department
+            const department = dataStore.createDepartment(departmentData, currentCompany.id)
+            setDepartments(dataStore.getDepartmentsByCompanyId(currentCompany.id))
+            return department
+        } catch (error) {
+            console.error('Create department error:', error)
+            throw error
+        }
     }
 
     const deleteDepartment = (id: string) => {
-        dataStore.deleteDepartment(id)
-        if (currentCompany) {
-            setDepartments(dataStore.getDepartmentsByCompanyId(currentCompany.id))
+        try {
+            dataStore.deleteDepartment(id)
+            if (currentCompany) {
+                setDepartments(dataStore.getDepartmentsByCompanyId(currentCompany.id))
+            }
+        } catch (error) {
+            console.error('Delete department error:', error)
+            throw error
         }
     }
 
     const refreshDepartments = () => {
-        if (currentCompany) {
-            setDepartments(dataStore.getDepartmentsByCompanyId(currentCompany.id))
+        try {
+            if (currentCompany) {
+                setDepartments(dataStore.getDepartmentsByCompanyId(currentCompany.id))
+            }
+        } catch (error) {
+            console.error('Refresh departments error:', error)
         }
     }
 
     const addLeave = async (leaveData: Omit<LeaveRecord, 'id' | 'companyId' | 'createdAt'>): Promise<LeaveRecord> => {
-        if (!currentCompany) throw new Error('No company set up')
+        try {
+            if (!currentCompany) throw new Error('No company set up')
 
-        const leave = dataStore.addLeave(leaveData, currentCompany.id)
-        setLeaves(dataStore.getLeavesByCompanyId(currentCompany.id))
-        return leave
+            const leave = dataStore.addLeave(leaveData, currentCompany.id)
+            setLeaves(dataStore.getLeavesByCompanyId(currentCompany.id))
+            return leave
+        } catch (error) {
+            console.error('Add leave error:', error)
+            throw error
+        }
     }
 
     if (!mounted) {

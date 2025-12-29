@@ -14,6 +14,8 @@ import {
     SelectValue,
 } from '@/components/ui/select'
 import Link from 'next/link'
+import { employeeSchema } from '@/lib/validation/schemas'
+import { z } from 'zod'
 
 interface EmployeeFormProps {
     employee?: Employee | null
@@ -46,6 +48,7 @@ export function EmployeeForm({
         startDate: '',
         salary: ''
     })
+    const [errors, setErrors] = useState<Record<string, string>>({})
 
     useEffect(() => {
         if (employee) {
@@ -67,25 +70,50 @@ export function EmployeeForm({
                 salary: ''
             })
         }
+        setErrors({})
     }, [employee])
 
     const handleSubmit = async (e: React.FormEvent) => {
         e.preventDefault()
+        setErrors({})
 
-        const employeeData = {
-            name: formData.name,
-            email: formData.email,
-            position: formData.position,
-            department: formData.department,
-            startDate: formData.startDate,
-            salary: parseFloat(formData.salary)
+        try {
+            const employeeData = {
+                name: formData.name,
+                email: formData.email,
+                position: formData.position,
+                department: formData.department,
+                startDate: formData.startDate,
+                salary: parseFloat(formData.salary)
+            }
+
+            // Validate with Zod schema
+            const validated = employeeSchema.parse(employeeData)
+            await onSubmit(validated)
+        } catch (error) {
+            if (error instanceof z.ZodError) {
+                const fieldErrors: Record<string, string> = {}
+                error.issues.forEach((err) => {
+                    const path = err.path.join('.')
+                    fieldErrors[path] = err.message
+                })
+                setErrors(fieldErrors)
+            } else {
+                console.error('Form submission error:', error)
+            }
         }
-
-        await onSubmit(employeeData)
     }
 
     const handleChange = (field: string, value: string) => {
         setFormData(prev => ({ ...prev, [field]: value }))
+        // Clear error for this field when user starts typing
+        if (errors[field]) {
+            setErrors(prev => {
+                const newErrors = { ...prev }
+                delete newErrors[field]
+                return newErrors
+            })
+        }
     }
 
     return (
@@ -98,7 +126,11 @@ export function EmployeeForm({
                     value={formData.name}
                     onChange={(e) => handleChange('name', e.target.value)}
                     required
+                    className={errors.name ? 'border-red-500' : ''}
                 />
+                {errors.name && (
+                    <p className="text-xs text-red-600 mt-1">{errors.name}</p>
+                )}
             </div>
 
             <div className="space-y-2">
@@ -110,7 +142,11 @@ export function EmployeeForm({
                     value={formData.email}
                     onChange={(e) => handleChange('email', e.target.value)}
                     required
+                    className={errors.email ? 'border-red-500' : ''}
                 />
+                {errors.email && (
+                    <p className="text-xs text-red-600 mt-1">{errors.email}</p>
+                )}
             </div>
 
             <div className="grid grid-cols-2 gap-4">
@@ -122,26 +158,35 @@ export function EmployeeForm({
                         value={formData.position}
                         onChange={(e) => handleChange('position', e.target.value)}
                         required
+                        className={errors.position ? 'border-red-500' : ''}
                     />
+                    {errors.position && (
+                        <p className="text-xs text-red-600 mt-1">{errors.position}</p>
+                    )}
                 </div>
                 <div className="space-y-2">
                     <Label htmlFor="department">Department</Label>
                     {departments.length > 0 ? (
-                        <Select
-                            value={formData.department}
-                            onValueChange={(value) => handleChange('department', value)}
-                        >
-                            <SelectTrigger id="department" className="rounded-xl border-slate-200">
-                                <SelectValue placeholder="Select Department" />
-                            </SelectTrigger>
-                            <SelectContent>
-                                {departments.map((dept) => (
-                                    <SelectItem key={dept.id} value={dept.name}>
-                                        {dept.name}
-                                    </SelectItem>
-                                ))}
-                            </SelectContent>
-                        </Select>
+                        <>
+                            <Select
+                                value={formData.department}
+                                onValueChange={(value) => handleChange('department', value)}
+                            >
+                                <SelectTrigger id="department" className={`rounded-xl border-slate-200 ${errors.department ? 'border-red-500' : ''}`}>
+                                    <SelectValue placeholder="Select Department" />
+                                </SelectTrigger>
+                                <SelectContent>
+                                    {departments.map((dept) => (
+                                        <SelectItem key={dept.id} value={dept.name}>
+                                            {dept.name}
+                                        </SelectItem>
+                                    ))}
+                                </SelectContent>
+                            </Select>
+                            {errors.department && (
+                                <p className="text-xs text-red-600 mt-1">{errors.department}</p>
+                            )}
+                        </>
                     ) : (
                         <div className="text-sm p-3 bg-slate-50 border border-dashed border-slate-200 rounded-xl text-slate-500">
                             No departments found. <Link href="/dashboard/departments" className="text-blue-600 font-bold hover:underline">Create one</Link> first.
@@ -159,7 +204,11 @@ export function EmployeeForm({
                         value={formData.startDate}
                         onChange={(e) => handleChange('startDate', e.target.value)}
                         required
+                        className={errors.startDate ? 'border-red-500' : ''}
                     />
+                    {errors.startDate && (
+                        <p className="text-xs text-red-600 mt-1">{errors.startDate}</p>
+                    )}
                 </div>
                 <div className="space-y-2">
                     <Label htmlFor="salary">Annual Salary</Label>
@@ -168,10 +217,15 @@ export function EmployeeForm({
                         type="number"
                         placeholder="80000"
                         step="1000"
+                        min="0"
                         value={formData.salary}
                         onChange={(e) => handleChange('salary', e.target.value)}
                         required
+                        className={errors.salary ? 'border-red-500' : ''}
                     />
+                    {errors.salary && (
+                        <p className="text-xs text-red-600 mt-1">{errors.salary}</p>
+                    )}
                 </div>
             </div>
 
