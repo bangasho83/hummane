@@ -17,8 +17,11 @@ import {
 } from 'lucide-react'
 import { useApp } from '@/lib/context/AppContext'
 
-const menuItems = [
+const dashboardItems = [
     { name: 'Dashboard', href: '/dashboard', icon: LayoutDashboard, exact: true },
+]
+
+const teamItems = [
     { name: 'Team', href: '/dashboard/team', icon: Users },
     { name: 'Roles', href: '/dashboard/roles', icon: Briefcase },
     { name: 'Departments', href: '/dashboard/departments', icon: Building2 },
@@ -86,11 +89,19 @@ export function Sidebar() {
 
                 <div className="space-y-6">
                     <div>
+                        <nav>
+                            {dashboardItems.map((item) => (
+                                <NavLink key={item.name} item={item} />
+                            ))}
+                        </nav>
+                    </div>
+
+                    <div>
                         <p className="text-[10px] font-extrabold text-slate-400 uppercase tracking-widest mb-4 px-3">
-                            Main Menu
+                            Team
                         </p>
                         <nav>
-                            {menuItems.map((item) => (
+                            {teamItems.map((item) => (
                                 <NavLink key={item.name} item={item} />
                             ))}
                         </nav>
