@@ -8,11 +8,11 @@ import { Button } from '@/components/ui/button'
 import { Card, CardContent } from '@/components/ui/card'
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table'
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from '@/components/ui/dialog'
-import { Label } from '@/components/ui/label'
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select'
 import { Input } from '@/components/ui/input'
 import { toast } from '@/components/ui/toast'
 import { cn } from '@/lib/utils'
+import { AttendanceTabs } from '@/components/attendance/AttendanceTabs'
 
 export default function AttendancePage() {
     const { employees, leaves, addLeave, leaveTypes } = useApp()
@@ -82,7 +82,6 @@ export default function AttendancePage() {
         const leaveType = leaveTypes.find(lt => lt.id === selectedType)
         const unit = leaveType?.unit || 'Day'
 
-        // Calculate requested units based on unit selection
         let requestedUnits = 1
         const leaveEntries: { date: string; amount: number }[] = []
 
@@ -121,7 +120,6 @@ export default function AttendancePage() {
             leaveEntries.push({ date: startDate, amount: diffHours })
         }
 
-        // Count existing usage for this leave type
         if (leaveType) {
             const alreadyUsed = leaves
                 .filter(l => (l.leaveTypeId ? l.leaveTypeId === leaveType.id : l.type === leaveType.name) && l.employeeId === selectedEmployee)
@@ -135,7 +133,6 @@ export default function AttendancePage() {
 
         setLoading(true)
         try {
-            // Persist per-entry
             for (const entry of leaveEntries) {
                 await addLeave({
                     employeeId: selectedEmployee,
@@ -149,7 +146,7 @@ export default function AttendancePage() {
             toast('Leave registered successfully', 'success')
             setIsDialogOpen(false)
             setSelectedEmployee('')
-            setSelectedType(leaveTypes[0]?.id || '')
+            setSelectedType('')
             setStartDate('')
             setEndDate('')
             setStartTime('09:00')
@@ -175,10 +172,17 @@ export default function AttendancePage() {
         )
     }
 
+    const leaveTypesForEmployee = (empId: string) => {
+        const emp = employees.find(e => e.id === empId)
+        return emp ? leaveTypes.filter(lt => lt.employmentType === emp.employmentType) : []
+    }
+
+    const filteredLeaveTypes = leaveTypesForEmployee(selectedEmployee)
+
     return (
         <DashboardShell>
             <div className="animate-in fade-in duration-500 slide-in-from-bottom-4">
-                <div className="flex justify-between items-end mb-8">
+                <div className="flex justify-between items-end mb-4">
                     <div>
                         <h1 className="text-3xl font-extrabold text-slate-900 tracking-tight">
                             Attendance
@@ -187,6 +191,12 @@ export default function AttendancePage() {
                             Track daily presence and manage employee leaves.
                         </p>
                     </div>
+                </div>
+
+                <AttendanceTabs />
+
+                <div className="flex justify-between items-end mb-6">
+                    <div />
 
                     <Dialog open={isDialogOpen} onOpenChange={setIsDialogOpen}>
                         <DialogTrigger asChild>
@@ -220,24 +230,17 @@ export default function AttendancePage() {
                                             <SelectValue placeholder="Select Type" />
                                         </SelectTrigger>
                                         <SelectContent>
-                                            {(() => {
-                                                const emp = employees.find(e => e.id === selectedEmployee)
-                                                const filtered = emp
-                                                    ? leaveTypes.filter(lt => lt.employmentType === emp.employmentType)
-                                                    : []
-                                                if (filtered.length === 0) {
-                                                    return (
-                                                        <SelectItem value="none" disabled>
-                                                            No leave type defined for this employment type
-                                                        </SelectItem>
-                                                    )
-                                                }
-                                                return filtered.map((lt) => (
+                                            {filteredLeaveTypes.length === 0 ? (
+                                                <SelectItem value="none" disabled>
+                                                    No leave type defined for this employment type
+                                                </SelectItem>
+                                            ) : (
+                                                filteredLeaveTypes.map((lt) => (
                                                     <SelectItem key={lt.id} value={lt.id}>
                                                         {lt.name} ({lt.code}) — {lt.unit} • {lt.employmentType}
                                                     </SelectItem>
                                                 ))
-                                            })()}
+                                            )}
                                         </SelectContent>
                                     </Select>
                                     {selectedType && leaveTypes.find(lt => lt.id === selectedType) && (

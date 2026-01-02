@@ -16,7 +16,7 @@ export function OrgTabs() {
     const pathname = usePathname()
 
     return (
-        <div className="inline-flex bg-slate-100 rounded-full p-1 shadow-inner border border-slate-200 w-full sm:w-auto">
+        <div className="flex flex-wrap gap-2">
             {tabs.map((tab) => {
                 const Icon = tab.icon
                 const isActive = pathname.startsWith(tab.href)
@@ -25,21 +25,21 @@ export function OrgTabs() {
                         key={tab.href}
                         href={tab.href}
                         className={cn(
-                            "group relative flex items-center gap-3 px-4 sm:px-6 py-3 rounded-full transition-all w-full sm:w-auto",
+                            "group flex items-center gap-3 rounded-xl border px-4 py-3 text-sm font-semibold transition-colors",
                             isActive
-                                ? "bg-white text-slate-900 shadow-sm"
-                                : "text-slate-500 hover:text-slate-900"
+                                ? "bg-white text-slate-900 border-slate-400"
+                                : "bg-slate-50 text-slate-500 border-slate-200 hover:text-slate-900 hover:border-slate-300"
                         )}
                     >
                         <div className={cn(
-                            "w-9 h-9 rounded-2xl flex items-center justify-center border transition-colors",
-                            isActive ? "bg-blue-50 border-blue-100 text-blue-600" : "bg-white border-slate-200 text-slate-400 group-hover:border-slate-300"
+                            "w-8 h-8 rounded-lg flex items-center justify-center border text-slate-500 transition-colors",
+                            isActive ? "bg-white border-slate-400 text-slate-900" : "bg-white border-slate-200 group-hover:border-slate-300"
                         )}>
                             <Icon className="w-5 h-5" />
                         </div>
                         <div className="text-left">
                             <p className="text-sm font-bold">{tab.label}</p>
-                            <p className="text-[11px] text-slate-400 font-semibold leading-tight">
+                            <p className="text-[11px] text-slate-400 font-medium leading-tight">
                                 {tab.description}
                             </p>
                         </div>
