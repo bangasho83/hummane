@@ -23,9 +23,9 @@ const dashboardItems = [
 
 const teamItems = [
     { name: 'Team', href: '/dashboard/team', icon: Users },
-    { name: 'Organization', href: '/dashboard/organization/departments', icon: Building2 },
     { name: 'Attendance', href: '/dashboard/attendance', icon: Calendar },
     { name: 'Payroll', href: '/dashboard/payroll', icon: Wallet },
+    { name: 'Organization', href: '/dashboard/organization/general', icon: Building2 },
 ]
 
 const hiringItems = [

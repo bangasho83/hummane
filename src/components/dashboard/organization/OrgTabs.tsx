@@ -2,13 +2,14 @@
 
 import Link from 'next/link'
 import { usePathname } from 'next/navigation'
-import { Building2, Briefcase, Leaf } from 'lucide-react'
+import { Building2, Briefcase, Leaf, Cog } from 'lucide-react'
 import { cn } from '@/lib/utils'
 
 const tabs = [
     { href: '/dashboard/organization/departments', label: 'Departments', description: 'Manage teams and reporting lines.', icon: Building2 },
     { href: '/dashboard/organization/roles', label: 'Roles', description: 'Define responsibilities and permissions.', icon: Briefcase },
-    { href: '/dashboard/organization/leaves', label: 'Leaves', description: 'Leave types and allowances.', icon: Leaf }
+    { href: '/dashboard/organization/leaves', label: 'Leaves', description: 'Leave types and allowances.', icon: Leaf },
+    { href: '/dashboard/organization/general', label: 'General', description: 'Time, currency, and hours.', icon: Cog }
 ]
 
 export function OrgTabs() {

@@ -54,8 +54,8 @@ export default function AddEmployeePage() {
                     </div>
                 </div>
 
-                <div className="max-w-2xl">
-                    <Card className="border-none shadow-premium rounded-3xl overflow-hidden">
+                <div className="max-w-3xl">
+                    <Card className="border border-slate-100 shadow-premium rounded-3xl bg-white overflow-hidden">
                         <CardContent className="p-8">
                             <EmployeeForm
                                 onSubmit={handleSubmit}
