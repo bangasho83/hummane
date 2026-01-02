@@ -1,7 +1,7 @@
 'use client'
 
 import React, { createContext, useContext, useState, useEffect, type ReactNode } from 'react'
-import type { User, Company, Employee, Department, LeaveRecord, Role, Job, Applicant, LeaveType, Holiday } from '@/types'
+import type { User, Company, Employee, Department, LeaveRecord, Role, Job, Applicant, LeaveType, Holiday, EmployeeDocument } from '@/types'
 import { dataStore } from '@/lib/store/dataStore'
 interface AppContextType {
     currentUser: User | null
@@ -29,6 +29,11 @@ interface AppContextType {
     createHoliday: (holiday: Omit<Holiday, 'id' | 'companyId' | 'createdAt'>) => Holiday
     deleteHoliday: (id: string) => void
     refreshHolidays: () => void
+    addDocument: (doc: Omit<EmployeeDocument, 'id' | 'uploadedAt'>) => EmployeeDocument
+    deleteDocument: (id: string) => void
+    getDocuments: (employeeId: string) => EmployeeDocument[]
+    addDocument: (doc: Omit<EmployeeDocument, 'id' | 'uploadedAt'>) => EmployeeDocument
+    deleteDocument: (id: string) => void
     createLeaveType: (leaveTypeData: Omit<LeaveType, 'id' | 'companyId' | 'createdAt' | 'updatedAt'>) => LeaveType
     deleteLeaveType: (id: string) => void
     refreshLeaveTypes: () => void
@@ -308,6 +313,33 @@ export function AppProvider({ children }: { children: ReactNode }) {
         }
     }
 
+    const addDocument = (doc: Omit<EmployeeDocument, 'id' | 'uploadedAt'>) => {
+        try {
+            return dataStore.addDocument(doc)
+        } catch (error) {
+            console.error('Add document error:', error)
+            throw error
+        }
+    }
+
+    const deleteDocument = (id: string) => {
+        try {
+            dataStore.deleteDocument(id)
+        } catch (error) {
+            console.error('Delete document error:', error)
+            throw error
+        }
+    }
+
+    const getDocuments = (employeeId: string): EmployeeDocument[] => {
+        try {
+            return dataStore.getDocumentsByEmployeeId(employeeId)
+        } catch (error) {
+            console.error('Get documents error:', error)
+            return []
+        }
+    }
+
     const createLeaveType = (leaveTypeData: Omit<LeaveType, 'id' | 'companyId' | 'createdAt' | 'updatedAt'>) => {
         try {
             if (!currentCompany) throw new Error('No company set up')
@@ -536,6 +568,9 @@ export function AppProvider({ children }: { children: ReactNode }) {
                 createLeaveType,
                 deleteLeaveType,
                 refreshLeaveTypes,
+                addDocument,
+                deleteDocument,
+                getDocuments,
                 addLeave,
                 createRole,
                 updateRole,

@@ -29,7 +29,6 @@ export interface Employee {
     employmentType: 'Permanent' | 'Probation' | 'Contract' | 'Intern' | 'Part-time'
     reportingManager: string
     gender: 'Male' | 'Female' | 'Non-binary' | 'Prefer not to say'
-    timeZone: string
     salary: number
     createdAt: string
     updatedAt?: string
@@ -119,6 +118,24 @@ export interface Holiday {
     createdAt: string
 }
 
+export type DocumentKind =
+    | 'Government ID'
+    | 'CV (Curriculum Vitae)'
+    | 'Educational Documents'
+    | 'Experience Letter'
+    | 'Salary Slip'
+    | 'Personality Test Report'
+    | 'Contract'
+
+export interface EmployeeDocument {
+    id: string
+    employeeId: string
+    name: string
+    type: DocumentKind
+    dataUrl: string
+    uploadedAt: string
+}
+
 export interface DataStoreSchema {
     users: User[]
     companies: Company[]
@@ -127,6 +144,7 @@ export interface DataStoreSchema {
     leaves: LeaveRecord[]
     leaveTypes: LeaveType[]
     holidays: Holiday[]
+    documents: EmployeeDocument[]
     roles: Role[]
     jobs: Job[]
     applicants: Applicant[]

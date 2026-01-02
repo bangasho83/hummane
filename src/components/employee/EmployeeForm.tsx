@@ -44,12 +44,9 @@ export function EmployeeForm({
         employmentType: 'Permanent',
         reportingManager: 'self',
         gender: 'Male',
-        timeZone: 'PKT (UTC +5)',
         salary: ''
     })
     const [errors, setErrors] = useState<Record<string, string>>({})
-    const [timezones, setTimezones] = useState<string[]>(['PKT (UTC +5)'])
-    const [loadingTimezones, setLoadingTimezones] = useState(false)
 
     useEffect(() => {
         if (employee) {
@@ -64,7 +61,6 @@ export function EmployeeForm({
                 employmentType: employee.employmentType,
                 reportingManager: employees.find(e => e.name === employee.reportingManager)?.id || 'self',
                 gender: employee.gender,
-                timeZone: employee.timeZone,
                 salary: employee.salary.toString()
             })
         } else {
@@ -79,36 +75,11 @@ export function EmployeeForm({
                 employmentType: 'Permanent',
                 reportingManager: 'self',
                 gender: 'Male',
-                timeZone: 'PKT (UTC +5)',
                 salary: ''
             })
         }
         setErrors({})
     }, [employee, employees])
-
-    useEffect(() => {
-        const loadTimezones = async () => {
-            setLoadingTimezones(true)
-            try {
-                const res = await fetch('https://aisenseapi.com/services/v1/timezones')
-                if (!res.ok) throw new Error('Failed to fetch timezones')
-                const data = await res.json()
-                if (Array.isArray(data)) {
-                    setTimezones(data)
-                    if (!formData.timeZone && data.length > 0) {
-                        setFormData(prev => ({ ...prev, timeZone: data[0] }))
-                    }
-                }
-            } catch (error) {
-                console.error('Timezone fetch failed, using defaults', error)
-                setTimezones(['PKT (UTC +5)', 'EST (UTC -5)', 'PST (UTC -8)', 'CET (UTC +1)', 'IST (UTC +5:30)'])
-            } finally {
-                setLoadingTimezones(false)
-            }
-        }
-        loadTimezones()
-        // eslint-disable-next-line react-hooks/exhaustive-deps
-    }, [])
 
     const handleSubmit = async (e: React.FormEvent) => {
         e.preventDefault()
@@ -129,7 +100,6 @@ export function EmployeeForm({
                 employmentType: formData.employmentType as Employee['employmentType'],
                 reportingManager: managerName,
                 gender: formData.gender as Employee['gender'],
-                timeZone: formData.timeZone,
                 salary: parseFloat(formData.salary)
             }
 
@@ -377,29 +347,6 @@ export function EmployeeForm({
             </div>
 
             <div className="grid grid-cols-2 gap-4">
-                <div className="space-y-2">
-                    <Label htmlFor="timeZone">Time Zone</Label>
-                    <Select
-                        value={formData.timeZone}
-                        onValueChange={(value) => handleChange('timeZone', value)}
-                    >
-                        <SelectTrigger id="timeZone" className="rounded-xl border-slate-200">
-                            <SelectValue placeholder="Select time zone">
-                                {loadingTimezones ? 'Loading time zones...' : undefined}
-                            </SelectValue>
-                        </SelectTrigger>
-                        <SelectContent>
-                            {timezones.map((tz) => (
-                                <SelectItem key={tz} value={tz}>
-                                    {tz}
-                                </SelectItem>
-                            ))}
-                        </SelectContent>
-                    </Select>
-                    {errors.timeZone && (
-                        <p className="text-xs text-red-600 mt-1">{errors.timeZone}</p>
-                    )}
-                </div>
                 <div className="space-y-2">
                     <Label htmlFor="salary">Monthly Salary</Label>
                     <Input

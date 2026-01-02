@@ -1,4 +1,5 @@
 import type { User, Company, Employee, Department, DataStoreSchema, LeaveRecord, Role, Job, Applicant, LeaveType, Holiday } from '@/types'
+import type { EmployeeDocument, DocumentKind } from '@/types'
 import { hashPassword, verifyPassword, sanitizeInput, sanitizeEmail } from '@/lib/security/crypto'
 
 /**
@@ -27,7 +28,8 @@ export class DataStore {
                 jobs: [],
                 applicants: [],
                 leaveTypes: [],
-                holidays: [],
+                    holidays: [],
+                    documents: [],
                 currentUser: null
             }
                 localStorage.setItem(this.STORAGE_KEY, JSON.stringify(initialData))
@@ -62,6 +64,7 @@ export class DataStore {
                 leaves: Array.isArray(parsed.leaves) ? parsed.leaves : [],
                 leaveTypes: Array.isArray(parsed.leaveTypes) ? parsed.leaveTypes : [],
                 holidays: Array.isArray(parsed.holidays) ? parsed.holidays : [],
+                documents: Array.isArray(parsed.documents) ? parsed.documents : [],
                 roles: Array.isArray(parsed.roles) ? parsed.roles : [],
                 jobs: Array.isArray(parsed.jobs) ? parsed.jobs : [],
                 applicants: Array.isArray(parsed.applicants) ? parsed.applicants : [],
@@ -82,6 +85,7 @@ export class DataStore {
                 leaves: [],
                 leaveTypes: [],
                 holidays: [],
+                documents: [],
                 roles: [],
                 jobs: [],
                 applicants: [],
@@ -303,7 +307,6 @@ export class DataStore {
                 employmentType: employeeData.employmentType,
                 reportingManager: sanitizedManager,
                 gender: employeeData.gender,
-                timeZone: employeeData.timeZone,
                 salary: employeeData.salary,
                 createdAt: new Date().toISOString()
             }
@@ -325,10 +328,9 @@ export class DataStore {
                     ...emp,
                     // Backfill legacy records so UI/validation is consistent
                     employeeId: emp.employeeId || `LEGACY-${emp.id}`,
-                    employmentType: emp.employmentType || 'Permanent',
-                    reportingManager: emp.reportingManager || 'Unassigned',
-                    gender: emp.gender || 'Prefer not to say',
-                    timeZone: emp.timeZone || 'PKT (UTC +5)'
+                employmentType: emp.employmentType || 'Permanent',
+                reportingManager: emp.reportingManager || 'Unassigned',
+                gender: emp.gender || 'Prefer not to say'
                 }))
         } catch (error) {
             console.error('Error getting employees:', error)
@@ -364,7 +366,6 @@ export class DataStore {
             if (employeeData.startDate) sanitizedData.startDate = employeeData.startDate
             if (employeeData.employmentType) sanitizedData.employmentType = employeeData.employmentType
             if (employeeData.gender) sanitizedData.gender = employeeData.gender
-            if (employeeData.timeZone) sanitizedData.timeZone = employeeData.timeZone
             if (employeeData.salary !== undefined) {
                 if (employeeData.salary < 0 || !isFinite(employeeData.salary)) {
                     throw new Error('Invalid salary amount')
@@ -612,6 +613,46 @@ export class DataStore {
             this.saveData(data)
         } catch (error) {
             console.error('Error deleting holiday:', error)
+            throw error
+        }
+    }
+
+    // Employee documents
+    addDocument(doc: Omit<EmployeeDocument, 'id' | 'uploadedAt'>): EmployeeDocument {
+        try {
+            const data = this.getData()
+            const newDoc: EmployeeDocument = {
+                ...doc,
+                id: this.generateId(),
+                uploadedAt: new Date().toISOString()
+            }
+            if (!data.documents) data.documents = []
+            data.documents.push(newDoc)
+            this.saveData(data)
+            return newDoc
+        } catch (error) {
+            console.error('Error adding document:', error)
+            throw error
+        }
+    }
+
+    getDocumentsByEmployeeId(employeeId: string): EmployeeDocument[] {
+        try {
+            const data = this.getData()
+            return data.documents.filter(d => d.employeeId === employeeId)
+        } catch (error) {
+            console.error('Error getting documents:', error)
+            return []
+        }
+    }
+
+    deleteDocument(id: string): void {
+        try {
+            const data = this.getData()
+            data.documents = data.documents.filter(d => d.id !== id)
+            this.saveData(data)
+        } catch (error) {
+            console.error('Error deleting document:', error)
             throw error
         }
     }

@@ -80,8 +80,6 @@ export const employeeSchema = z.object({
         .max(100, 'Name must be less than 100 characters')
         .trim(),
     gender: z.enum(['Male', 'Female', 'Non-binary', 'Prefer not to say']),
-    timeZone: z.string()
-        .min(2, 'Time zone is required'),
     salary: z.number()
         .positive('Salary must be a positive number')
         .max(10000000, 'Salary seems unreasonably high')

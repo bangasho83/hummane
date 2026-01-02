@@ -13,6 +13,7 @@ import { useApp } from '@/lib/context/AppContext'
 import { toast } from '@/components/ui/toast'
 
 import { Badge } from '@/components/ui/badge'
+import Link from 'next/link'
 
 interface EmployeeTableProps {
     employees: Employee[]
@@ -174,15 +175,15 @@ export function EmployeeTable({ employees }: EmployeeTableProps) {
                             filteredEmployees.map((employee) => (
                                 <TableRow key={employee.id} className="hover:bg-slate-50/50 group border-slate-50">
                                     <TableCell className="pl-8 py-5">
-                                        <div className="flex items-center gap-3">
+                                        <Link href={`/dashboard/team/${employee.id}`} className="flex items-center gap-3 group">
                                             <div className="w-10 h-10 rounded-2xl bg-blue-50 text-blue-600 flex items-center justify-center font-bold text-sm">
                                                 {employee.name?.[0].toUpperCase()}
                                             </div>
                                             <div>
-                                                <p className="font-bold text-slate-900 text-base">{employee.name}</p>
+                                                <p className="font-bold text-slate-900 text-base group-hover:text-blue-600 transition-colors">{employee.name}</p>
                                                 <p className="text-xs text-slate-400 font-medium">{employee.email}</p>
                                             </div>
-                                        </div>
+                                        </Link>
                                     </TableCell>
                                     <TableCell>
                                         <span className="text-xs font-bold text-slate-500 uppercase tracking-wide">{employee.employeeId}</span>
