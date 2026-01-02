@@ -1,4 +1,4 @@
-import type { User, Company, Employee, Department, DataStoreSchema, LeaveRecord, Role, Job, Applicant, LeaveType } from '@/types'
+import type { User, Company, Employee, Department, DataStoreSchema, LeaveRecord, Role, Job, Applicant, LeaveType, Holiday } from '@/types'
 import { hashPassword, verifyPassword, sanitizeInput, sanitizeEmail } from '@/lib/security/crypto'
 
 /**
@@ -22,13 +22,14 @@ export class DataStore {
                     companies: [],
                     employees: [],
                     departments: [],
-                    leaves: [],
-                    roles: [],
-                    jobs: [],
-                    applicants: [],
-                    leaveTypes: [],
-                    currentUser: null
-                }
+                leaves: [],
+                roles: [],
+                jobs: [],
+                applicants: [],
+                leaveTypes: [],
+                holidays: [],
+                currentUser: null
+            }
                 localStorage.setItem(this.STORAGE_KEY, JSON.stringify(initialData))
             }
         } catch (error) {
@@ -60,6 +61,7 @@ export class DataStore {
                 departments: Array.isArray(parsed.departments) ? parsed.departments : [],
                 leaves: Array.isArray(parsed.leaves) ? parsed.leaves : [],
                 leaveTypes: Array.isArray(parsed.leaveTypes) ? parsed.leaveTypes : [],
+                holidays: Array.isArray(parsed.holidays) ? parsed.holidays : [],
                 roles: Array.isArray(parsed.roles) ? parsed.roles : [],
                 jobs: Array.isArray(parsed.jobs) ? parsed.jobs : [],
                 applicants: Array.isArray(parsed.applicants) ? parsed.applicants : [],
@@ -79,6 +81,7 @@ export class DataStore {
                 departments: [],
                 leaves: [],
                 leaveTypes: [],
+                holidays: [],
                 roles: [],
                 jobs: [],
                 applicants: [],
@@ -557,6 +560,58 @@ export class DataStore {
             return leave
         } catch (error) {
             console.error('Error adding leave:', error)
+            throw error
+        }
+    }
+
+    // Holidays
+    createHoliday(holidayData: Omit<Holiday, 'id' | 'companyId' | 'createdAt'>, companyId: string): Holiday {
+        try {
+            const data = this.getData()
+            const sanitizedName = sanitizeInput(holidayData.name)
+            const date = holidayData.date
+
+            const exists = data.holidays.some(
+                (h) => h.companyId === companyId && h.date === date && h.name.toLowerCase() === sanitizedName.toLowerCase()
+            )
+            if (exists) {
+                throw new Error('Holiday already exists for this date')
+            }
+
+            const holiday: Holiday = {
+                id: this.generateId(),
+                companyId,
+                date,
+                name: sanitizedName,
+                createdAt: new Date().toISOString()
+            }
+
+            data.holidays.push(holiday)
+            this.saveData(data)
+            return holiday
+        } catch (error) {
+            console.error('Error creating holiday:', error)
+            throw error
+        }
+    }
+
+    getHolidaysByCompanyId(companyId: string): Holiday[] {
+        try {
+            const data = this.getData()
+            return data.holidays.filter(h => h.companyId === companyId)
+        } catch (error) {
+            console.error('Error getting holidays:', error)
+            return []
+        }
+    }
+
+    deleteHoliday(id: string): void {
+        try {
+            const data = this.getData()
+            data.holidays = data.holidays.filter(h => h.id !== id)
+            this.saveData(data)
+        } catch (error) {
+            console.error('Error deleting holiday:', error)
             throw error
         }
     }

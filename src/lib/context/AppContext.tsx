@@ -1,7 +1,7 @@
 'use client'
 
 import React, { createContext, useContext, useState, useEffect, type ReactNode } from 'react'
-import type { User, Company, Employee, Department, LeaveRecord, Role, Job, Applicant, LeaveType } from '@/types'
+import type { User, Company, Employee, Department, LeaveRecord, Role, Job, Applicant, LeaveType, Holiday } from '@/types'
 import { dataStore } from '@/lib/store/dataStore'
 interface AppContextType {
     currentUser: User | null
@@ -10,6 +10,7 @@ interface AppContextType {
     departments: Department[]
     leaves: LeaveRecord[]
     leaveTypes: LeaveType[]
+    holidays: Holiday[]
     roles: Role[]
     jobs: Job[]
     applicants: Applicant[]
@@ -25,6 +26,9 @@ interface AppContextType {
     createDepartment: (departmentData: Omit<Department, 'id' | 'companyId' | 'createdAt'>) => Promise<Department>
     deleteDepartment: (id: string) => void
     refreshDepartments: () => void
+    createHoliday: (holiday: Omit<Holiday, 'id' | 'companyId' | 'createdAt'>) => Holiday
+    deleteHoliday: (id: string) => void
+    refreshHolidays: () => void
     createLeaveType: (leaveTypeData: Omit<LeaveType, 'id' | 'companyId' | 'createdAt' | 'updatedAt'>) => LeaveType
     deleteLeaveType: (id: string) => void
     refreshLeaveTypes: () => void
@@ -52,6 +56,7 @@ export function AppProvider({ children }: { children: ReactNode }) {
     const [departments, setDepartments] = useState<Department[]>([])
     const [leaves, setLeaves] = useState<LeaveRecord[]>([])
     const [leaveTypes, setLeaveTypes] = useState<LeaveType[]>([])
+    const [holidays, setHolidays] = useState<Holiday[]>([])
     const [roles, setRoles] = useState<Role[]>([])
     const [jobs, setJobs] = useState<Job[]>([])
     const [applicants, setApplicants] = useState<Applicant[]>([])
@@ -70,6 +75,7 @@ export function AppProvider({ children }: { children: ReactNode }) {
                 setDepartments(dataStore.getDepartmentsByCompanyId(company.id))
                 setLeaves(dataStore.getLeavesByCompanyId(company.id))
                 setLeaveTypes(dataStore.getLeaveTypesByCompanyId(company.id))
+                setHolidays(dataStore.getHolidaysByCompanyId(company.id))
                 setRoles(dataStore.getRolesByCompanyId(company.id))
                 setJobs(dataStore.getJobsByCompanyId(company.id))
                 setApplicants(dataStore.getApplicantsByCompanyId(company.id))
@@ -96,6 +102,7 @@ export function AppProvider({ children }: { children: ReactNode }) {
                 setDepartments(dataStore.getDepartmentsByCompanyId(company.id))
                 setLeaves(dataStore.getLeavesByCompanyId(company.id))
                 setLeaveTypes(dataStore.getLeaveTypesByCompanyId(company.id))
+                setHolidays(dataStore.getHolidaysByCompanyId(company.id))
                 setRoles(dataStore.getRolesByCompanyId(company.id))
                 setJobs(dataStore.getJobsByCompanyId(company.id))
                 setApplicants(dataStore.getApplicantsByCompanyId(company.id))
@@ -264,6 +271,40 @@ export function AppProvider({ children }: { children: ReactNode }) {
             }
         } catch (error) {
             console.error('Refresh departments error:', error)
+        }
+    }
+
+    const createHoliday = (holiday: Omit<Holiday, 'id' | 'companyId' | 'createdAt'>) => {
+        try {
+            if (!currentCompany) throw new Error('No company set up')
+            const created = dataStore.createHoliday(holiday, currentCompany.id)
+            setHolidays(dataStore.getHolidaysByCompanyId(currentCompany.id))
+            return created
+        } catch (error) {
+            console.error('Create holiday error:', error)
+            throw error
+        }
+    }
+
+    const deleteHoliday = (id: string) => {
+        try {
+            dataStore.deleteHoliday(id)
+            if (currentCompany) {
+                setHolidays(dataStore.getHolidaysByCompanyId(currentCompany.id))
+            }
+        } catch (error) {
+            console.error('Delete holiday error:', error)
+            throw error
+        }
+    }
+
+    const refreshHolidays = () => {
+        try {
+            if (currentCompany) {
+                setHolidays(dataStore.getHolidaysByCompanyId(currentCompany.id))
+            }
+        } catch (error) {
+            console.error('Refresh holidays error:', error)
         }
     }
 
@@ -473,6 +514,7 @@ export function AppProvider({ children }: { children: ReactNode }) {
                 departments,
                 leaves,
                 leaveTypes,
+                holidays,
                 roles,
                 jobs,
                 applicants,
@@ -488,6 +530,9 @@ export function AppProvider({ children }: { children: ReactNode }) {
                 createDepartment,
                 deleteDepartment,
                 refreshDepartments,
+                createHoliday,
+                deleteHoliday,
+                refreshHolidays,
                 createLeaveType,
                 deleteLeaveType,
                 refreshLeaveTypes,

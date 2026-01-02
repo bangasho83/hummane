@@ -111,6 +111,14 @@ export interface Applicant {
     updatedAt?: string
 }
 
+export interface Holiday {
+    id: string
+    companyId: string
+    date: string
+    name: string
+    createdAt: string
+}
+
 export interface DataStoreSchema {
     users: User[]
     companies: Company[]
@@ -118,6 +126,7 @@ export interface DataStoreSchema {
     departments: Department[]
     leaves: LeaveRecord[]
     leaveTypes: LeaveType[]
+    holidays: Holiday[]
     roles: Role[]
     jobs: Job[]
     applicants: Applicant[]
