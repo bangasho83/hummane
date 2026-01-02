@@ -137,7 +137,6 @@ export default function EmployeeProfilePage() {
                             <InfoRow label="Employment Type" value={employee.employmentType} />
                             <InfoRow label="Joining Date" value={formatDate(employee.startDate)} />
                             <InfoRow label="Gender" value={employee.gender} />
-                            <InfoRow label="Time Zone" value={employee.timeZone} />
                             <InfoRow label="Monthly Salary" value={formatCurrency(employee.salary)} />
                         </CardContent>
                     </Card>
