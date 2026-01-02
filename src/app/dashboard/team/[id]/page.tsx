@@ -4,7 +4,7 @@ import { useEffect, useMemo, useState } from 'react'
 import { useParams, useRouter } from 'next/navigation'
 import { DashboardShell } from '@/components/layout/DashboardShell'
 import { useApp } from '@/lib/context/AppContext'
-import type { Employee, EmployeeDocument } from '@/types'
+import type { Employee, EmployeeDocument, DocumentKind } from '@/types'
 import { Card, CardContent } from '@/components/ui/card'
 import { Badge } from '@/components/ui/badge'
 import { formatCurrency, formatDate } from '@/lib/utils'
@@ -34,7 +34,7 @@ export default function EmployeeProfilePage() {
     const [docs, setDocs] = useState<EmployeeDocument[]>([])
     const [activeTab, setActiveTab] = useState<'general' | 'attendance' | 'documents'>('general')
     const [isDocDialogOpen, setIsDocDialogOpen] = useState(false)
-    const [docType, setDocType] = useState(documentTypes[0])
+    const [docType, setDocType] = useState<DocumentKind>(documentTypes[0])
     const [docFile, setDocFile] = useState<File | null>(null)
     const employeeId = params.id as string
 
@@ -199,7 +199,7 @@ export default function EmployeeProfilePage() {
                                         <div className="space-y-4 py-2">
                                             <div className="space-y-2">
                                                 <Label className="text-sm font-bold text-slate-700 px-1">Document Type</Label>
-                                                <Select value={docType} onValueChange={(v) => setDocType(v as typeof documentTypes[number])}>
+                                                <Select value={docType} onValueChange={(v) => setDocType(v as DocumentKind)}>
                                                     <SelectTrigger className="h-12 rounded-xl border-slate-200">
                                                         <SelectValue placeholder="Select type" />
                                                     </SelectTrigger>

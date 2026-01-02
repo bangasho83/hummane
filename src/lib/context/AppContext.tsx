@@ -32,8 +32,6 @@ interface AppContextType {
     addDocument: (doc: Omit<EmployeeDocument, 'id' | 'uploadedAt'>) => EmployeeDocument
     deleteDocument: (id: string) => void
     getDocuments: (employeeId: string) => EmployeeDocument[]
-    addDocument: (doc: Omit<EmployeeDocument, 'id' | 'uploadedAt'>) => EmployeeDocument
-    deleteDocument: (id: string) => void
     createLeaveType: (leaveTypeData: Omit<LeaveType, 'id' | 'companyId' | 'createdAt' | 'updatedAt'>) => LeaveType
     deleteLeaveType: (id: string) => void
     refreshLeaveTypes: () => void

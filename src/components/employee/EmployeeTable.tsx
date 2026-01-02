@@ -137,7 +137,6 @@ export function EmployeeTable({ employees }: EmployeeTableProps) {
                             <TableHead className="py-4 text-[10px] font-extrabold uppercase tracking-widest text-slate-400">Manager</TableHead>
                             <TableHead className="py-4 text-[10px] font-extrabold uppercase tracking-widest text-slate-400">Employment</TableHead>
                             <TableHead className="py-4 text-[10px] font-extrabold uppercase tracking-widest text-slate-400">Joining</TableHead>
-                            <TableHead className="py-4 text-[10px] font-extrabold uppercase tracking-widest text-slate-400">Time Zone</TableHead>
                             <TableHead className="text-right py-4 text-[10px] font-extrabold uppercase tracking-widest text-slate-400">Monthly Salary</TableHead>
                             <TableHead className="text-right pr-8 py-4 text-[10px] font-extrabold uppercase tracking-widest text-slate-400">Actions</TableHead>
                         </TableRow>
@@ -145,7 +144,7 @@ export function EmployeeTable({ employees }: EmployeeTableProps) {
                     <TableBody>
                         {filteredEmployees.length === 0 ? (
                             <TableRow>
-                                <TableCell colSpan={10} className="border-0">
+                                <TableCell colSpan={9} className="border-0">
                                     <div className="p-20 flex flex-col items-center justify-center text-center">
                                         <div className="w-20 h-20 bg-slate-50 rounded-3xl flex items-center justify-center mb-6">
                                             <Users className="w-10 h-10 text-slate-200" />
@@ -204,9 +203,6 @@ export function EmployeeTable({ employees }: EmployeeTableProps) {
                                     </TableCell>
                                     <TableCell>
                                         <span className="text-sm font-medium text-slate-500">{formatDate(employee.startDate)}</span>
-                                    </TableCell>
-                                    <TableCell>
-                                        <span className="text-xs font-medium text-slate-500">{employee.timeZone}</span>
                                     </TableCell>
                                     <TableCell className="text-right">
                                         <span className="font-bold text-slate-900">{formatCurrency(employee.salary)}</span>
