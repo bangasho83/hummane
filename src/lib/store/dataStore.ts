@@ -1,4 +1,4 @@
-import type { User, Company, Employee, Department, DataStoreSchema, LeaveRecord, Role, Job, Applicant } from '@/types'
+import type { User, Company, Employee, Department, DataStoreSchema, LeaveRecord, Role, Job, Applicant, LeaveType } from '@/types'
 import { hashPassword, verifyPassword, sanitizeInput, sanitizeEmail } from '@/lib/security/crypto'
 
 /**
@@ -26,6 +26,7 @@ export class DataStore {
                     roles: [],
                     jobs: [],
                     applicants: [],
+                    leaveTypes: [],
                     currentUser: null
                 }
                 localStorage.setItem(this.STORAGE_KEY, JSON.stringify(initialData))
@@ -58,6 +59,7 @@ export class DataStore {
                 employees: Array.isArray(parsed.employees) ? parsed.employees : [],
                 departments: Array.isArray(parsed.departments) ? parsed.departments : [],
                 leaves: Array.isArray(parsed.leaves) ? parsed.leaves : [],
+                leaveTypes: Array.isArray(parsed.leaveTypes) ? parsed.leaveTypes : [],
                 roles: Array.isArray(parsed.roles) ? parsed.roles : [],
                 jobs: Array.isArray(parsed.jobs) ? parsed.jobs : [],
                 applicants: Array.isArray(parsed.applicants) ? parsed.applicants : [],
@@ -70,17 +72,18 @@ export class DataStore {
     }
 
     private getInitialData(): DataStoreSchema {
-        return {
-            users: [],
-            companies: [],
-            employees: [],
-            departments: [],
-            leaves: [],
-            roles: [],
-            jobs: [],
-            applicants: [],
-            currentUser: null
-        }
+            return {
+                users: [],
+                companies: [],
+                employees: [],
+                departments: [],
+                leaves: [],
+                leaveTypes: [],
+                roles: [],
+                jobs: [],
+                applicants: [],
+                currentUser: null
+            }
     }
 
     private saveData(data: DataStoreSchema): void {
@@ -271,20 +274,33 @@ export class DataStore {
             const sanitizedEmail = sanitizeEmail(employeeData.email)
             const sanitizedPosition = sanitizeInput(employeeData.position)
             const sanitizedDepartment = sanitizeInput(employeeData.department)
+            const sanitizedEmployeeId = sanitizeInput(employeeData.employeeId)
+            const sanitizedManager = sanitizeInput(employeeData.reportingManager)
 
             // Validate salary
             if (employeeData.salary < 0 || !isFinite(employeeData.salary)) {
                 throw new Error('Invalid salary amount')
             }
 
+            // Ensure unique employeeId within company
+            const isDuplicateId = data.employees.some(emp => emp.companyId === companyId && emp.employeeId === sanitizedEmployeeId)
+            if (isDuplicateId) {
+                throw new Error('Employee ID must be unique')
+            }
+
             const employee: Employee = {
                 id: this.generateId(),
                 companyId,
+                employeeId: sanitizedEmployeeId,
                 name: sanitizedName,
                 email: sanitizedEmail,
                 position: sanitizedPosition,
                 department: sanitizedDepartment,
                 startDate: employeeData.startDate,
+                employmentType: employeeData.employmentType,
+                reportingManager: sanitizedManager,
+                gender: employeeData.gender,
+                timeZone: employeeData.timeZone,
                 salary: employeeData.salary,
                 createdAt: new Date().toISOString()
             }
@@ -300,7 +316,17 @@ export class DataStore {
     getEmployeesByCompanyId(companyId: string): Employee[] {
         try {
             const data = this.getData()
-            return data.employees.filter(employee => employee.companyId === companyId)
+            return data.employees
+                .filter(employee => employee.companyId === companyId)
+                .map(emp => ({
+                    ...emp,
+                    // Backfill legacy records so UI/validation is consistent
+                    employeeId: emp.employeeId || `LEGACY-${emp.id}`,
+                    employmentType: emp.employmentType || 'Permanent',
+                    reportingManager: emp.reportingManager || 'Unassigned',
+                    gender: emp.gender || 'Prefer not to say',
+                    timeZone: emp.timeZone || 'PKT (UTC +5)'
+                }))
         } catch (error) {
             console.error('Error getting employees:', error)
             return []
@@ -319,7 +345,23 @@ export class DataStore {
             if (employeeData.email) sanitizedData.email = sanitizeEmail(employeeData.email)
             if (employeeData.position) sanitizedData.position = sanitizeInput(employeeData.position)
             if (employeeData.department) sanitizedData.department = sanitizeInput(employeeData.department)
+            if (employeeData.employeeId) {
+                const sanitizedEmployeeId = sanitizeInput(employeeData.employeeId)
+                const duplicate = data.employees.some(emp =>
+                    emp.companyId === data.employees[index].companyId &&
+                    emp.employeeId === sanitizedEmployeeId &&
+                    emp.id !== employeeId
+                )
+                if (duplicate) {
+                    throw new Error('Employee ID must be unique')
+                }
+                sanitizedData.employeeId = sanitizedEmployeeId
+            }
+            if (employeeData.reportingManager) sanitizedData.reportingManager = sanitizeInput(employeeData.reportingManager)
             if (employeeData.startDate) sanitizedData.startDate = employeeData.startDate
+            if (employeeData.employmentType) sanitizedData.employmentType = employeeData.employmentType
+            if (employeeData.gender) sanitizedData.gender = employeeData.gender
+            if (employeeData.timeZone) sanitizedData.timeZone = employeeData.timeZone
             if (employeeData.salary !== undefined) {
                 if (employeeData.salary < 0 || !isFinite(employeeData.salary)) {
                     throw new Error('Invalid salary amount')
@@ -353,6 +395,75 @@ export class DataStore {
             this.saveData(data)
         } catch (error) {
             console.error('Error deleting employee:', error)
+            throw error
+        }
+    }
+
+    // Leave type operations
+    createLeaveType(leaveTypeData: Omit<LeaveType, 'id' | 'companyId' | 'createdAt' | 'updatedAt'>, companyId: string) {
+        try {
+            const data = this.getData()
+            const sanitizedName = sanitizeInput(leaveTypeData.name)
+            const sanitizedCode = sanitizeInput(leaveTypeData.code).toUpperCase()
+            const sanitizedUnit = leaveTypeData.unit
+            const quota = leaveTypeData.quota
+            const employmentType = leaveTypeData.employmentType
+
+            if (quota < 0 || !isFinite(quota)) {
+                throw new Error('Quota must be a valid non-negative number')
+            }
+
+            // ensure unique code per company
+            const duplicate = data.leaveTypes.some(lt => lt.companyId === companyId && lt.code === sanitizedCode && lt.employmentType === employmentType)
+            if (duplicate) {
+                throw new Error('Leave code must be unique')
+            }
+
+            const leaveType = {
+                id: this.generateId(),
+                companyId,
+                name: sanitizedName,
+                code: sanitizedCode,
+                unit: sanitizedUnit,
+                quota,
+                employmentType,
+                createdAt: new Date().toISOString()
+            }
+
+            data.leaveTypes.push(leaveType)
+            this.saveData(data)
+            return leaveType
+        } catch (error) {
+            console.error('Error creating leave type:', error)
+            throw error
+        }
+    }
+
+    getLeaveTypesByCompanyId(companyId: string) {
+        try {
+            const data = this.getData()
+            return data.leaveTypes.filter(lt => lt.companyId === companyId).map(lt => ({
+                ...lt,
+                employmentType: lt.employmentType || 'Permanent',
+                quota: lt.quota !== undefined ? lt.quota : 0
+            }))
+        } catch (error) {
+            console.error('Error getting leave types:', error)
+            return []
+        }
+    }
+
+    deleteLeaveType(id: string) {
+        try {
+            const data = this.getData()
+            const initial = data.leaveTypes.length
+            data.leaveTypes = data.leaveTypes.filter(lt => lt.id !== id)
+            if (initial === data.leaveTypes.length) {
+                throw new Error('Leave type not found')
+            }
+            this.saveData(data)
+        } catch (error) {
+            console.error('Error deleting leave type:', error)
             throw error
         }
     }
@@ -434,6 +545,9 @@ export class DataStore {
                 employeeId: leaveData.employeeId,
                 date: leaveData.date,
                 type: leaveData.type,
+                leaveTypeId: leaveData.leaveTypeId,
+                unit: leaveData.unit,
+                amount: leaveData.amount,
                 createdAt: new Date().toISOString()
             }
 

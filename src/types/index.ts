@@ -18,6 +18,7 @@ export interface Company {
 
 export interface Employee {
     id: string
+    employeeId: string
     companyId: string
     name: string
     email: string
@@ -25,6 +26,10 @@ export interface Employee {
     department: string
     roleId?: string
     startDate: string
+    employmentType: 'Permanent' | 'Probation' | 'Contract' | 'Intern' | 'Part-time'
+    reportingManager: string
+    gender: 'Male' | 'Female' | 'Non-binary' | 'Prefer not to say'
+    timeZone: string
     salary: number
     createdAt: string
     updatedAt?: string
@@ -43,8 +48,23 @@ export interface LeaveRecord {
     companyId: string
     employeeId: string
     date: string
-    type: 'Sick' | 'Vacation' | 'Personal' | 'Other'
+    type: string
+    leaveTypeId?: string
+    unit?: 'Day' | 'Hour'
+    amount?: number
     createdAt: string
+}
+
+export interface LeaveType {
+    id: string
+    companyId: string
+    name: string
+    code: string
+    unit: 'Day' | 'Hour'
+    quota: number
+    employmentType: Employee['employmentType']
+    createdAt: string
+    updatedAt?: string
 }
 
 export interface Role {
@@ -97,6 +117,7 @@ export interface DataStoreSchema {
     employees: Employee[]
     departments: Department[]
     leaves: LeaveRecord[]
+    leaveTypes: LeaveType[]
     roles: Role[]
     jobs: Job[]
     applicants: Applicant[]

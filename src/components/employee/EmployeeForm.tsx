@@ -19,15 +19,7 @@ import { z } from 'zod'
 
 interface EmployeeFormProps {
     employee?: Employee | null
-    onSubmit: (data: {
-        name: string
-        email: string
-        position: string
-        department: string
-        roleId?: string
-        startDate: string
-        salary: number
-    }) => Promise<void>
+    onSubmit: (data: Omit<Employee, 'id' | 'companyId' | 'createdAt' | 'updatedAt'>) => Promise<void>
     onCancel: () => void
     submitLabel?: string
     loading?: boolean
@@ -40,55 +32,104 @@ export function EmployeeForm({
     submitLabel = 'Save Employee',
     loading = false
 }: EmployeeFormProps) {
-    const { departments, roles } = useApp()
+    const { departments, roles, employees } = useApp()
     const [formData, setFormData] = useState({
+        employeeId: '',
         name: '',
         email: '',
         position: '',
         department: '',
         roleId: '',
         startDate: '',
+        employmentType: 'Permanent',
+        reportingManager: 'self',
+        gender: 'Male',
+        timeZone: 'PKT (UTC +5)',
         salary: ''
     })
     const [errors, setErrors] = useState<Record<string, string>>({})
+    const [timezones, setTimezones] = useState<string[]>(['PKT (UTC +5)'])
+    const [loadingTimezones, setLoadingTimezones] = useState(false)
 
     useEffect(() => {
         if (employee) {
             setFormData({
+                employeeId: employee.employeeId,
                 name: employee.name,
                 email: employee.email,
                 position: employee.position,
                 department: employee.department,
                 roleId: employee.roleId || '',
                 startDate: employee.startDate,
+                employmentType: employee.employmentType,
+                reportingManager: employees.find(e => e.name === employee.reportingManager)?.id || 'self',
+                gender: employee.gender,
+                timeZone: employee.timeZone,
                 salary: employee.salary.toString()
             })
         } else {
             setFormData({
+                employeeId: '',
                 name: '',
                 email: '',
                 position: '',
                 department: '',
                 roleId: '',
                 startDate: '',
+                employmentType: 'Permanent',
+                reportingManager: 'self',
+                gender: 'Male',
+                timeZone: 'PKT (UTC +5)',
                 salary: ''
             })
         }
         setErrors({})
-    }, [employee])
+    }, [employee, employees])
+
+    useEffect(() => {
+        const loadTimezones = async () => {
+            setLoadingTimezones(true)
+            try {
+                const res = await fetch('https://aisenseapi.com/services/v1/timezones')
+                if (!res.ok) throw new Error('Failed to fetch timezones')
+                const data = await res.json()
+                if (Array.isArray(data)) {
+                    setTimezones(data)
+                    if (!formData.timeZone && data.length > 0) {
+                        setFormData(prev => ({ ...prev, timeZone: data[0] }))
+                    }
+                }
+            } catch (error) {
+                console.error('Timezone fetch failed, using defaults', error)
+                setTimezones(['PKT (UTC +5)', 'EST (UTC -5)', 'PST (UTC -8)', 'CET (UTC +1)', 'IST (UTC +5:30)'])
+            } finally {
+                setLoadingTimezones(false)
+            }
+        }
+        loadTimezones()
+        // eslint-disable-next-line react-hooks/exhaustive-deps
+    }, [])
 
     const handleSubmit = async (e: React.FormEvent) => {
         e.preventDefault()
         setErrors({})
 
         try {
+            const managerName = formData.reportingManager === 'self'
+                ? formData.name
+                : employees.find(emp => emp.id === formData.reportingManager)?.name || formData.name
             const employeeData = {
+                employeeId: formData.employeeId,
                 name: formData.name,
                 email: formData.email,
                 position: formData.position,
                 department: formData.department,
                 roleId: formData.roleId || undefined,
                 startDate: formData.startDate,
+                employmentType: formData.employmentType as Employee['employmentType'],
+                reportingManager: managerName,
+                gender: formData.gender as Employee['gender'],
+                timeZone: formData.timeZone,
                 salary: parseFloat(formData.salary)
             }
 
@@ -123,6 +164,44 @@ export function EmployeeForm({
 
     return (
         <form onSubmit={handleSubmit} className="space-y-6">
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                <div className="space-y-2">
+                    <Label htmlFor="employeeId">Employee ID</Label>
+                    <Input
+                        id="employeeId"
+                        placeholder="EMP-00123"
+                        value={formData.employeeId}
+                        onChange={(e) => handleChange('employeeId', e.target.value)}
+                        required
+                        className={errors.employeeId ? 'border-red-500' : ''}
+                    />
+                    {errors.employeeId && (
+                        <p className="text-xs text-red-600 mt-1">{errors.employeeId}</p>
+                    )}
+                </div>
+                <div className="space-y-2">
+                    <Label htmlFor="employmentType">Employment Type</Label>
+                    <Select
+                        value={formData.employmentType}
+                        onValueChange={(value) => handleChange('employmentType', value)}
+                    >
+                        <SelectTrigger id="employmentType" className="rounded-xl border-slate-200">
+                            <SelectValue placeholder="Select employment type" />
+                        </SelectTrigger>
+                        <SelectContent>
+                            <SelectItem value="Permanent">Permanent</SelectItem>
+                            <SelectItem value="Probation">Probation</SelectItem>
+                            <SelectItem value="Contract">Contract</SelectItem>
+                            <SelectItem value="Intern">Intern</SelectItem>
+                            <SelectItem value="Part-time">Part-time</SelectItem>
+                        </SelectContent>
+                    </Select>
+                    {errors.employmentType && (
+                        <p className="text-xs text-red-600 mt-1">{errors.employmentType}</p>
+                    )}
+                </div>
+            </div>
+
             <div className="space-y-2">
                 <Label htmlFor="name">Full Name</Label>
                 <Input
@@ -235,7 +314,7 @@ export function EmployeeForm({
 
             <div className="grid grid-cols-2 gap-4">
                 <div className="space-y-2">
-                    <Label htmlFor="startDate">Start Date</Label>
+                    <Label htmlFor="startDate">Joining Date</Label>
                     <Input
                         id="startDate"
                         type="date"
@@ -249,12 +328,85 @@ export function EmployeeForm({
                     )}
                 </div>
                 <div className="space-y-2">
-                    <Label htmlFor="salary">Annual Salary</Label>
+                    <Label htmlFor="reportingManager">Reporting Manager</Label>
+                    <Select
+                        value={formData.reportingManager || "self"}
+                        onValueChange={(value) => handleChange('reportingManager', value)}
+                    >
+                        <SelectTrigger id="reportingManager" className={`rounded-xl border-slate-200 ${errors.reportingManager ? 'border-red-500' : ''}`}>
+                            <SelectValue placeholder="Select Manager" />
+                        </SelectTrigger>
+                        <SelectContent>
+                            <SelectItem value="self">Self / This employee leads</SelectItem>
+                            {employees
+                                .filter(emp => !employee || emp.id !== employee.id)
+                                .map((emp) => (
+                                    <SelectItem key={emp.id} value={emp.id}>
+                                        {emp.name} ({emp.position})
+                                    </SelectItem>
+                                ))}
+                        </SelectContent>
+                    </Select>
+                    {errors.reportingManager && (
+                        <p className="text-xs text-red-600 mt-1">{errors.reportingManager}</p>
+                    )}
+                </div>
+            </div>
+
+            <div className="grid grid-cols-2 gap-4">
+                <div className="space-y-2">
+                    <Label htmlFor="gender">Gender</Label>
+                    <Select
+                        value={formData.gender}
+                        onValueChange={(value) => handleChange('gender', value)}
+                    >
+                        <SelectTrigger id="gender" className="rounded-xl border-slate-200">
+                            <SelectValue placeholder="Select gender" />
+                        </SelectTrigger>
+                        <SelectContent>
+                            <SelectItem value="Male">Male</SelectItem>
+                            <SelectItem value="Female">Female</SelectItem>
+                            <SelectItem value="Non-binary">Non-binary</SelectItem>
+                            <SelectItem value="Prefer not to say">Prefer not to say</SelectItem>
+                        </SelectContent>
+                    </Select>
+                    {errors.gender && (
+                        <p className="text-xs text-red-600 mt-1">{errors.gender}</p>
+                    )}
+                </div>
+            </div>
+
+            <div className="grid grid-cols-2 gap-4">
+                <div className="space-y-2">
+                    <Label htmlFor="timeZone">Time Zone</Label>
+                    <Select
+                        value={formData.timeZone}
+                        onValueChange={(value) => handleChange('timeZone', value)}
+                    >
+                        <SelectTrigger id="timeZone" className="rounded-xl border-slate-200">
+                            <SelectValue placeholder="Select time zone">
+                                {loadingTimezones ? 'Loading time zones...' : undefined}
+                            </SelectValue>
+                        </SelectTrigger>
+                        <SelectContent>
+                            {timezones.map((tz) => (
+                                <SelectItem key={tz} value={tz}>
+                                    {tz}
+                                </SelectItem>
+                            ))}
+                        </SelectContent>
+                    </Select>
+                    {errors.timeZone && (
+                        <p className="text-xs text-red-600 mt-1">{errors.timeZone}</p>
+                    )}
+                </div>
+                <div className="space-y-2">
+                    <Label htmlFor="salary">Monthly Salary</Label>
                     <Input
                         id="salary"
                         type="number"
-                        placeholder="80000"
-                        step="1000"
+                        placeholder="8000"
+                        step="100"
                         min="0"
                         value={formData.salary}
                         onChange={(e) => handleChange('salary', e.target.value)}

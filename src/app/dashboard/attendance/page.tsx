@@ -1,13 +1,13 @@
 'use client'
 
-import { useState } from 'react'
+import { useEffect, useState } from 'react'
 import { DashboardShell } from '@/components/layout/DashboardShell'
-import { Calendar as CalendarIcon, Plus, Check, X } from 'lucide-react'
+import { Calendar as CalendarIcon, Plus, Check } from 'lucide-react'
 import { useApp } from '@/lib/context/AppContext'
 import { Button } from '@/components/ui/button'
 import { Card, CardContent } from '@/components/ui/card'
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table'
-import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger, DialogFooter } from '@/components/ui/dialog'
+import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from '@/components/ui/dialog'
 import { Label } from '@/components/ui/label'
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select'
 import { Input } from '@/components/ui/input'
@@ -15,21 +15,45 @@ import { toast } from '@/components/ui/toast'
 import { cn } from '@/lib/utils'
 
 export default function AttendancePage() {
-    const { employees, leaves, addLeave } = useApp()
+    const { employees, leaves, addLeave, leaveTypes } = useApp()
     const [isDialogOpen, setIsDialogOpen] = useState(false)
     const [selectedEmployee, setSelectedEmployee] = useState('')
-    const [selectedDate, setSelectedDate] = useState('')
-    const [selectedType, setSelectedType] = useState('Personal')
+    const [selectedType, setSelectedType] = useState<string>('')
+    const [startDate, setStartDate] = useState('')
+    const [endDate, setEndDate] = useState('')
+    const [startTime, setStartTime] = useState('09:00')
+    const [endTime, setEndTime] = useState('18:00')
     const [loading, setLoading] = useState(false)
+    const [today, setToday] = useState<Date | null>(null)
+    const [dates, setDates] = useState<Date[]>([])
 
-    // Generate dates: 15 days before -> Today -> 15 days after
-    const today = new Date()
-    const dates: Date[] = []
-    for (let i = -15; i <= 15; i++) {
-        const date = new Date(today)
-        date.setDate(today.getDate() + i)
-        dates.push(date)
-    }
+    // Build the date range on the client to avoid SSR/client drift
+    useEffect(() => {
+        const current = new Date()
+        const range: Date[] = []
+        for (let i = -15; i <= 15; i++) {
+            const date = new Date(current)
+            date.setDate(current.getDate() + i)
+            range.push(date)
+        }
+        setToday(current)
+        setDates(range)
+        const todayStr = current.toISOString().split('T')[0]
+        setStartDate(todayStr)
+        setEndDate(todayStr)
+    }, [])
+
+    useEffect(() => {
+        const emp = employees.find(e => e.id === selectedEmployee)
+        const filteredLeaveTypes = emp
+            ? leaveTypes.filter(lt => lt.employmentType === emp.employmentType)
+            : []
+        if (filteredLeaveTypes.length > 0) {
+            setSelectedType(filteredLeaveTypes[0].id)
+        } else {
+            setSelectedType('')
+        }
+    }, [leaveTypes, selectedEmployee, employees])
 
     const formatDate = (date: Date) => {
         return date.toISOString().split('T')[0]
@@ -50,27 +74,105 @@ export default function AttendancePage() {
     }
 
     const handleAddLeave = async () => {
-        if (!selectedEmployee || !selectedDate) {
-            toast('Please select an employee and a date', 'error')
+        if (!selectedEmployee) {
+            toast('Please select an employee', 'error')
             return
+        }
+
+        const leaveType = leaveTypes.find(lt => lt.id === selectedType)
+        const unit = leaveType?.unit || 'Day'
+
+        // Calculate requested units based on unit selection
+        let requestedUnits = 1
+        const leaveEntries: { date: string; amount: number }[] = []
+
+        if (unit === 'Day') {
+            if (!startDate || !endDate) {
+                toast('Please select both start and end dates', 'error')
+                return
+            }
+            const start = new Date(startDate)
+            const end = new Date(endDate)
+            if (isNaN(start.getTime()) || isNaN(end.getTime()) || end < start) {
+                toast('Invalid date range', 'error')
+                return
+            }
+            const days: string[] = []
+            const cursor = new Date(start)
+            while (cursor <= end) {
+                days.push(cursor.toISOString().split('T')[0])
+                cursor.setDate(cursor.getDate() + 1)
+            }
+            requestedUnits = days.length
+            days.forEach(d => leaveEntries.push({ date: d, amount: 1 }))
+        } else {
+            if (!startDate || !startTime || !endTime) {
+                toast('Please select date and time range', 'error')
+                return
+            }
+            const start = new Date(`${startDate}T${startTime}`)
+            const end = new Date(`${startDate}T${endTime}`)
+            if (isNaN(start.getTime()) || isNaN(end.getTime()) || end <= start) {
+                toast('Invalid time range', 'error')
+                return
+            }
+            const diffHours = (end.getTime() - start.getTime()) / (1000 * 60 * 60)
+            requestedUnits = diffHours
+            leaveEntries.push({ date: startDate, amount: diffHours })
+        }
+
+        // Count existing usage for this leave type
+        if (leaveType) {
+            const alreadyUsed = leaves
+                .filter(l => (l.leaveTypeId ? l.leaveTypeId === leaveType.id : l.type === leaveType.name) && l.employeeId === selectedEmployee)
+                .reduce((sum, l) => sum + (l.amount ?? 1), 0)
+            const quotaLimit = leaveType.quota ?? 0
+            if (alreadyUsed + requestedUnits > quotaLimit) {
+                toast(`Cannot register leave: ${leaveType.code} quota of ${quotaLimit} ${leaveType.unit}${quotaLimit !== 1 ? 's' : ''} reached`, 'error')
+                return
+            }
         }
 
         setLoading(true)
         try {
-            await addLeave({
-                employeeId: selectedEmployee,
-                date: selectedDate,
-                type: selectedType as any
-            })
+            // Persist per-entry
+            for (const entry of leaveEntries) {
+                await addLeave({
+                    employeeId: selectedEmployee,
+                    date: entry.date,
+                    type: leaveType ? leaveType.name : selectedType || 'Personal',
+                    leaveTypeId: leaveType?.id,
+                    unit,
+                    amount: entry.amount
+                } as any)
+            }
             toast('Leave registered successfully', 'success')
             setIsDialogOpen(false)
             setSelectedEmployee('')
-            setSelectedDate('')
+            setSelectedType(leaveTypes[0]?.id || '')
+            setStartDate('')
+            setEndDate('')
+            setStartTime('09:00')
+            setEndTime('18:00')
         } catch (error) {
             toast('Failed to register leave', 'error')
         } finally {
             setLoading(false)
         }
+    }
+
+    if (!today || dates.length === 0) {
+        return (
+            <DashboardShell>
+                <div className="animate-in fade-in duration-500 slide-in-from-bottom-4">
+                    <Card className="border-none shadow-premium bg-white rounded-3xl">
+                        <CardContent className="p-12 text-center text-slate-500 font-medium">
+                            Loading attendance view...
+                        </CardContent>
+                    </Card>
+                </div>
+            </DashboardShell>
+        )
     }
 
     return (
@@ -112,29 +214,104 @@ export default function AttendancePage() {
                                     </Select>
                                 </div>
                                 <div className="space-y-2">
-                                    <label className="text-sm font-bold text-slate-700 px-1">Date</label>
-                                    <Input
-                                        type="date"
-                                        className="h-12 rounded-xl border-slate-200"
-                                        value={selectedDate}
-                                        onChange={(e) => setSelectedDate(e.target.value)}
-                                        required
-                                    />
-                                </div>
-                                <div className="space-y-2">
                                     <label className="text-sm font-bold text-slate-700 px-1">Leave Type</label>
-                                    <Select value={selectedType} onValueChange={setSelectedType}>
+                                    <Select value={selectedType} onValueChange={setSelectedType} disabled={!selectedEmployee}>
                                         <SelectTrigger className="h-12 rounded-xl border-slate-200">
                                             <SelectValue placeholder="Select Type" />
                                         </SelectTrigger>
                                         <SelectContent>
-                                            <SelectItem value="Personal">Personal Leave</SelectItem>
-                                            <SelectItem value="Sick">Sick Leave</SelectItem>
-                                            <SelectItem value="Vacation">Vacation</SelectItem>
-                                            <SelectItem value="Other">Other</SelectItem>
+                                            {(() => {
+                                                const emp = employees.find(e => e.id === selectedEmployee)
+                                                const filtered = emp
+                                                    ? leaveTypes.filter(lt => lt.employmentType === emp.employmentType)
+                                                    : []
+                                                if (filtered.length === 0) {
+                                                    return (
+                                                        <SelectItem value="none" disabled>
+                                                            No leave type defined for this employment type
+                                                        </SelectItem>
+                                                    )
+                                                }
+                                                return filtered.map((lt) => (
+                                                    <SelectItem key={lt.id} value={lt.id}>
+                                                        {lt.name} ({lt.code}) — {lt.unit} • {lt.employmentType}
+                                                    </SelectItem>
+                                                ))
+                                            })()}
                                         </SelectContent>
                                     </Select>
+                                    {selectedType && leaveTypes.find(lt => lt.id === selectedType) && (
+                                        <p className="text-xs text-slate-500 px-1">
+                                            Unit: {leaveTypes.find(lt => lt.id === selectedType)?.unit} • Quota: {leaveTypes.find(lt => lt.id === selectedType)?.quota}
+                                        </p>
+                                    )}
                                 </div>
+                                {(() => {
+                                    const lt = leaveTypes.find(lt => lt.id === selectedType)
+                                    const unit = lt?.unit || 'Day'
+                                    if (unit === 'Hour') {
+                                        return (
+                                            <div className="space-y-3">
+                                                <div className="space-y-2">
+                                                    <label className="text-sm font-bold text-slate-700 px-1">Date</label>
+                                                    <Input
+                                                        type="date"
+                                                        className="h-12 rounded-xl border-slate-200"
+                                                        value={startDate}
+                                                        onChange={(e) => { setStartDate(e.target.value); setEndDate(e.target.value) }}
+                                                        required
+                                                    />
+                                                </div>
+                                                <div className="grid grid-cols-2 gap-4">
+                                                    <div className="space-y-2">
+                                                        <label className="text-sm font-bold text-slate-700 px-1">From Time</label>
+                                                        <Input
+                                                            type="time"
+                                                            className="h-12 rounded-xl border-slate-200"
+                                                            value={startTime}
+                                                            onChange={(e) => setStartTime(e.target.value)}
+                                                            required
+                                                        />
+                                                    </div>
+                                                    <div className="space-y-2">
+                                                        <label className="text-sm font-bold text-slate-700 px-1">To Time</label>
+                                                        <Input
+                                                            type="time"
+                                                            className="h-12 rounded-xl border-slate-200"
+                                                            value={endTime}
+                                                            onChange={(e) => setEndTime(e.target.value)}
+                                                            required
+                                                        />
+                                                    </div>
+                                                </div>
+                                            </div>
+                                        )
+                                    }
+                                    return (
+                                        <div className="grid grid-cols-2 gap-4">
+                                            <div className="space-y-2">
+                                                <label className="text-sm font-bold text-slate-700 px-1">From Date</label>
+                                                <Input
+                                                    type="date"
+                                                    className="h-12 rounded-xl border-slate-200"
+                                                    value={startDate}
+                                                    onChange={(e) => setStartDate(e.target.value)}
+                                                    required
+                                                />
+                                            </div>
+                                            <div className="space-y-2">
+                                                <label className="text-sm font-bold text-slate-700 px-1">To Date</label>
+                                                <Input
+                                                    type="date"
+                                                    className="h-12 rounded-xl border-slate-200"
+                                                    value={endDate}
+                                                    onChange={(e) => setEndDate(e.target.value)}
+                                                    required
+                                                />
+                                            </div>
+                                        </div>
+                                    )
+                                })()}
                                 <div className="flex justify-end gap-3 mt-6">
                                     <Button type="button" variant="outline" onClick={() => setIsDialogOpen(false)} className="rounded-xl font-bold border-slate-200 h-12 px-6">
                                         Cancel

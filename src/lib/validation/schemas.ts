@@ -49,6 +49,9 @@ export const companySchema = z.object({
 
 // Employee validation schemas
 export const employeeSchema = z.object({
+    employeeId: z.string()
+        .regex(/^[a-zA-Z0-9_-]+$/, 'Employee ID must be alphanumeric')
+        .min(2, 'Employee ID is required'),
     name: z.string()
         .min(2, 'Name must be at least 2 characters')
         .max(100, 'Name must be less than 100 characters')
@@ -64,12 +67,21 @@ export const employeeSchema = z.object({
     department: z.string()
         .min(1, 'Department is required')
         .trim(),
+    roleId: z.string().optional(),
     startDate: z.string()
         .regex(/^\d{4}-\d{2}-\d{2}$/, 'Invalid date format')
         .refine((date) => {
             const d = new Date(date)
             return d instanceof Date && !isNaN(d.getTime())
         }, 'Invalid date'),
+    employmentType: z.enum(['Permanent', 'Probation', 'Contract', 'Intern', 'Part-time']),
+    reportingManager: z.string()
+        .min(2, 'Reporting Manager is required')
+        .max(100, 'Name must be less than 100 characters')
+        .trim(),
+    gender: z.enum(['Male', 'Female', 'Non-binary', 'Prefer not to say']),
+    timeZone: z.string()
+        .min(2, 'Time zone is required'),
     salary: z.number()
         .positive('Salary must be a positive number')
         .max(10000000, 'Salary seems unreasonably high')
@@ -98,9 +110,28 @@ export const leaveRecordSchema = z.object({
             const d = new Date(date)
             return d instanceof Date && !isNaN(d.getTime())
         }, 'Invalid date'),
-    type: z.enum(['Sick', 'Vacation', 'Personal', 'Other'], {
-        message: 'Please select a valid leave type'
-    })
+    type: z.string().min(1, 'Leave type is required'),
+    leaveTypeId: z.string().optional(),
+    unit: z.enum(['Day', 'Hour']).optional(),
+    amount: z.number().positive().finite().optional()
+})
+
+export const leaveTypeSchema = z.object({
+    name: z.string()
+        .min(2, 'Leave name is required')
+        .max(100, 'Leave name must be less than 100 characters')
+        .trim(),
+    code: z.string()
+        .regex(/^[A-Za-z0-9_-]+$/, 'Code must be alphanumeric')
+        .min(1, 'Leave code is required')
+        .max(10, 'Leave code must be less than 10 characters')
+        .trim(),
+    unit: z.enum(['Day', 'Hour']),
+    quota: z.number()
+        .nonnegative('Quota must be zero or more')
+        .max(365, 'Quota seems too high')
+        .finite('Quota must be a valid number'),
+    employmentType: z.enum(['Permanent', 'Probation', 'Contract', 'Intern', 'Part-time'])
 })
 
 // Type exports for TypeScript
@@ -110,6 +141,7 @@ export type CompanyInput = z.infer<typeof companySchema>
 export type EmployeeInput = z.infer<typeof employeeSchema>
 export type DepartmentInput = z.infer<typeof departmentSchema>
 export type LeaveRecordInput = z.infer<typeof leaveRecordSchema>
+export type LeaveTypeInput = z.infer<typeof leaveTypeSchema>
 
 /**
  * Helper function to validate data and return formatted errors
@@ -133,4 +165,3 @@ export function validateData<T>(schema: z.ZodSchema<T>, data: unknown): {
 
     return { success: false, errors }
 }
-

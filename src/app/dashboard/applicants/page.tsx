@@ -1,6 +1,6 @@
 'use client'
 
-import { useState } from 'react'
+import { useEffect, useState } from 'react'
 import { useRouter } from 'next/navigation'
 import { DashboardShell } from '@/components/layout/DashboardShell'
 import { Plus, Trash2, Users, Search } from 'lucide-react'
@@ -14,27 +14,38 @@ import { Label } from '@/components/ui/label'
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select'
 import type { Applicant } from '@/types'
 
+const createEmptyApplicant = (
+    appliedDate: string
+): Omit<Applicant, 'id' | 'companyId' | 'createdAt' | 'updatedAt'> => ({
+    fullName: '',
+    email: '',
+    phone: '',
+    positionApplied: '',
+    jobId: '',
+    yearsOfExperience: 0,
+    currentSalary: '',
+    expectedSalary: '',
+    noticePeriod: '',
+    resumeUrl: '',
+    linkedinUrl: '',
+    status: 'new' as Applicant['status'],
+    appliedDate
+})
+
 export default function ApplicantsPage() {
     const router = useRouter()
     const { applicants, jobs, createApplicant, deleteApplicant } = useApp()
     const [isAddOpen, setIsAddOpen] = useState(false)
     const [loading, setLoading] = useState(false)
     const [searchTerm, setSearchTerm] = useState('')
-    const [newApplicant, setNewApplicant] = useState({
-        fullName: '',
-        email: '',
-        phone: '',
-        positionApplied: '',
-        jobId: '',
-        yearsOfExperience: 0,
-        currentSalary: '',
-        expectedSalary: '',
-        noticePeriod: '',
-        resumeUrl: '',
-        linkedinUrl: '',
-        status: 'new' as 'new' | 'screening' | 'interview' | 'offer' | 'rejected' | 'hired',
-        appliedDate: new Date().toISOString().split('T')[0]
-    })
+    const [todayDate, setTodayDate] = useState('')
+    const [newApplicant, setNewApplicant] = useState(() => createEmptyApplicant(''))
+
+    useEffect(() => {
+        const today = new Date().toISOString().split('T')[0]
+        setTodayDate(today)
+        setNewApplicant(prev => ({ ...prev, appliedDate: today }))
+    }, [])
 
     const filteredApplicants = applicants.filter(applicant =>
         applicant.fullName.toLowerCase().includes(searchTerm.toLowerCase()) ||
@@ -52,21 +63,8 @@ export default function ApplicantsPage() {
         setLoading(true)
         try {
             await createApplicant(newApplicant)
-            setNewApplicant({
-                fullName: '',
-                email: '',
-                phone: '',
-                positionApplied: '',
-                jobId: '',
-                yearsOfExperience: 0,
-                currentSalary: '',
-                expectedSalary: '',
-                noticePeriod: '',
-                resumeUrl: '',
-                linkedinUrl: '',
-                status: 'new',
-                appliedDate: new Date().toISOString().split('T')[0]
-            })
+            const appliedDate = todayDate || new Date().toISOString().split('T')[0]
+            setNewApplicant(createEmptyApplicant(appliedDate))
             setIsAddOpen(false)
             toast('Applicant added successfully', 'success')
         } catch (error) {
@@ -389,4 +387,3 @@ export default function ApplicantsPage() {
         </DashboardShell>
     )
 }
-

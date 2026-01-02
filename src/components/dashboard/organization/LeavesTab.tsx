@@ -1,0 +1,257 @@
+'use client'
+
+import { useState, useMemo } from 'react'
+import { useApp } from '@/lib/context/AppContext'
+import { Button } from '@/components/ui/button'
+import { Input } from '@/components/ui/input'
+import { Label } from '@/components/ui/label'
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select'
+import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table'
+import { Plus, Trash2, Leaf, Search } from 'lucide-react'
+import { toast } from '@/components/ui/toast'
+import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from '@/components/ui/dialog'
+
+export function LeavesTab() {
+    const { leaveTypes, createLeaveType, deleteLeaveType } = useApp()
+    const [isAddOpen, setIsAddOpen] = useState(false)
+    const [searchTerm, setSearchTerm] = useState('')
+    const [form, setForm] = useState({
+        name: '',
+        code: '',
+        unit: 'Day',
+        quota: '0',
+        employmentType: 'Permanent'
+    })
+    const [loading, setLoading] = useState(false)
+
+    const filtered = useMemo(() => {
+        return leaveTypes.filter(lt =>
+            lt.name.toLowerCase().includes(searchTerm.toLowerCase()) ||
+            lt.code.toLowerCase().includes(searchTerm.toLowerCase())
+        )
+    }, [leaveTypes, searchTerm])
+
+    const handleSubmit = (e: React.FormEvent) => {
+        e.preventDefault()
+        setLoading(true)
+        try {
+            createLeaveType({
+                name: form.name,
+                code: form.code,
+                unit: form.unit as 'Day' | 'Hour',
+                quota: parseFloat(form.quota) || 0,
+                employmentType: form.employmentType as any
+            })
+            toast('Leave type added', 'success')
+            setForm({
+                name: '',
+                code: '',
+                unit: 'Day',
+                quota: '0',
+                employmentType: 'Permanent'
+            })
+            setIsAddOpen(false)
+        } catch (error: any) {
+            toast(error?.message || 'Failed to add leave type', 'error')
+        } finally {
+            setLoading(false)
+        }
+    }
+
+    const handleDelete = (id: string) => {
+        if (confirm('Delete this leave type?')) {
+            deleteLeaveType(id)
+            toast('Leave type deleted', 'success')
+        }
+    }
+
+    return (
+        <div className="animate-in fade-in duration-500 slide-in-from-bottom-4">
+            <div className="flex justify-between items-end mb-8">
+                <div>
+                    <h1 className="text-3xl font-extrabold text-slate-900 tracking-tight">
+                        Leave Types
+                    </h1>
+                    <p className="text-slate-500 font-medium">
+                        Define allowances and units for each leave category.
+                    </p>
+                </div>
+
+                <Dialog open={isAddOpen} onOpenChange={setIsAddOpen}>
+                    <DialogTrigger asChild>
+                        <Button className="bg-blue-600 hover:bg-blue-700 text-white rounded-2xl font-bold shadow-lg shadow-blue-500/20 px-6 py-6 h-auto">
+                            <Plus className="w-5 h-5 mr-2" />
+                            Add Leave Type
+                        </Button>
+                    </DialogTrigger>
+                    <DialogContent className="sm:max-w-xl rounded-3xl bg-white border-slate-200">
+                        <DialogHeader>
+                            <DialogTitle className="text-2xl font-bold text-slate-900">Add Leave Type</DialogTitle>
+                        </DialogHeader>
+                        <form onSubmit={handleSubmit} className="space-y-4 py-4">
+                            <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                                <div className="space-y-2">
+                                    <Label className="text-sm font-bold text-slate-700 px-1">Leave Name</Label>
+                                    <Input
+                                        placeholder="Casual"
+                                        className="rounded-xl border-slate-200 h-12"
+                                        value={form.name}
+                                        onChange={(e) => setForm(prev => ({ ...prev, name: e.target.value }))}
+                                        required
+                                    />
+                                </div>
+                                <div className="space-y-2">
+                                    <Label className="text-sm font-bold text-slate-700 px-1">Leave Code</Label>
+                                    <Input
+                                        placeholder="C1"
+                                        className="rounded-xl border-slate-200 h-12 uppercase"
+                                        value={form.code}
+                                        onChange={(e) => setForm(prev => ({ ...prev, code: e.target.value.toUpperCase() }))}
+                                        required
+                                    />
+                                </div>
+                            </div>
+                            <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                                <div className="space-y-2">
+                                    <Label className="text-sm font-bold text-slate-700 px-1">Units of Measure</Label>
+                                    <Select
+                                        value={form.unit}
+                                        onValueChange={(value) => setForm(prev => ({ ...prev, unit: value }))}
+                                    >
+                                        <SelectTrigger className="rounded-xl border-slate-200 h-12">
+                                            <SelectValue placeholder="Select unit" />
+                                        </SelectTrigger>
+                                        <SelectContent>
+                                            <SelectItem value="Day">Day</SelectItem>
+                                            <SelectItem value="Hour">Hour</SelectItem>
+                                        </SelectContent>
+                                    </Select>
+                                </div>
+                            </div>
+                            <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                                <div className="space-y-2">
+                                    <Label className="text-sm font-bold text-slate-700 px-1">Employment Type</Label>
+                                    <Select
+                                        value={form.employmentType}
+                                        onValueChange={(value) => setForm(prev => ({ ...prev, employmentType: value }))}
+                                    >
+                                        <SelectTrigger className="rounded-xl border-slate-200 h-12">
+                                            <SelectValue placeholder="Select employment type" />
+                                        </SelectTrigger>
+                                        <SelectContent>
+                                            <SelectItem value="Permanent">Permanent</SelectItem>
+                                            <SelectItem value="Probation">Probation</SelectItem>
+                                            <SelectItem value="Contract">Contract</SelectItem>
+                                            <SelectItem value="Intern">Intern</SelectItem>
+                                            <SelectItem value="Part-time">Part-time</SelectItem>
+                                        </SelectContent>
+                                    </Select>
+                                </div>
+                                <div className="space-y-2">
+                                    <Label className="text-sm font-bold text-slate-700 px-1">Quota (per year)</Label>
+                                    <Input
+                                        type="number"
+                                        min="0"
+                                        className="rounded-xl border-slate-200 h-12"
+                                        value={form.quota}
+                                        onChange={(e) => setForm(prev => ({ ...prev, quota: e.target.value }))}
+                                        placeholder="e.g. 10"
+                                        required
+                                    />
+                                </div>
+                            </div>
+                            <div className="flex justify-end gap-3 mt-6">
+                                <Button type="button" variant="outline" onClick={() => setIsAddOpen(false)} className="rounded-xl font-bold border-slate-200 h-12 px-6">
+                                    Cancel
+                                </Button>
+                                <Button type="submit" className="bg-blue-600 hover:bg-blue-700 text-white rounded-xl font-bold h-12 px-6" disabled={loading}>
+                                    {loading ? 'Saving...' : 'Save Leave Type'}
+                                </Button>
+                            </div>
+                        </form>
+                    </DialogContent>
+                </Dialog>
+            </div>
+
+            <div className="bg-white rounded-3xl shadow-premium border border-slate-100 overflow-hidden">
+                <div className="p-8 border-b border-slate-100 flex items-center gap-4">
+                    <div className="relative flex-1 group">
+                        <Search className="absolute left-4 top-1/2 transform -translate-y-1/2 w-4 h-4 text-slate-400 group-focus-within:text-blue-500 transition-colors" />
+                        <Input
+                            placeholder="Search leave types..."
+                            className="pl-11 bg-slate-50 border-slate-100 h-12 rounded-2xl focus-visible:ring-blue-500/20"
+                            value={searchTerm}
+                            onChange={(e) => setSearchTerm(e.target.value)}
+                        />
+                    </div>
+                </div>
+
+                <Table>
+                    <TableHeader className="bg-slate-50/50">
+                        <TableRow className="hover:bg-transparent border-slate-100">
+                            <TableHead className="pl-8 py-4 text-[10px] font-extrabold uppercase tracking-widest text-slate-400">Leave Name</TableHead>
+                            <TableHead className="py-4 text-[10px] font-extrabold uppercase tracking-widest text-slate-400">Code</TableHead>
+                            <TableHead className="py-4 text-[10px] font-extrabold uppercase tracking-widest text-slate-400">Unit</TableHead>
+                            <TableHead className="py-4 text-[10px] font-extrabold uppercase tracking-widest text-slate-400">Employment Type</TableHead>
+                            <TableHead className="py-4 text-[10px] font-extrabold uppercase tracking-widest text-slate-400">Quota</TableHead>
+                            <TableHead className="text-right pr-8 py-4 text-[10px] font-extrabold uppercase tracking-widest text-slate-400">Actions</TableHead>
+                        </TableRow>
+                    </TableHeader>
+                    <TableBody>
+                        {filtered.length === 0 ? (
+                            <TableRow>
+                                <TableCell colSpan={5} className="p-20 text-center text-slate-500">
+                                    No leave types yet. Add your first one to get started.
+                                </TableCell>
+                            </TableRow>
+                        ) : (
+                            filtered.map((lt) => (
+                                <TableRow key={lt.id} className="hover:bg-slate-50/50 group border-slate-50">
+                                    <TableCell className="pl-8 py-5">
+                                        <div className="flex items-center gap-3">
+                                            <div className="w-10 h-10 rounded-2xl bg-emerald-50 text-emerald-600 flex items-center justify-center font-bold">
+                                                <Leaf className="w-5 h-5" />
+                                            </div>
+                                            <div>
+                                                <p className="font-bold text-slate-900 text-base">{lt.name}</p>
+                                                <p className="text-xs text-slate-400 font-medium">Created {new Date(lt.createdAt).toLocaleDateString()}</p>
+                                            </div>
+                                        </div>
+                                    </TableCell>
+                                    <TableCell>
+                                        <span className="text-xs font-bold text-slate-600">{lt.code}</span>
+                                    </TableCell>
+                                    <TableCell>
+                                        <span className="text-sm font-medium text-slate-500">{lt.unit}</span>
+                                    </TableCell>
+                                    <TableCell>
+                                        <span className="text-sm font-medium text-slate-500">{lt.employmentType}</span>
+                                    </TableCell>
+                                    <TableCell>
+                                        <span className="text-sm font-medium text-slate-500">{lt.quota}</span>
+                                    </TableCell>
+                                    <TableCell className="text-right pr-8">
+                                        <Button
+                                            variant="ghost"
+                                            size="icon"
+                                            className="h-10 w-10 text-slate-300 hover:text-red-600 hover:bg-red-50 rounded-xl transition-all"
+                                            onClick={() => handleDelete(lt.id)}
+                                        >
+                                            <Trash2 className="w-5 h-5" />
+                                        </Button>
+                                    </TableCell>
+                                </TableRow>
+                            ))
+                        )}
+                    </TableBody>
+                </Table>
+
+                <div className="p-8 border-t border-slate-50 bg-slate-50/30">
+                    <p className="text-xs font-bold text-slate-400 uppercase tracking-widest">
+                        {filtered.length} {filtered.length === 1 ? 'Leave Type' : 'Leave Types'} Defined
+                    </p>
+                </div>
+            </div>
+        </div>
+    )
+}

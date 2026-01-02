@@ -43,6 +43,7 @@ export function EmployeeTable({ employees }: EmployeeTableProps) {
                 emp.name.toLowerCase().includes(searchTerm.toLowerCase()) ||
                 emp.email.toLowerCase().includes(searchTerm.toLowerCase()) ||
                 emp.position.toLowerCase().includes(searchTerm.toLowerCase()) ||
+                emp.employeeId.toLowerCase().includes(searchTerm.toLowerCase()) ||
                 emp.department.toLowerCase().includes(searchTerm.toLowerCase())
 
             const matchesDepartment = departmentFilter === 'all' || emp.department === departmentFilter
@@ -128,18 +129,22 @@ export function EmployeeTable({ employees }: EmployeeTableProps) {
                 <Table>
                     <TableHeader className="bg-slate-50/50">
                         <TableRow className="hover:bg-transparent border-slate-100">
-                            <TableHead className="w-[300px] pl-8 py-4 text-[10px] font-extrabold uppercase tracking-widest text-slate-400">Employee</TableHead>
+                            <TableHead className="w-[220px] pl-8 py-4 text-[10px] font-extrabold uppercase tracking-widest text-slate-400">Employee</TableHead>
+                            <TableHead className="py-4 text-[10px] font-extrabold uppercase tracking-widest text-slate-400">Employee ID</TableHead>
                             <TableHead className="py-4 text-[10px] font-extrabold uppercase tracking-widest text-slate-400">Position</TableHead>
                             <TableHead className="py-4 text-[10px] font-extrabold uppercase tracking-widest text-slate-400">Department</TableHead>
-                            <TableHead className="py-4 text-[10px] font-extrabold uppercase tracking-widest text-slate-400">Start Date</TableHead>
-                            <TableHead className="text-right py-4 text-[10px] font-extrabold uppercase tracking-widest text-slate-400">Salary</TableHead>
+                            <TableHead className="py-4 text-[10px] font-extrabold uppercase tracking-widest text-slate-400">Manager</TableHead>
+                            <TableHead className="py-4 text-[10px] font-extrabold uppercase tracking-widest text-slate-400">Employment</TableHead>
+                            <TableHead className="py-4 text-[10px] font-extrabold uppercase tracking-widest text-slate-400">Joining</TableHead>
+                            <TableHead className="py-4 text-[10px] font-extrabold uppercase tracking-widest text-slate-400">Time Zone</TableHead>
+                            <TableHead className="text-right py-4 text-[10px] font-extrabold uppercase tracking-widest text-slate-400">Monthly Salary</TableHead>
                             <TableHead className="text-right pr-8 py-4 text-[10px] font-extrabold uppercase tracking-widest text-slate-400">Actions</TableHead>
                         </TableRow>
                     </TableHeader>
                     <TableBody>
                         {filteredEmployees.length === 0 ? (
                             <TableRow>
-                                <TableCell colSpan={6} className="border-0">
+                                <TableCell colSpan={10} className="border-0">
                                     <div className="p-20 flex flex-col items-center justify-center text-center">
                                         <div className="w-20 h-20 bg-slate-50 rounded-3xl flex items-center justify-center mb-6">
                                             <Users className="w-10 h-10 text-slate-200" />
@@ -180,6 +185,9 @@ export function EmployeeTable({ employees }: EmployeeTableProps) {
                                         </div>
                                     </TableCell>
                                     <TableCell>
+                                        <span className="text-xs font-bold text-slate-500 uppercase tracking-wide">{employee.employeeId}</span>
+                                    </TableCell>
+                                    <TableCell>
                                         <span className="text-sm font-medium text-slate-500">{employee.position}</span>
                                     </TableCell>
                                     <TableCell>
@@ -188,7 +196,16 @@ export function EmployeeTable({ employees }: EmployeeTableProps) {
                                         </Badge>
                                     </TableCell>
                                     <TableCell>
+                                        <span className="text-sm font-medium text-slate-500">{employee.reportingManager}</span>
+                                    </TableCell>
+                                    <TableCell>
+                                        <span className="text-xs font-bold text-slate-600">{employee.employmentType}</span>
+                                    </TableCell>
+                                    <TableCell>
                                         <span className="text-sm font-medium text-slate-500">{formatDate(employee.startDate)}</span>
+                                    </TableCell>
+                                    <TableCell>
+                                        <span className="text-xs font-medium text-slate-500">{employee.timeZone}</span>
                                     </TableCell>
                                     <TableCell className="text-right">
                                         <span className="font-bold text-slate-900">{formatCurrency(employee.salary)}</span>

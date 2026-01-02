@@ -23,8 +23,7 @@ const dashboardItems = [
 
 const teamItems = [
     { name: 'Team', href: '/dashboard/team', icon: Users },
-    { name: 'Roles', href: '/dashboard/roles', icon: Briefcase },
-    { name: 'Departments', href: '/dashboard/departments', icon: Building2 },
+    { name: 'Organization', href: '/dashboard/organization/departments', icon: Building2 },
     { name: 'Attendance', href: '/dashboard/attendance', icon: Calendar },
     { name: 'Payroll', href: '/dashboard/payroll', icon: Wallet },
 ]
@@ -159,4 +158,3 @@ export function Sidebar() {
         </aside>
     )
 }
-

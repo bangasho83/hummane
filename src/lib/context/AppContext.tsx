@@ -1,7 +1,7 @@
 'use client'
 
 import React, { createContext, useContext, useState, useEffect, type ReactNode } from 'react'
-import type { User, Company, Employee, Department, LeaveRecord, Role, Job, Applicant } from '@/types'
+import type { User, Company, Employee, Department, LeaveRecord, Role, Job, Applicant, LeaveType } from '@/types'
 import { dataStore } from '@/lib/store/dataStore'
 interface AppContextType {
     currentUser: User | null
@@ -9,6 +9,7 @@ interface AppContextType {
     employees: Employee[]
     departments: Department[]
     leaves: LeaveRecord[]
+    leaveTypes: LeaveType[]
     roles: Role[]
     jobs: Job[]
     applicants: Applicant[]
@@ -24,6 +25,9 @@ interface AppContextType {
     createDepartment: (departmentData: Omit<Department, 'id' | 'companyId' | 'createdAt'>) => Promise<Department>
     deleteDepartment: (id: string) => void
     refreshDepartments: () => void
+    createLeaveType: (leaveTypeData: Omit<LeaveType, 'id' | 'companyId' | 'createdAt' | 'updatedAt'>) => LeaveType
+    deleteLeaveType: (id: string) => void
+    refreshLeaveTypes: () => void
     addLeave: (leaveData: Omit<LeaveRecord, 'id' | 'companyId' | 'createdAt'>) => Promise<LeaveRecord>
     createRole: (roleData: Omit<Role, 'id' | 'companyId' | 'createdAt'>) => Promise<Role>
     updateRole: (id: string, roleData: Partial<Omit<Role, 'id' | 'companyId' | 'createdAt'>>) => Promise<Role | null>
@@ -47,6 +51,7 @@ export function AppProvider({ children }: { children: ReactNode }) {
     const [employees, setEmployees] = useState<Employee[]>([])
     const [departments, setDepartments] = useState<Department[]>([])
     const [leaves, setLeaves] = useState<LeaveRecord[]>([])
+    const [leaveTypes, setLeaveTypes] = useState<LeaveType[]>([])
     const [roles, setRoles] = useState<Role[]>([])
     const [jobs, setJobs] = useState<Job[]>([])
     const [applicants, setApplicants] = useState<Applicant[]>([])
@@ -64,6 +69,7 @@ export function AppProvider({ children }: { children: ReactNode }) {
                 setEmployees(dataStore.getEmployeesByCompanyId(company.id))
                 setDepartments(dataStore.getDepartmentsByCompanyId(company.id))
                 setLeaves(dataStore.getLeavesByCompanyId(company.id))
+                setLeaveTypes(dataStore.getLeaveTypesByCompanyId(company.id))
                 setRoles(dataStore.getRolesByCompanyId(company.id))
                 setJobs(dataStore.getJobsByCompanyId(company.id))
                 setApplicants(dataStore.getApplicantsByCompanyId(company.id))
@@ -89,6 +95,7 @@ export function AppProvider({ children }: { children: ReactNode }) {
                 setEmployees(dataStore.getEmployeesByCompanyId(company.id))
                 setDepartments(dataStore.getDepartmentsByCompanyId(company.id))
                 setLeaves(dataStore.getLeavesByCompanyId(company.id))
+                setLeaveTypes(dataStore.getLeaveTypesByCompanyId(company.id))
                 setRoles(dataStore.getRolesByCompanyId(company.id))
                 setJobs(dataStore.getJobsByCompanyId(company.id))
                 setApplicants(dataStore.getApplicantsByCompanyId(company.id))
@@ -257,6 +264,40 @@ export function AppProvider({ children }: { children: ReactNode }) {
             }
         } catch (error) {
             console.error('Refresh departments error:', error)
+        }
+    }
+
+    const createLeaveType = (leaveTypeData: Omit<LeaveType, 'id' | 'companyId' | 'createdAt' | 'updatedAt'>) => {
+        try {
+            if (!currentCompany) throw new Error('No company set up')
+            const leaveType = dataStore.createLeaveType(leaveTypeData, currentCompany.id)
+            setLeaveTypes(dataStore.getLeaveTypesByCompanyId(currentCompany.id))
+            return leaveType
+        } catch (error) {
+            console.error('Create leave type error:', error)
+            throw error
+        }
+    }
+
+    const deleteLeaveType = (id: string) => {
+        try {
+            dataStore.deleteLeaveType(id)
+            if (currentCompany) {
+                setLeaveTypes(dataStore.getLeaveTypesByCompanyId(currentCompany.id))
+            }
+        } catch (error) {
+            console.error('Delete leave type error:', error)
+            throw error
+        }
+    }
+
+    const refreshLeaveTypes = () => {
+        try {
+            if (currentCompany) {
+                setLeaveTypes(dataStore.getLeaveTypesByCompanyId(currentCompany.id))
+            }
+        } catch (error) {
+            console.error('Refresh leave types error:', error)
         }
     }
 
@@ -431,6 +472,7 @@ export function AppProvider({ children }: { children: ReactNode }) {
                 employees,
                 departments,
                 leaves,
+                leaveTypes,
                 roles,
                 jobs,
                 applicants,
@@ -446,6 +488,9 @@ export function AppProvider({ children }: { children: ReactNode }) {
                 createDepartment,
                 deleteDepartment,
                 refreshDepartments,
+                createLeaveType,
+                deleteLeaveType,
+                refreshLeaveTypes,
                 addLeave,
                 createRole,
                 updateRole,
