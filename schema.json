@@ -1,0 +1,278 @@
+{
+  "schemaVersion": "1.0",
+  "description": "Local storage data schema for the hummane HR system.",
+  "storage": {
+    "engine": "localStorage",
+    "key": "hrSystemData",
+    "description": "Primary client-side data store persisted in the browser."
+  },
+  "dataStore": {
+    "type": "object",
+    "description": "Root container stored under the localStorage key.",
+    "fields": {
+      "users": {
+        "type": "array",
+        "items": { "$ref": "User" },
+        "description": "All user accounts."
+      },
+      "companies": {
+        "type": "array",
+        "items": { "$ref": "Company" },
+        "description": "All companies (tenants)."
+      },
+      "employees": {
+        "type": "array",
+        "items": { "$ref": "Employee" },
+        "description": "All employees linked to companies."
+      },
+      "departments": {
+        "type": "array",
+        "items": { "$ref": "Department" },
+        "description": "Company departments."
+      },
+      "leaves": {
+        "type": "array",
+        "items": { "$ref": "LeaveRecord" },
+        "description": "Recorded leave entries."
+      },
+      "leaveTypes": {
+        "type": "array",
+        "items": { "$ref": "LeaveType" },
+        "description": "Leave policy definitions."
+      },
+      "holidays": {
+        "type": "array",
+        "items": { "$ref": "Holiday" },
+        "description": "Company-wide holidays."
+      },
+      "documents": {
+        "type": "array",
+        "items": { "$ref": "EmployeeDocument" },
+        "description": "Employee document attachments."
+      },
+      "roles": {
+        "type": "array",
+        "items": { "$ref": "Role" },
+        "description": "Role catalog used by jobs/employees."
+      },
+      "jobs": {
+        "type": "array",
+        "items": { "$ref": "Job" },
+        "description": "Job openings."
+      },
+      "applicants": {
+        "type": "array",
+        "items": { "$ref": "Applicant" },
+        "description": "Job applicants."
+      },
+      "currentUser": {
+        "type": "string|null",
+        "description": "User id of the active session."
+      }
+    }
+  },
+  "entities": {
+    "User": {
+      "description": "Login account stored locally with hashed password.",
+      "fields": {
+        "id": { "type": "string", "required": true, "description": "Unique id." },
+        "name": { "type": "string", "required": true, "description": "Full name." },
+        "email": { "type": "string", "required": true, "description": "Login email (sanitized)." },
+        "password": { "type": "string", "required": true, "description": "Hashed password." },
+        "companyId": { "type": "string", "required": false, "description": "Primary company id (optional)." },
+        "createdAt": { "type": "string", "required": true, "format": "iso-8601", "description": "Creation timestamp." }
+      }
+    },
+    "Company": {
+      "description": "Tenant/company profile.",
+      "fields": {
+        "id": { "type": "string", "required": true, "description": "Unique id." },
+        "name": { "type": "string", "required": true, "description": "Company name." },
+        "industry": { "type": "string", "required": true, "description": "Industry label." },
+        "size": { "type": "string", "required": true, "description": "Company size band." },
+        "currency": { "type": "string", "required": false, "description": "ISO currency code (e.g. USD)." },
+        "ownerId": { "type": "string", "required": true, "description": "User id of the owner." },
+        "createdAt": { "type": "string", "required": true, "format": "iso-8601", "description": "Creation timestamp." }
+      }
+    },
+    "Employee": {
+      "description": "Employee record.",
+      "fields": {
+        "id": { "type": "string", "required": true, "description": "Unique id." },
+        "employeeId": { "type": "string", "required": true, "description": "Human-friendly employee code." },
+        "companyId": { "type": "string", "required": true, "description": "Owning company id." },
+        "name": { "type": "string", "required": true, "description": "Full name." },
+        "email": { "type": "string", "required": true, "description": "Work email." },
+        "position": { "type": "string", "required": true, "description": "Position title (may be blank if unused)." },
+        "department": { "type": "string", "required": true, "description": "Department name." },
+        "roleId": { "type": "string", "required": false, "description": "Role id reference." },
+        "startDate": { "type": "string", "required": true, "format": "yyyy-mm-dd", "description": "Joining date." },
+        "employmentType": { "$ref": "EmploymentType", "required": true, "description": "Employment classification." },
+        "reportingManager": { "type": "string", "required": true, "description": "Manager name or 'Self'." },
+        "gender": { "$ref": "Gender", "required": true, "description": "Gender selection." },
+        "salary": { "type": "number", "required": true, "description": "Monthly salary." },
+        "createdAt": { "type": "string", "required": true, "format": "iso-8601", "description": "Creation timestamp." },
+        "updatedAt": { "type": "string", "required": false, "format": "iso-8601", "description": "Last update timestamp." }
+      }
+    },
+    "Department": {
+      "description": "Department configuration entry.",
+      "fields": {
+        "id": { "type": "string", "required": true, "description": "Unique id." },
+        "companyId": { "type": "string", "required": true, "description": "Owning company id." },
+        "name": { "type": "string", "required": true, "description": "Department name." },
+        "description": { "type": "string", "required": false, "description": "Optional description." },
+        "createdAt": { "type": "string", "required": true, "format": "iso-8601", "description": "Creation timestamp." }
+      }
+    },
+    "Role": {
+      "description": "Role used by jobs and employees.",
+      "fields": {
+        "id": { "type": "string", "required": true, "description": "Unique id." },
+        "companyId": { "type": "string", "required": true, "description": "Owning company id." },
+        "title": { "type": "string", "required": true, "description": "Role title." },
+        "description": { "type": "string", "required": true, "description": "Rich text HTML from editor." },
+        "createdAt": { "type": "string", "required": true, "format": "iso-8601", "description": "Creation timestamp." }
+      }
+    },
+    "Job": {
+      "description": "Job opening.",
+      "fields": {
+        "id": { "type": "string", "required": true, "description": "Unique id." },
+        "companyId": { "type": "string", "required": true, "description": "Owning company id." },
+        "title": { "type": "string", "required": true, "description": "Job title." },
+        "roleId": { "type": "string", "required": false, "description": "Role id reference." },
+        "department": { "type": "string", "required": false, "description": "Department name." },
+        "employmentType": { "$ref": "EmploymentType", "required": false, "description": "Employment classification." },
+        "location": { "$ref": "Location", "required": false, "description": "Job location." },
+        "salary": { "$ref": "SalaryRange", "required": true, "description": "Salary range metadata." },
+        "experience": { "type": "string", "required": true, "description": "Experience requirement." },
+        "status": { "$ref": "JobStatus", "required": true, "description": "Open/closed state." },
+        "createdAt": { "type": "string", "required": true, "format": "iso-8601", "description": "Creation timestamp." },
+        "updatedAt": { "type": "string", "required": false, "format": "iso-8601", "description": "Last update timestamp." }
+      }
+    },
+    "Applicant": {
+      "description": "Applicant profile for a job.",
+      "fields": {
+        "id": { "type": "string", "required": true, "description": "Unique id." },
+        "companyId": { "type": "string", "required": true, "description": "Owning company id." },
+        "jobId": { "type": "string", "required": false, "description": "Linked job id when available." },
+        "fullName": { "type": "string", "required": true, "description": "Applicant name." },
+        "email": { "type": "string", "required": true, "description": "Applicant email." },
+        "phone": { "type": "string", "required": true, "description": "Applicant phone." },
+        "positionApplied": { "type": "string", "required": true, "description": "Job title applied for." },
+        "yearsOfExperience": { "type": "number", "required": true, "description": "Years of experience." },
+        "currentSalary": { "type": "string", "required": true, "description": "Current salary text." },
+        "expectedSalary": { "type": "string", "required": true, "description": "Expected salary text." },
+        "noticePeriod": { "type": "string", "required": true, "description": "Notice period text." },
+        "resumeFile": { "$ref": "FileAttachment", "required": false, "description": "Uploaded resume file." },
+        "linkedinUrl": { "type": "string", "required": false, "description": "LinkedIn URL." },
+        "status": { "$ref": "ApplicantStatus", "required": true, "description": "Pipeline status." },
+        "appliedDate": { "type": "string", "required": true, "format": "yyyy-mm-dd", "description": "Application date." },
+        "createdAt": { "type": "string", "required": true, "format": "iso-8601", "description": "Creation timestamp." },
+        "updatedAt": { "type": "string", "required": false, "format": "iso-8601", "description": "Last update timestamp." }
+      }
+    },
+    "LeaveType": {
+      "description": "Leave policy definition.",
+      "fields": {
+        "id": { "type": "string", "required": true, "description": "Unique id." },
+        "companyId": { "type": "string", "required": true, "description": "Owning company id." },
+        "name": { "type": "string", "required": true, "description": "Leave name." },
+        "code": { "type": "string", "required": true, "description": "Short code." },
+        "unit": { "$ref": "LeaveUnit", "required": true, "description": "Day or Hour." },
+        "quota": { "type": "number", "required": true, "description": "Quota for the employment type." },
+        "employmentType": { "$ref": "EmploymentType", "required": true, "description": "Employment type for quota." },
+        "createdAt": { "type": "string", "required": true, "format": "iso-8601", "description": "Creation timestamp." },
+        "updatedAt": { "type": "string", "required": false, "format": "iso-8601", "description": "Last update timestamp." }
+      }
+    },
+    "LeaveRecord": {
+      "description": "Recorded leave entries. For multi-day leaves, multiple records are created.",
+      "fields": {
+        "id": { "type": "string", "required": true, "description": "Unique id." },
+        "companyId": { "type": "string", "required": true, "description": "Owning company id." },
+        "employeeId": { "type": "string", "required": true, "description": "Employee id reference." },
+        "date": { "type": "string", "required": true, "format": "yyyy-mm-dd", "description": "Leave date." },
+        "type": { "type": "string", "required": true, "description": "Leave display name." },
+        "leaveTypeId": { "type": "string", "required": false, "description": "Leave type id reference." },
+        "unit": { "$ref": "LeaveUnit", "required": false, "description": "Unit of measure." },
+        "amount": { "type": "number", "required": false, "description": "Leave amount for the entry." },
+        "note": { "type": "string", "required": false, "description": "Optional note from employee." },
+        "attachments": {
+          "type": "array",
+          "required": false,
+          "items": { "$ref": "FileAttachment" },
+          "description": "Optional evidence attachments."
+        },
+        "createdAt": { "type": "string", "required": true, "format": "iso-8601", "description": "Creation timestamp." }
+      }
+    },
+    "Holiday": {
+      "description": "Company holiday entry.",
+      "fields": {
+        "id": { "type": "string", "required": true, "description": "Unique id." },
+        "companyId": { "type": "string", "required": true, "description": "Owning company id." },
+        "date": { "type": "string", "required": true, "format": "yyyy-mm-dd", "description": "Holiday date." },
+        "name": { "type": "string", "required": true, "description": "Holiday name." },
+        "createdAt": { "type": "string", "required": true, "format": "iso-8601", "description": "Creation timestamp." }
+      }
+    },
+    "EmployeeDocument": {
+      "description": "Employee document stored as a data URL.",
+      "fields": {
+        "id": { "type": "string", "required": true, "description": "Unique id." },
+        "employeeId": { "type": "string", "required": true, "description": "Employee id reference." },
+        "name": { "type": "string", "required": true, "description": "Original file name." },
+        "type": { "$ref": "DocumentKind", "required": true, "description": "Document category." },
+        "dataUrl": { "type": "string", "required": true, "description": "Base64 data URL of the file." },
+        "uploadedAt": { "type": "string", "required": true, "format": "iso-8601", "description": "Upload timestamp." }
+      }
+    },
+    "SalaryRange": {
+      "description": "Salary metadata for jobs.",
+      "fields": {
+        "min": { "type": "number", "required": true, "description": "Minimum salary." },
+        "max": { "type": "number", "required": true, "description": "Maximum salary." },
+        "currency": { "type": "string", "required": true, "description": "ISO currency code." }
+      }
+    },
+    "Location": {
+      "description": "City and country pair for a job.",
+      "fields": {
+        "city": { "type": "string", "required": true, "description": "City name." },
+        "country": { "type": "string", "required": true, "description": "Country name." }
+      }
+    },
+    "FileAttachment": {
+      "description": "Generic file attachment stored as data URL.",
+      "fields": {
+        "name": { "type": "string", "required": true, "description": "File name." },
+        "type": { "type": "string", "required": true, "description": "MIME type." },
+        "dataUrl": { "type": "string", "required": true, "description": "Base64 data URL content." }
+      }
+    }
+  },
+  "enums": {
+    "EmploymentType": ["Permanent", "Probation", "Contract", "Intern", "Part-time"],
+    "Gender": ["Male", "Female", "Non-binary", "Prefer not to say"],
+    "LeaveUnit": ["Day", "Hour"],
+    "JobStatus": ["open", "closed"],
+    "ApplicantStatus": ["new", "screening", "interview", "offer", "rejected", "hired"],
+    "DocumentKind": [
+      "Government ID",
+      "CV (Curriculum Vitae)",
+      "Educational Documents",
+      "Experience Letter",
+      "Salary Slip",
+      "Personality Test Report",
+      "Contract"
+    ]
+  },
+  "notes": [
+    "All ids are generated locally and stored as strings.",
+    "Date fields use ISO-8601 timestamps unless marked yyyy-mm-dd.",
+    "Files are persisted as data URLs in localStorage."
+  ]
+}
