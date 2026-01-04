@@ -1,6 +1,6 @@
 import type { User, Company, Employee, Department, DataStoreSchema, LeaveRecord, Role, Job, Applicant, LeaveType, Holiday } from '@/types'
 import type { EmployeeDocument, DocumentKind } from '@/types'
-import { hashPassword, verifyPassword, sanitizeInput, sanitizeEmail } from '@/lib/security/crypto'
+import { hashPassword, verifyPassword, sanitizeInput, sanitizeEmail, sanitizeRichText } from '@/lib/security/crypto'
 
 /**
  * DataStore class for managing application data in localStorage
@@ -207,6 +207,7 @@ export class DataStore {
             // Sanitize inputs
             const sanitizedName = sanitizeInput(companyData.name)
             const sanitizedIndustry = sanitizeInput(companyData.industry)
+            const sanitizedCurrency = companyData.currency ? sanitizeInput(companyData.currency).toUpperCase() : undefined
 
             // Check if user already has a company
             if (data.companies.some(c => c.ownerId === ownerId)) {
@@ -218,6 +219,7 @@ export class DataStore {
                 name: sanitizedName,
                 industry: sanitizedIndustry,
                 size: companyData.size,
+                currency: sanitizedCurrency,
                 ownerId,
                 createdAt: new Date().toISOString()
             }
@@ -258,6 +260,11 @@ export class DataStore {
             if (companyData.name) sanitizedData.name = sanitizeInput(companyData.name)
             if (companyData.industry) sanitizedData.industry = sanitizeInput(companyData.industry)
             if (companyData.size) sanitizedData.size = companyData.size
+            if (companyData.currency !== undefined) {
+                sanitizedData.currency = companyData.currency
+                    ? sanitizeInput(companyData.currency).toUpperCase()
+                    : ''
+            }
 
             data.companies[index] = {
                 ...data.companies[index],
@@ -472,6 +479,59 @@ export class DataStore {
         }
     }
 
+    updateLeaveType(
+        id: string,
+        leaveTypeData: Partial<Omit<LeaveType, 'id' | 'companyId' | 'createdAt'>>
+    ): LeaveType | null {
+        try {
+            const data = this.getData()
+            if (!data.leaveTypes) return null
+
+            const index = data.leaveTypes.findIndex(lt => lt.id === id)
+            if (index === -1) {
+                throw new Error('Leave type not found')
+            }
+
+            const existing = data.leaveTypes[index]
+            const sanitizedName = leaveTypeData.name ? sanitizeInput(leaveTypeData.name) : existing.name
+            const sanitizedCode = leaveTypeData.code ? sanitizeInput(leaveTypeData.code) : existing.code
+
+            const duplicateCode = data.leaveTypes.some(
+                lt =>
+                    lt.companyId === existing.companyId &&
+                    lt.id !== id &&
+                    lt.code.toLowerCase() === sanitizedCode.toLowerCase()
+            )
+            if (duplicateCode) {
+                throw new Error('Leave code already exists')
+            }
+
+            const updated: LeaveType = {
+                ...existing,
+                ...leaveTypeData,
+                name: sanitizedName,
+                code: sanitizedCode,
+                updatedAt: new Date().toISOString()
+            }
+
+            data.leaveTypes[index] = updated
+
+            if (data.leaves && data.leaves.length) {
+                data.leaves = data.leaves.map(leave =>
+                    leave.leaveTypeId === id
+                        ? { ...leave, type: updated.name, unit: updated.unit }
+                        : leave
+                )
+            }
+
+            this.saveData(data)
+            return updated
+        } catch (error) {
+            console.error('Error updating leave type:', error)
+            throw error
+        }
+    }
+
     // Department operations
     createDepartment(departmentData: Omit<Department, 'id' | 'companyId' | 'createdAt'>, companyId: string): Department {
         try {
@@ -519,6 +579,57 @@ export class DataStore {
         }
     }
 
+    updateDepartment(
+        departmentId: string,
+        updates: Partial<Omit<Department, 'id' | 'companyId' | 'createdAt'>>
+    ): Department {
+        try {
+            const data = this.getData()
+            if (!data.departments) throw new Error('No departments found')
+
+            const index = data.departments.findIndex(dept => dept.id === departmentId)
+            if (index === -1) {
+                throw new Error('Department not found')
+            }
+
+            const existing = data.departments[index]
+            const sanitizedName = updates.name !== undefined ? sanitizeInput(updates.name) : existing.name
+            const sanitizedDescription = updates.description !== undefined
+                ? sanitizeInput(updates.description)
+                : existing.description
+
+            const duplicate = data.departments.some(
+                d =>
+                    d.companyId === existing.companyId &&
+                    d.id !== departmentId &&
+                    d.name.toLowerCase() === sanitizedName.toLowerCase()
+            )
+            if (duplicate) {
+                throw new Error('Department with this name already exists')
+            }
+
+            const updated: Department = {
+                ...existing,
+                name: sanitizedName,
+                description: sanitizedDescription
+            }
+            data.departments[index] = updated
+
+            // Update employees that reference the old department name
+            if (existing.name !== sanitizedName) {
+                data.employees = data.employees.map(emp =>
+                    emp.department === existing.name ? { ...emp, department: sanitizedName } : emp
+                )
+            }
+
+            this.saveData(data)
+            return updated
+        } catch (error) {
+            console.error('Error updating department:', error)
+            throw error
+        }
+    }
+
     deleteDepartment(departmentId: string): void {
         try {
             const data = this.getData()
@@ -552,6 +663,8 @@ export class DataStore {
                 leaveTypeId: leaveData.leaveTypeId,
                 unit: leaveData.unit,
                 amount: leaveData.amount,
+                note: leaveData.note,
+                attachments: leaveData.attachments,
                 createdAt: new Date().toISOString()
             }
 
@@ -675,7 +788,7 @@ export class DataStore {
 
             // Sanitize inputs
             const sanitizedTitle = sanitizeInput(roleData.title)
-            const sanitizedDescription = sanitizeInput(roleData.description)
+            const sanitizedDescription = sanitizeRichText(roleData.description)
 
             const role: Role = {
                 id: this.generateId(),
@@ -731,7 +844,7 @@ export class DataStore {
                 ...data.roles[roleIndex],
                 ...roleData,
                 title: roleData.title ? sanitizeInput(roleData.title) : data.roles[roleIndex].title,
-                description: roleData.description ? sanitizeInput(roleData.description) : data.roles[roleIndex].description
+                description: roleData.description ? sanitizeRichText(roleData.description) : data.roles[roleIndex].description
             }
 
             data.roles[roleIndex] = updatedRole
@@ -784,6 +897,14 @@ export class DataStore {
                 companyId,
                 title: sanitizeInput(jobData.title),
                 roleId: jobData.roleId,
+                department: jobData.department ? sanitizeInput(jobData.department) : undefined,
+                employmentType: jobData.employmentType,
+                location: jobData.location
+                    ? {
+                        city: sanitizeInput(jobData.location.city),
+                        country: sanitizeInput(jobData.location.country)
+                    }
+                    : undefined,
                 salary: jobData.salary,
                 experience: sanitizeInput(jobData.experience),
                 status: jobData.status || 'open',
@@ -814,6 +935,14 @@ export class DataStore {
                 ...data.jobs[jobIndex],
                 ...jobData,
                 title: jobData.title ? sanitizeInput(jobData.title) : data.jobs[jobIndex].title,
+                department: jobData.department ? sanitizeInput(jobData.department) : data.jobs[jobIndex].department,
+                employmentType: jobData.employmentType ?? data.jobs[jobIndex].employmentType,
+                location: jobData.location
+                    ? {
+                        city: sanitizeInput(jobData.location.city),
+                        country: sanitizeInput(jobData.location.country)
+                    }
+                    : data.jobs[jobIndex].location,
                 experience: jobData.experience ? sanitizeInput(jobData.experience) : data.jobs[jobIndex].experience,
                 updatedAt: new Date().toISOString()
             }
@@ -886,7 +1015,7 @@ export class DataStore {
                 currentSalary: sanitizeInput(applicantData.currentSalary),
                 expectedSalary: sanitizeInput(applicantData.expectedSalary),
                 noticePeriod: sanitizeInput(applicantData.noticePeriod),
-                resumeUrl: applicantData.resumeUrl,
+                resumeFile: applicantData.resumeFile,
                 linkedinUrl: applicantData.linkedinUrl,
                 status: applicantData.status || 'new',
                 appliedDate: applicantData.appliedDate,
@@ -923,6 +1052,7 @@ export class DataStore {
                 currentSalary: applicantData.currentSalary ? sanitizeInput(applicantData.currentSalary) : data.applicants[applicantIndex].currentSalary,
                 expectedSalary: applicantData.expectedSalary ? sanitizeInput(applicantData.expectedSalary) : data.applicants[applicantIndex].expectedSalary,
                 noticePeriod: applicantData.noticePeriod ? sanitizeInput(applicantData.noticePeriod) : data.applicants[applicantIndex].noticePeriod,
+                resumeFile: applicantData.resumeFile ?? data.applicants[applicantIndex].resumeFile,
                 updatedAt: new Date().toISOString()
             }
 

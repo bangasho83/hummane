@@ -81,11 +81,11 @@ export default function ApplicantDetailPage() {
                 <div className="flex items-center gap-4 mb-8">
                     <Button
                         variant="ghost"
+                        size="icon"
                         onClick={() => router.push('/dashboard/applicants')}
-                        className="rounded-xl"
+                        className="rounded-xl hover:bg-white hover:shadow-sm border border-transparent hover:border-slate-100"
                     >
-                        <ArrowLeft className="w-4 h-4 mr-2" />
-                        Back
+                        <ArrowLeft className="w-5 h-5" />
                     </Button>
                     <div className="flex-1">
                         <h1 className="text-3xl font-extrabold text-slate-900 tracking-tight">
@@ -307,11 +307,10 @@ export default function ApplicantDetailPage() {
                         <div className="bg-white rounded-3xl shadow-sm border border-slate-200 p-6">
                             <h2 className="text-sm font-extrabold text-slate-700 uppercase tracking-widest mb-6">Documents & Links</h2>
                             <div className="space-y-3">
-                                {applicant.resumeUrl ? (
+                                {applicant.resumeFile ? (
                                     <a
-                                        href={applicant.resumeUrl}
-                                        target="_blank"
-                                        rel="noopener noreferrer"
+                                        href={applicant.resumeFile.dataUrl}
+                                        download={applicant.resumeFile.name}
                                         className="flex items-center gap-3 p-4 rounded-xl border border-slate-200 hover:border-blue-300 hover:bg-blue-50/50 transition-colors"
                                     >
                                         <div className="w-10 h-10 rounded-xl bg-blue-50 flex items-center justify-center">

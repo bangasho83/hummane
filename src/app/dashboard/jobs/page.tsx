@@ -1,63 +1,59 @@
 'use client'
 
-import { useState } from 'react'
+import { useMemo, useState } from 'react'
 import { useRouter } from 'next/navigation'
 import { DashboardShell } from '@/components/layout/DashboardShell'
-import { Plus, Trash2, FileText, Search, DollarSign, Briefcase } from 'lucide-react'
+import { Plus, Trash2, FileText, Search, Briefcase, Pencil } from 'lucide-react'
 import { useApp } from '@/lib/context/AppContext'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
-import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from '@/components/ui/dialog'
 import { toast } from '@/components/ui/toast'
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table'
-import { Label } from '@/components/ui/label'
+import Link from 'next/link'
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select'
-import type { Job } from '@/types'
 
 export default function JobsPage() {
     const router = useRouter()
-    const { jobs, roles, createJob, deleteJob } = useApp()
-    const [isAddOpen, setIsAddOpen] = useState(false)
-    const [loading, setLoading] = useState(false)
+    const { jobs, roles, currentCompany, deleteJob } = useApp()
     const [searchTerm, setSearchTerm] = useState('')
-    const [newJob, setNewJob] = useState({
-        title: '',
-        roleId: '',
-        salary: { min: 0, max: 0, currency: 'USD' },
-        experience: '',
-        status: 'open' as 'open' | 'closed'
+
+    const [departmentFilter, setDepartmentFilter] = useState('all')
+    const [roleFilter, setRoleFilter] = useState('all')
+
+    const departments = useMemo(() => {
+        const unique = [...new Set(jobs.map(job => job.department).filter(Boolean) as string[])]
+        return unique.sort()
+    }, [jobs])
+
+    const rolesById = useMemo(() => {
+        const map = new Map<string, string>()
+        roles.forEach(role => map.set(role.id, role.title))
+        return map
+    }, [roles])
+
+    const roleOptions = useMemo(() => {
+        const ids = [...new Set(jobs.map(job => job.roleId).filter(Boolean) as string[])]
+        return ids
+            .map(id => ({ id, title: rolesById.get(id) || 'Unknown role' }))
+            .sort((a, b) => a.title.localeCompare(b.title))
+    }, [jobs, rolesById])
+
+    const filteredJobs = jobs.filter(job => {
+        const matchesSearch =
+            job.title.toLowerCase().includes(searchTerm.toLowerCase()) ||
+            job.experience?.toLowerCase().includes(searchTerm.toLowerCase())
+        const matchesDepartment = departmentFilter === 'all' || job.department === departmentFilter
+        const matchesRole = roleFilter === 'all' || job.roleId === roleFilter
+        return matchesSearch && matchesDepartment && matchesRole
     })
 
-    const filteredJobs = jobs.filter(job =>
-        job.title.toLowerCase().includes(searchTerm.toLowerCase()) ||
-        job.experience?.toLowerCase().includes(searchTerm.toLowerCase())
-    )
-
-    const handleAdd = async (e: React.FormEvent) => {
-        e.preventDefault()
-        if (!newJob.title || !newJob.experience) {
-            toast('Please fill in all required fields', 'error')
-            return
-        }
-
-        setLoading(true)
-        try {
-            await createJob(newJob)
-            setNewJob({
-                title: '',
-                roleId: '',
-                salary: { min: 0, max: 0, currency: 'USD' },
-                experience: '',
-                status: 'open'
-            })
-            setIsAddOpen(false)
-            toast('Job created successfully', 'success')
-        } catch (error) {
-            toast('Failed to create job', 'error')
-        } finally {
-            setLoading(false)
-        }
+    const clearFilters = () => {
+        setSearchTerm('')
+        setDepartmentFilter('all')
+        setRoleFilter('all')
     }
+
+    const hasActiveFilters = searchTerm || departmentFilter !== 'all' || roleFilter !== 'all'
 
     const handleDelete = (id: string, title: string) => {
         if (confirm(`Are you sure you want to delete ${title}?`)) {
@@ -78,168 +74,103 @@ export default function JobsPage() {
                 <div className="flex justify-between items-end mb-8">
                     <div>
                         <h1 className="text-3xl font-extrabold text-slate-900 tracking-tight">
-                            Open Jobs
+                            Jobs
                         </h1>
                         <p className="text-slate-500 font-medium">
                             Manage job openings and hiring opportunities.
                         </p>
                     </div>
+
+                    <Link href="/dashboard/jobs/new">
+                        <Button className="bg-blue-600 hover:bg-blue-700 text-white rounded-2xl font-bold shadow-lg shadow-blue-500/20 px-6 py-6 h-auto">
+                            <Plus className="w-5 h-5 mr-2" />
+                            Add Job
+                        </Button>
+                    </Link>
                 </div>
 
-                <div className="bg-white rounded-3xl shadow-sm border border-slate-200 overflow-hidden">
-                    <div className="p-6 border-b border-slate-100 flex justify-between items-center">
-                        <div className="relative flex-1 max-w-md">
-                            <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-slate-400" />
-                            <Input
-                                placeholder="Search jobs..."
-                                value={searchTerm}
-                                onChange={(e) => setSearchTerm(e.target.value)}
-                                className="pl-10 rounded-xl border-slate-200 h-11"
-                            />
+                <div className="bg-white rounded-3xl shadow-premium border border-slate-100 overflow-hidden">
+                    <div className="p-8 border-b border-slate-100">
+                        <div className="flex items-center gap-4 flex-wrap">
+                            <div className="flex-1 min-w-[300px]">
+                                <div className="relative group">
+                                    <Search className="absolute left-4 top-1/2 transform -translate-y-1/2 w-4 h-4 text-slate-400 group-focus-within:text-blue-500 transition-colors" />
+                                    <Input
+                                        placeholder="Search jobs..."
+                                        value={searchTerm}
+                                        onChange={(e) => setSearchTerm(e.target.value)}
+                                        className="pl-11 bg-slate-50 border-slate-100 h-12 rounded-2xl focus-visible:ring-blue-500/20"
+                                    />
+                                </div>
+                            </div>
+                            <div className="flex items-center gap-3">
+                                <Select value={departmentFilter} onValueChange={setDepartmentFilter}>
+                                    <SelectTrigger className="w-[180px] bg-slate-50 border-slate-100 h-12 rounded-2xl">
+                                        <SelectValue placeholder="Department" />
+                                    </SelectTrigger>
+                                    <SelectContent>
+                                        <SelectItem value="all">All Departments</SelectItem>
+                                        {departments.map((dept) => (
+                                            <SelectItem key={dept} value={dept}>{dept}</SelectItem>
+                                        ))}
+                                    </SelectContent>
+                                </Select>
+                                <Select value={roleFilter} onValueChange={setRoleFilter}>
+                                    <SelectTrigger className="w-[180px] bg-slate-50 border-slate-100 h-12 rounded-2xl">
+                                        <SelectValue placeholder="Role" />
+                                    </SelectTrigger>
+                                    <SelectContent>
+                                        <SelectItem value="all">All Roles</SelectItem>
+                                        {roleOptions.map((role) => (
+                                            <SelectItem key={role.id} value={role.id}>{role.title}</SelectItem>
+                                        ))}
+                                    </SelectContent>
+                                </Select>
+                                {hasActiveFilters && (
+                                    <Button
+                                        variant="ghost"
+                                        size="sm"
+                                        onClick={clearFilters}
+                                        className="text-slate-500 hover:text-red-500 font-bold"
+                                    >
+                                        Reset
+                                    </Button>
+                                )}
+                            </div>
                         </div>
-
-                        <Dialog open={isAddOpen} onOpenChange={setIsAddOpen}>
-                            <DialogTrigger asChild>
-                                <Button className="bg-blue-600 hover:bg-blue-700 text-white rounded-2xl font-bold shadow-lg shadow-blue-500/20 px-6 py-6 h-auto">
-                                    <Plus className="w-5 h-5 mr-2" />
-                                    Add Job
-                                </Button>
-                            </DialogTrigger>
-                        <DialogContent className="sm:max-w-md rounded-3xl bg-white border-slate-200">
-                            <DialogHeader>
-                                <DialogTitle className="text-2xl font-bold text-slate-900">Add New Job</DialogTitle>
-                            </DialogHeader>
-                            <form onSubmit={handleAdd} className="space-y-4 py-4">
-                                <div className="space-y-2">
-                                    <Label className="text-sm font-bold text-slate-700 px-1">Job Title *</Label>
-                                    <Input
-                                        placeholder="e.g. Senior Software Engineer"
-                                        className="rounded-xl border-slate-200 h-12"
-                                        value={newJob.title}
-                                        onChange={e => setNewJob({ ...newJob, title: e.target.value })}
-                                        required
-                                    />
-                                </div>
-                                <div className="space-y-2">
-                                    <Label className="text-sm font-bold text-slate-700 px-1">Role</Label>
-                                    <Select
-                                        value={newJob.roleId || "none"}
-                                        onValueChange={(value) => setNewJob({ ...newJob, roleId: value === "none" ? "" : value })}
-                                    >
-                                        <SelectTrigger className="rounded-xl border-slate-200 h-12">
-                                            <SelectValue placeholder="Select Role" />
-                                        </SelectTrigger>
-                                        <SelectContent>
-                                            <SelectItem value="none">None</SelectItem>
-                                            {roles.map((role) => (
-                                                <SelectItem key={role.id} value={role.id}>
-                                                    {role.title}
-                                                </SelectItem>
-                                            ))}
-                                        </SelectContent>
-                                    </Select>
-                                </div>
-                                <div className="grid grid-cols-2 gap-4">
-                                    <div className="space-y-2">
-                                        <Label className="text-sm font-bold text-slate-700 px-1">Min Salary</Label>
-                                        <Input
-                                            type="number"
-                                            placeholder="50000"
-                                            className="rounded-xl border-slate-200 h-12"
-                                            value={newJob.salary.min || ''}
-                                            onChange={e => setNewJob({
-                                                ...newJob,
-                                                salary: { ...newJob.salary, min: parseInt(e.target.value) || 0 }
-                                            })}
-                                        />
-                                    </div>
-                                    <div className="space-y-2">
-                                        <Label className="text-sm font-bold text-slate-700 px-1">Max Salary</Label>
-                                        <Input
-                                            type="number"
-                                            placeholder="80000"
-                                            className="rounded-xl border-slate-200 h-12"
-                                            value={newJob.salary.max || ''}
-                                            onChange={e => setNewJob({
-                                                ...newJob,
-                                                salary: { ...newJob.salary, max: parseInt(e.target.value) || 0 }
-                                            })}
-                                        />
-                                    </div>
-                                </div>
-                                <div className="space-y-2">
-                                    <Label className="text-sm font-bold text-slate-700 px-1">Experience Required *</Label>
-                                    <Input
-                                        placeholder="e.g. 3-5 years"
-                                        className="rounded-xl border-slate-200 h-12"
-                                        value={newJob.experience}
-                                        onChange={e => setNewJob({ ...newJob, experience: e.target.value })}
-                                        required
-                                    />
-                                </div>
-                                <div className="space-y-2">
-                                    <Label className="text-sm font-bold text-slate-700 px-1">Status</Label>
-                                    <Select
-                                        value={newJob.status}
-                                        onValueChange={(value: 'open' | 'closed') => setNewJob({ ...newJob, status: value })}
-                                    >
-                                        <SelectTrigger className="rounded-xl border-slate-200 h-12">
-                                            <SelectValue />
-                                        </SelectTrigger>
-                                        <SelectContent>
-                                            <SelectItem value="open">Open</SelectItem>
-                                            <SelectItem value="closed">Closed</SelectItem>
-                                        </SelectContent>
-                                    </Select>
-                                </div>
-                                <div className="flex gap-3 pt-4">
-                                    <Button
-                                        type="button"
-                                        variant="outline"
-                                        onClick={() => setIsAddOpen(false)}
-                                        className="flex-1 rounded-xl h-12 font-bold"
-                                    >
-                                        Cancel
-                                    </Button>
-                                    <Button
-                                        type="submit"
-                                        disabled={loading}
-                                        className="flex-1 bg-blue-600 hover:bg-blue-700 text-white rounded-xl h-12 font-bold"
-                                    >
-                                        {loading ? 'Creating...' : 'Create Job'}
-                                    </Button>
-                                </div>
-                            </form>
-                        </DialogContent>
-                    </Dialog>
                     </div>
 
                     {filteredJobs.length === 0 ? (
-                        <div className="text-center py-16">
-                            <div className="inline-flex items-center justify-center w-16 h-16 rounded-full bg-slate-100 mb-4">
-                                <FileText className="w-8 h-8 text-slate-400" />
+                        <div className="p-20 flex flex-col items-center justify-center text-center">
+                            <div className="w-20 h-20 bg-slate-50 rounded-3xl flex items-center justify-center mb-6">
+                                <FileText className="w-10 h-10 text-slate-200" />
                             </div>
-                            <h3 className="text-lg font-bold text-slate-900 mb-2">No jobs found</h3>
-                            <p className="text-slate-500 mb-6">
-                                {searchTerm ? 'Try adjusting your search' : 'Get started by adding your first job opening'}
+                            <h2 className="text-2xl font-bold text-slate-900 mb-2">
+                                {searchTerm ? 'No results found' : 'No Jobs Yet'}
+                            </h2>
+                            <p className="text-slate-500 font-medium max-w-sm">
+                                {searchTerm
+                                    ? `We couldn't find any jobs matching "${searchTerm}".`
+                                    : 'Add your first job opening to start hiring.'}
                             </p>
                         </div>
                     ) : (
                         <Table>
-                            <TableHeader>
-                                <TableRow className="bg-slate-50 hover:bg-slate-50">
-                                    <TableHead className="font-extrabold text-slate-700">Job Title</TableHead>
-                                    <TableHead className="font-extrabold text-slate-700">Role</TableHead>
-                                    <TableHead className="font-extrabold text-slate-700">Salary Range</TableHead>
-                                    <TableHead className="font-extrabold text-slate-700">Experience</TableHead>
-                                    <TableHead className="font-extrabold text-slate-700">Status</TableHead>
-                                    <TableHead className="font-extrabold text-slate-700 text-right">Actions</TableHead>
+                            <TableHeader className="bg-slate-50/50">
+                                <TableRow className="hover:bg-transparent border-slate-100">
+                                    <TableHead className="pl-8 py-4 text-[10px] font-extrabold uppercase tracking-widest text-slate-400">Job Title</TableHead>
+                                    <TableHead className="py-4 text-[10px] font-extrabold uppercase tracking-widest text-slate-400">Role</TableHead>
+                                    <TableHead className="py-4 text-[10px] font-extrabold uppercase tracking-widest text-slate-400">Department</TableHead>
+                                    <TableHead className="py-4 text-[10px] font-extrabold uppercase tracking-widest text-slate-400">Salary Range</TableHead>
+                                    <TableHead className="py-4 text-[10px] font-extrabold uppercase tracking-widest text-slate-400">Experience</TableHead>
+                                    <TableHead className="py-4 text-[10px] font-extrabold uppercase tracking-widest text-slate-400">Status</TableHead>
+                                    <TableHead className="text-right pr-8 py-4 text-[10px] font-extrabold uppercase tracking-widest text-slate-400">Actions</TableHead>
                                 </TableRow>
                             </TableHeader>
                             <TableBody>
                                 {filteredJobs.map((job) => (
-                                    <TableRow key={job.id} className="hover:bg-slate-50">
-                                        <TableCell className="font-bold text-slate-900">{job.title}</TableCell>
+                                    <TableRow key={job.id} className="hover:bg-slate-50/50 group border-slate-50">
+                                        <TableCell className="pl-8 py-5 font-bold text-slate-900">{job.title}</TableCell>
                                         <TableCell className="text-slate-600">
                                             <div className="flex items-center gap-2">
                                                 <Briefcase className="w-4 h-4 text-slate-400" />
@@ -247,13 +178,13 @@ export default function JobsPage() {
                                             </div>
                                         </TableCell>
                                         <TableCell className="text-slate-600">
-                                            <div className="flex items-center gap-2">
-                                                <DollarSign className="w-4 h-4 text-slate-400" />
-                                                {job.salary.min > 0 || job.salary.max > 0
-                                                    ? `${job.salary.currency} ${job.salary.min.toLocaleString()} - ${job.salary.max.toLocaleString()}`
-                                                    : 'Not specified'
-                                                }
-                                            </div>
+                                            {job.department || '—'}
+                                        </TableCell>
+                                        <TableCell className="text-slate-600">
+                                            {job.salary.min > 0 || job.salary.max > 0
+                                                ? `${currentCompany?.currency || ''} ${job.salary.min.toLocaleString()} - ${job.salary.max.toLocaleString()}`.trim()
+                                                : 'Not specified'
+                                            }
                                         </TableCell>
                                         <TableCell className="text-slate-600">{job.experience}</TableCell>
                                         <TableCell>
@@ -265,15 +196,25 @@ export default function JobsPage() {
                                                 {job.status === 'open' ? 'Open' : 'Closed'}
                                             </span>
                                         </TableCell>
-                                        <TableCell className="text-right">
-                                            <Button
-                                                variant="ghost"
-                                                size="sm"
-                                                onClick={() => handleDelete(job.id, job.title)}
-                                                className="text-red-600 hover:text-red-700 hover:bg-red-50 rounded-xl"
-                                            >
-                                                <Trash2 className="w-4 h-4" />
-                                            </Button>
+                                        <TableCell className="text-right pr-8">
+                                            <div className="flex items-center justify-end gap-2">
+                                                <Button
+                                                    variant="ghost"
+                                                    size="icon"
+                                                    onClick={() => router.push(`/dashboard/jobs/${job.id}/edit`)}
+                                                    className="h-10 w-10 text-slate-300 hover:text-blue-600 hover:bg-blue-50 rounded-xl transition-all"
+                                                >
+                                                    <Pencil className="w-5 h-5" />
+                                                </Button>
+                                                <Button
+                                                    variant="ghost"
+                                                    size="icon"
+                                                    onClick={() => handleDelete(job.id, job.title)}
+                                                    className="h-10 w-10 text-slate-300 hover:text-red-600 hover:bg-red-50 rounded-xl transition-all"
+                                                >
+                                                    <Trash2 className="w-5 h-5" />
+                                                </Button>
+                                            </div>
                                         </TableCell>
                                     </TableRow>
                                 ))}
@@ -285,4 +226,3 @@ export default function JobsPage() {
         </DashboardShell>
     )
 }
-

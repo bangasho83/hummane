@@ -14,7 +14,7 @@ interface EmployeeCardProps {
 }
 
 export function EmployeeCard({ employee, onEdit }: EmployeeCardProps) {
-    const { deleteEmployee } = useApp()
+    const { deleteEmployee, currentCompany } = useApp()
 
     const handleDelete = () => {
         if (confirm('Are you sure you want to delete this employee? This action cannot be undone.')) {
@@ -74,7 +74,7 @@ export function EmployeeCard({ employee, onEdit }: EmployeeCardProps) {
                             <DollarSign className="w-3 h-3" />
                             Salary
                         </div>
-                        <div className="text-sm font-medium text-slate-900">{formatCurrency(employee.salary)}</div>
+                        <div className="text-sm font-medium text-slate-900">{formatCurrency(employee.salary, currentCompany?.currency)}</div>
                     </div>
                     <div className="space-y-1">
                         <div className="flex items-center gap-2 text-xs text-slate-500">

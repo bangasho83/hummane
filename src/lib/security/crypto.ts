@@ -54,6 +54,23 @@ export function sanitizeInput(input: string): string {
 }
 
 /**
+ * Sanitize rich text HTML input while preserving formatting tags.
+ * Removes scripts, iframes, event handlers, and javascript: URLs.
+ */
+export function sanitizeRichText(input: string): string {
+    if (typeof input !== 'string') return ''
+
+    return input
+        .trim()
+        .replace(/<script[\s\S]*?>[\s\S]*?<\/script>/gi, '')
+        .replace(/<iframe[\s\S]*?>[\s\S]*?<\/iframe>/gi, '')
+        .replace(/\son\w+\s*=\s*(['"]).*?\1/gi, '')
+        .replace(/\son\w+\s*=\s*[^\s>]+/gi, '')
+        .replace(/javascript:/gi, '')
+        .slice(0, 50000)
+}
+
+/**
  * Sanitize email input
  * @param email - Email address
  * @returns Sanitized and normalized email
@@ -103,4 +120,3 @@ export function isSafeString(input: string): boolean {
     
     return !dangerousPatterns.some(pattern => pattern.test(input))
 }
-

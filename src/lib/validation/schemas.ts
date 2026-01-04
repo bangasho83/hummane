@@ -61,9 +61,10 @@ export const employeeSchema = z.object({
         .toLowerCase()
         .trim(),
     position: z.string()
-        .min(2, 'Position must be at least 2 characters')
         .max(100, 'Position must be less than 100 characters')
-        .trim(),
+        .trim()
+        .optional()
+        .or(z.literal('')),
     department: z.string()
         .min(1, 'Department is required')
         .trim(),

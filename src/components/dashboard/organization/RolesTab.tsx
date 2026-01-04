@@ -1,42 +1,33 @@
 'use client'
 
 import { useState } from 'react'
-import { Plus, Trash2, Briefcase, Search } from 'lucide-react'
+import { Plus, Trash2, Briefcase, Search, Pencil } from 'lucide-react'
 import { useApp } from '@/lib/context/AppContext'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
-import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from '@/components/ui/dialog'
 import { toast } from '@/components/ui/toast'
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table'
-import { Label } from '@/components/ui/label'
-import { Textarea } from '@/components/ui/textarea'
+import Link from 'next/link'
+import { useRouter } from 'next/navigation'
 
 export function RolesTab() {
-    const { roles, createRole, deleteRole, employees } = useApp()
-    const [isAddOpen, setIsAddOpen] = useState(false)
-    const [loading, setLoading] = useState(false)
+    const { roles, deleteRole, employees } = useApp()
+    const router = useRouter()
     const [searchTerm, setSearchTerm] = useState('')
-    const [newRole, setNewRole] = useState({ title: '', description: '' })
 
     const filteredRoles = roles.filter(role =>
         role.title.toLowerCase().includes(searchTerm.toLowerCase()) ||
         role.description?.toLowerCase().includes(searchTerm.toLowerCase())
     )
 
-    const handleAdd = async (e: React.FormEvent) => {
-        e.preventDefault()
-        if (!newRole.title) return
-
-        setLoading(true)
+    const renderDescriptionPreview = (desc?: string) => {
+        if (!desc) return 'No description provided.'
         try {
-            await createRole(newRole)
-            setNewRole({ title: '', description: '' })
-            setIsAddOpen(false)
-            toast('Role created successfully', 'success')
-        } catch (error) {
-            toast('Failed to create role', 'error')
-        } finally {
-            setLoading(false)
+            const parsed = JSON.parse(desc) as { blocks?: { type: string; data: any }[] }
+            const text = parsed.blocks?.map(b => b.data?.text || '').join(' ').trim()
+            return text || 'No description provided.'
+        } catch {
+            return desc.replace(/<[^>]+>/g, '').trim() || 'No description provided.'
         }
     }
 
@@ -65,48 +56,12 @@ export function RolesTab() {
                     </p>
                 </div>
 
-                <Dialog open={isAddOpen} onOpenChange={setIsAddOpen}>
-                    <DialogTrigger asChild>
-                        <Button className="bg-blue-600 hover:bg-blue-700 text-white rounded-2xl font-bold shadow-lg shadow-blue-500/20 px-6 py-6 h-auto">
-                            <Plus className="w-5 h-5 mr-2" />
-                            Add Role
-                        </Button>
-                    </DialogTrigger>
-                    <DialogContent className="sm:max-w-md rounded-3xl bg-white border-slate-200">
-                        <DialogHeader>
-                            <DialogTitle className="text-2xl font-bold text-slate-900">Add New Role</DialogTitle>
-                        </DialogHeader>
-                        <form onSubmit={handleAdd} className="space-y-4 py-4">
-                            <div className="space-y-2">
-                                <Label className="text-sm font-bold text-slate-700 px-1">Role Title</Label>
-                                <Input
-                                    placeholder="e.g. Senior Software Engineer"
-                                    className="rounded-xl border-slate-200 h-12"
-                                    value={newRole.title}
-                                    onChange={e => setNewRole({ ...newRole, title: e.target.value })}
-                                    required
-                                />
-                            </div>
-                            <div className="space-y-2">
-                                <Label className="text-sm font-bold text-slate-700 px-1">Job Description</Label>
-                                <Textarea
-                                    placeholder="Describe the responsibilities and requirements..."
-                                    className="rounded-xl border-slate-200 min-h-32"
-                                    value={newRole.description}
-                                    onChange={e => setNewRole({ ...newRole, description: e.target.value })}
-                                />
-                            </div>
-                            <div className="flex justify-end gap-3 mt-6">
-                                <Button type="button" variant="outline" onClick={() => setIsAddOpen(false)} className="rounded-xl font-bold border-slate-200 h-12 px-6">
-                                    Cancel
-                                </Button>
-                                <Button type="submit" className="bg-blue-600 hover:bg-blue-700 text-white rounded-xl font-bold h-12 px-6" disabled={loading}>
-                                    {loading ? 'Creating...' : 'Create Role'}
-                                </Button>
-                            </div>
-                        </form>
-                    </DialogContent>
-                </Dialog>
+                <Link href="/dashboard/organization/roles/new">
+                    <Button className="bg-blue-600 hover:bg-blue-700 text-white rounded-2xl font-bold shadow-lg shadow-blue-500/20 px-6 py-6 h-auto">
+                        <Plus className="w-5 h-5 mr-2" />
+                        Add Role
+                    </Button>
+                </Link>
             </div>
 
             <div className="bg-white rounded-3xl shadow-premium border border-slate-100 overflow-hidden">
@@ -159,7 +114,7 @@ export function RolesTab() {
                                         </TableCell>
                                         <TableCell>
                                             <p className="text-sm text-slate-500 font-medium max-w-md line-clamp-2">
-                                                {role.description || 'No description provided.'}
+                                                {renderDescriptionPreview(role.description)}
                                             </p>
                                         </TableCell>
                                         <TableCell className="text-center">
@@ -168,14 +123,24 @@ export function RolesTab() {
                                             </span>
                                         </TableCell>
                                         <TableCell className="text-right pr-8">
-                                            <Button
-                                                variant="ghost"
-                                                size="icon"
-                                                className="h-10 w-10 text-slate-300 hover:text-red-600 hover:bg-red-50 rounded-xl transition-all"
-                                                onClick={() => handleDelete(role.id, role.title)}
-                                            >
-                                                <Trash2 className="w-5 h-5" />
-                                            </Button>
+                                            <div className="flex items-center justify-end gap-2">
+                                                <Button
+                                                    variant="ghost"
+                                                    size="icon"
+                                                    className="h-10 w-10 text-slate-300 hover:text-blue-600 hover:bg-blue-50 rounded-xl transition-all"
+                                                    onClick={() => router.push(`/dashboard/organization/roles/${role.id}/edit`)}
+                                                >
+                                                    <Pencil className="w-5 h-5" />
+                                                </Button>
+                                                <Button
+                                                    variant="ghost"
+                                                    size="icon"
+                                                    className="h-10 w-10 text-slate-300 hover:text-red-600 hover:bg-red-50 rounded-xl transition-all"
+                                                    onClick={() => handleDelete(role.id, role.title)}
+                                                >
+                                                    <Trash2 className="w-5 h-5" />
+                                                </Button>
+                                            </div>
                                         </TableCell>
                                     </TableRow>
                                 )

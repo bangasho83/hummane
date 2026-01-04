@@ -1,11 +1,10 @@
 'use client'
 
-import { useEffect, useMemo, useState } from 'react'
+import { useEffect, useState } from 'react'
 import { Card, CardContent } from '@/components/ui/card'
 import { Label } from '@/components/ui/label'
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select'
 import { Input } from '@/components/ui/input'
-import { cn } from '@/lib/utils'
 import { Button } from '@/components/ui/button'
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from '@/components/ui/dialog'
 import { Plus, Calendar as CalendarIcon, X } from 'lucide-react'
@@ -13,17 +12,21 @@ import { useApp } from '@/lib/context/AppContext'
 
 const fallbackTimezones = ['UTC', 'EST (UTC -5)', 'PST (UTC -8)', 'CET (UTC +1)', 'IST (UTC +5:30)', 'PKT (UTC +5)']
 const currencies = ['USD', 'EUR', 'GBP', 'PKR', 'INR', 'AED']
-const workingHoursDefaultStart = 9
-const workingHoursDefaultEnd = 17
 
 export function GeneralTab() {
-    const { holidays, createHoliday, deleteHoliday } = useApp()
+    const { currentCompany, updateCompany, holidays, createHoliday, deleteHoliday } = useApp()
     const [timezones, setTimezones] = useState<string[]>(fallbackTimezones)
     const [timezone, setTimezone] = useState('UTC')
-    const [currency, setCurrency] = useState('USD')
-    const [hours, setHours] = useState<boolean[]>(() =>
-        Array.from({ length: 24 }, (_, i) => i >= workingHoursDefaultStart && i < workingHoursDefaultEnd)
-    )
+    const [currency, setCurrency] = useState('')
+    const [schedule, setSchedule] = useState(() => [
+        { day: 'Monday', open: true, start: '09:00', end: '17:00' },
+        { day: 'Tuesday', open: true, start: '09:00', end: '17:00' },
+        { day: 'Wednesday', open: true, start: '09:00', end: '17:00' },
+        { day: 'Thursday', open: true, start: '09:00', end: '17:00' },
+        { day: 'Friday', open: true, start: '09:00', end: '17:00' },
+        { day: 'Saturday', open: false, start: '09:00', end: '17:00' },
+        { day: 'Sunday', open: false, start: '09:00', end: '17:00' },
+    ])
     const [holidayRows, setHolidayRows] = useState([{ date: '', name: '' }])
     const [isHolidayDialogOpen, setIsHolidayDialogOpen] = useState(false)
 
@@ -45,16 +48,29 @@ export function GeneralTab() {
         load()
     }, [])
 
-    const selectedRange = useMemo(() => {
-        const selectedHours = hours.map((val, idx) => (val ? idx : null)).filter((v) => v !== null) as number[]
-        if (selectedHours.length === 0) return 'No hours selected'
-        const min = Math.min(...selectedHours)
-        const max = Math.max(...selectedHours) + 1
-        return `${min.toString().padStart(2, '0')}:00 - ${max.toString().padStart(2, '0')}:00`
-    }, [hours])
+    useEffect(() => {
+        if (currentCompany?.currency !== undefined) {
+            setCurrency(currentCompany.currency || '')
+        }
+    }, [currentCompany])
 
-    const toggleHour = (index: number) => {
-        setHours((prev) => prev.map((v, i) => (i === index ? !v : v)))
+    const handleCurrencyChange = (value: string) => {
+        setCurrency(value)
+        if (currentCompany) {
+            updateCompany(currentCompany.id, { currency: value })
+        }
+    }
+
+    const toggleDay = (day: string) => {
+        setSchedule((prev) =>
+            prev.map((row) => (row.day === day ? { ...row, open: !row.open } : row))
+        )
+    }
+
+    const updateHours = (day: string, field: 'start' | 'end', value: string) => {
+        setSchedule((prev) =>
+            prev.map((row) => (row.day === day ? { ...row, [field]: value } : row))
+        )
     }
 
     const addHolidayRows = () => {
@@ -124,7 +140,7 @@ export function GeneralTab() {
 
                         <div className="space-y-2">
                             <Label className="text-sm font-bold text-slate-700 px-1">Currency</Label>
-                            <Select value={currency} onValueChange={setCurrency}>
+                            <Select value={currency} onValueChange={handleCurrencyChange}>
                                 <SelectTrigger className="h-12 rounded-xl border-slate-200">
                                     <SelectValue placeholder="Select currency" />
                                 </SelectTrigger>
@@ -143,24 +159,51 @@ export function GeneralTab() {
                         <div className="flex items-center justify-between">
                             <div>
                                 <p className="text-sm font-bold text-slate-700 px-1">Working Hours</p>
-                                <p className="text-xs text-slate-500 font-medium">{selectedRange}</p>
+                                <p className="text-xs text-slate-500 font-medium">Choose working days and hours.</p>
                             </div>
                         </div>
-                        <div className="grid grid-cols-6 sm:grid-cols-8 lg:grid-cols-12 gap-2">
-                            {hours.map((selected, idx) => (
-                                <button
-                                    key={idx}
-                                    type="button"
-                                    onClick={() => toggleHour(idx)}
-                                    className={cn(
-                                        "rounded-xl border text-xs font-semibold px-2 py-3 transition-all",
-                                        selected
-                                            ? "bg-blue-600 text-white border-blue-500 shadow-blue-500/20 shadow-md"
-                                            : "bg-slate-50 text-slate-500 border-slate-200 hover:border-blue-200"
-                                    )}
+                        <div className="space-y-2">
+                            {schedule.map((row) => (
+                                <div
+                                    key={row.day}
+                                    className="flex flex-col sm:flex-row sm:items-center gap-3 p-3 rounded-2xl border border-slate-100 bg-slate-50/50"
                                 >
-                                    {idx.toString().padStart(2, '0')}:00
-                                </button>
+                                    <div className="w-28 font-bold text-slate-800">{row.day}</div>
+                                    <div className="flex items-center gap-3">
+                                        <button
+                                            type="button"
+                                            onClick={() => toggleDay(row.day)}
+                                            className={`relative inline-flex h-6 w-11 items-center rounded-full transition-colors ${row.open ? 'bg-blue-600' : 'bg-slate-300'
+                                                }`}
+                                            aria-pressed={row.open}
+                                        >
+                                            <span
+                                                className={`inline-block h-5 w-5 transform rounded-full bg-white shadow transition-transform ${row.open ? 'translate-x-5' : 'translate-x-1'
+                                                    }`}
+                                            />
+                                        </button>
+                                        <span className="text-sm font-semibold text-slate-700">
+                                            {row.open ? 'Open' : 'Closed'}
+                                        </span>
+                                    </div>
+                                    <div className="flex items-center gap-2 flex-1">
+                                        <Input
+                                            type="time"
+                                            value={row.start}
+                                            disabled={!row.open}
+                                            onChange={(e) => updateHours(row.day, 'start', e.target.value)}
+                                            className="h-11 rounded-xl border-slate-200 max-w-[140px]"
+                                        />
+                                        <span className="text-slate-400 font-semibold">—</span>
+                                        <Input
+                                            type="time"
+                                            value={row.end}
+                                            disabled={!row.open}
+                                            onChange={(e) => updateHours(row.day, 'end', e.target.value)}
+                                            className="h-11 rounded-xl border-slate-200 max-w-[140px]"
+                                        />
+                                    </div>
+                                </div>
                             ))}
                         </div>
                     </CardContent>

@@ -2,16 +2,16 @@
 
 import { useState } from 'react'
 import { DashboardShell } from '@/components/layout/DashboardShell'
-import { Wallet, Calculator, Search, DollarSign } from 'lucide-react'
+import { Calculator, Search, DollarSign } from 'lucide-react'
 import { useApp } from '@/lib/context/AppContext'
 import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
 import { Card, CardContent } from '@/components/ui/card'
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table'
-import { Badge } from '@/components/ui/badge'
+import { formatCurrency } from '@/lib/utils'
 
 export default function PayrollPage() {
-    const { employees } = useApp()
+    const { employees, currentCompany } = useApp()
     const [searchTerm, setSearchTerm] = useState('')
     const [config, setConfig] = useState({
         monthsPerYear: 12,
@@ -25,14 +25,7 @@ export default function PayrollPage() {
         emp.position.toLowerCase().includes(searchTerm.toLowerCase())
     )
 
-    const formatMoney = (amount: number) => {
-        return new Intl.NumberFormat('en-US', {
-            style: 'currency',
-            currency: 'USD',
-            minimumFractionDigits: 2,
-            maximumFractionDigits: 2
-        }).format(amount)
-    }
+    const formatMoney = (amount: number) => formatCurrency(amount, currentCompany?.currency)
 
     const calculateSalary = (annualSalary: number) => {
         const monthly = annualSalary / (config.monthsPerYear || 1)

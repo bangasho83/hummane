@@ -5,12 +5,14 @@ import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
 import { Users, Building2, DollarSign, UserPlus } from 'lucide-react'
 import type { Employee } from '@/types'
 import { formatCurrency } from '@/lib/utils'
+import { useApp } from '@/lib/context/AppContext'
 
 interface StatsCardsProps {
     employees: Employee[]
 }
 
 export function StatsCards({ employees }: StatsCardsProps) {
+    const { currentCompany } = useApp()
     const stats = useMemo(() => {
         const totalEmployees = employees.length
 
@@ -51,7 +53,7 @@ export function StatsCards({ employees }: StatsCardsProps) {
         },
         {
             title: 'Average Salary',
-            value: formatCurrency(stats.avgSalary),
+            value: formatCurrency(stats.avgSalary, currentCompany?.currency),
             icon: DollarSign,
             color: 'text-green-600',
             bgColor: 'bg-green-50',

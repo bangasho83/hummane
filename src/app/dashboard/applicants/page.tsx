@@ -26,7 +26,7 @@ const createEmptyApplicant = (
     currentSalary: '',
     expectedSalary: '',
     noticePeriod: '',
-    resumeUrl: '',
+    resumeFile: undefined,
     linkedinUrl: '',
     status: 'new' as Applicant['status'],
     appliedDate
@@ -129,7 +129,10 @@ export default function ApplicantsPage() {
                                 <DialogHeader>
                                     <DialogTitle className="text-2xl font-bold text-slate-900">Add New Applicant</DialogTitle>
                                 </DialogHeader>
-                                <form onSubmit={handleAdd} className="space-y-6 py-4">
+                                <form
+                                    onSubmit={handleAdd}
+                                    className="space-y-6 py-4"
+                                >
                                     <div>
                                         <h3 className="text-sm font-extrabold text-slate-700 uppercase tracking-widest mb-4">Personal Information</h3>
                                         <div className="space-y-4">
@@ -173,27 +176,17 @@ export default function ApplicantsPage() {
                                         <div className="space-y-4">
                                             <div className="space-y-2">
                                                 <Label className="text-sm font-bold text-slate-700 px-1">Position Applied *</Label>
-                                                <Input
-                                                    placeholder="e.g. CRM Automation Associate"
-                                                    className="rounded-xl border-slate-200 h-12"
-                                                    value={newApplicant.positionApplied}
-                                                    onChange={e => setNewApplicant({ ...newApplicant, positionApplied: e.target.value })}
-                                                    required
-                                                />
-                                            </div>
-                                            <div className="space-y-2">
-                                                <Label className="text-sm font-bold text-slate-700 px-1">Link to Job Opening</Label>
                                                 <Select
-                                                    value={newApplicant.jobId || "none"}
-                                                    onValueChange={(value) => setNewApplicant({ ...newApplicant, jobId: value === "none" ? "" : value })}
+                                                    value={newApplicant.positionApplied || "none"}
+                                                    onValueChange={(value) => setNewApplicant({ ...newApplicant, positionApplied: value === "none" ? "" : value })}
                                                 >
                                                     <SelectTrigger className="rounded-xl border-slate-200 h-12">
-                                                        <SelectValue placeholder="Select Job (Optional)" />
+                                                        <SelectValue placeholder="Select job title" />
                                                     </SelectTrigger>
                                                     <SelectContent>
-                                                        <SelectItem value="none">None</SelectItem>
+                                                        <SelectItem value="none">Select</SelectItem>
                                                         {jobs.map((job) => (
-                                                            <SelectItem key={job.id} value={job.id}>
+                                                            <SelectItem key={job.id} value={job.title}>
                                                                 {job.title}
                                                             </SelectItem>
                                                         ))}
@@ -246,13 +239,34 @@ export default function ApplicantsPage() {
                                         <h3 className="text-sm font-extrabold text-slate-700 uppercase tracking-widest mb-4">Documents & Links</h3>
                                         <div className="space-y-4">
                                             <div className="space-y-2">
-                                                <Label className="text-sm font-bold text-slate-700 px-1">Resume URL</Label>
+                                                <Label className="text-sm font-bold text-slate-700 px-1">Resume (PDF, Image, DOC)</Label>
                                                 <Input
-                                                    placeholder="https://example.com/resume.pdf"
+                                                    type="file"
+                                                    accept=".pdf,.doc,.docx,.png,.jpg,.jpeg"
                                                     className="rounded-xl border-slate-200 h-12"
-                                                    value={newApplicant.resumeUrl}
-                                                    onChange={e => setNewApplicant({ ...newApplicant, resumeUrl: e.target.value })}
+                                                    onChange={(e) => {
+                                                        const file = e.target.files?.[0]
+                                                        if (!file) {
+                                                            setNewApplicant({ ...newApplicant, resumeFile: undefined })
+                                                            return
+                                                        }
+                                                        const reader = new FileReader()
+                                                        reader.onload = () => {
+                                                            setNewApplicant({
+                                                                ...newApplicant,
+                                                                resumeFile: {
+                                                                    name: file.name,
+                                                                    type: file.type,
+                                                                    dataUrl: reader.result as string
+                                                                }
+                                                            })
+                                                        }
+                                                        reader.readAsDataURL(file)
+                                                    }}
                                                 />
+                                                {newApplicant.resumeFile && (
+                                                    <p className="text-xs text-slate-500 px-1">Selected: {newApplicant.resumeFile.name}</p>
+                                                )}
                                             </div>
                                             <div className="space-y-2">
                                                 <Label className="text-sm font-bold text-slate-700 px-1">LinkedIn Profile</Label>

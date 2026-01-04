@@ -1,7 +1,7 @@
 'use client'
 
 import { useState } from 'react'
-import { Plus, Trash2, Building2, Search } from 'lucide-react'
+import { Plus, Trash2, Building2, Search, Pencil } from 'lucide-react'
 import { useApp } from '@/lib/context/AppContext'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
@@ -9,13 +9,18 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from 
 import { toast } from '@/components/ui/toast'
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table'
 import { Badge } from '@/components/ui/badge'
+import type { Department } from '@/types'
 
 export function DepartmentsTab() {
-    const { departments, createDepartment, deleteDepartment, employees } = useApp()
+    const { departments, createDepartment, updateDepartment, deleteDepartment, employees } = useApp()
     const [isAddOpen, setIsAddOpen] = useState(false)
+    const [isEditOpen, setIsEditOpen] = useState(false)
     const [loading, setLoading] = useState(false)
+    const [editLoading, setEditLoading] = useState(false)
     const [searchTerm, setSearchTerm] = useState('')
     const [newDept, setNewDept] = useState({ name: '', description: '' })
+    const [editingDept, setEditingDept] = useState<Department | null>(null)
+    const [editForm, setEditForm] = useState({ name: '', description: '' })
 
     const filteredDepartments = departments.filter(dept =>
         dept.name.toLowerCase().includes(searchTerm.toLowerCase()) ||
@@ -36,6 +41,31 @@ export function DepartmentsTab() {
             toast('Failed to create department', 'error')
         } finally {
             setLoading(false)
+        }
+    }
+
+    const openEdit = (dept: Department) => {
+        setEditingDept(dept)
+        setEditForm({ name: dept.name, description: dept.description || '' })
+        setIsEditOpen(true)
+    }
+
+    const handleEdit = async (e: React.FormEvent) => {
+        e.preventDefault()
+        if (!editingDept) return
+
+        setEditLoading(true)
+        try {
+            await updateDepartment(editingDept.id, {
+                name: editForm.name,
+                description: editForm.description || undefined
+            })
+            toast('Department updated successfully', 'success')
+            setIsEditOpen(false)
+        } catch (error: any) {
+            toast(error?.message || 'Failed to update department', 'error')
+        } finally {
+            setEditLoading(false)
         }
     }
 
@@ -106,6 +136,52 @@ export function DepartmentsTab() {
                         </form>
                     </DialogContent>
                 </Dialog>
+
+                <Dialog
+                    open={isEditOpen}
+                    onOpenChange={(open) => {
+                        setIsEditOpen(open)
+                        if (!open) {
+                            setEditingDept(null)
+                            setEditForm({ name: '', description: '' })
+                        }
+                    }}
+                >
+                    <DialogContent className="sm:max-w-md rounded-3xl bg-white border-slate-200">
+                        <DialogHeader>
+                            <DialogTitle className="text-2xl font-bold text-slate-900">Edit Department</DialogTitle>
+                        </DialogHeader>
+                        <form onSubmit={handleEdit} className="space-y-4 py-4">
+                            <div className="space-y-2">
+                                <label className="text-sm font-bold text-slate-700 px-1">Department Name</label>
+                                <Input
+                                    placeholder="e.g. Engineering"
+                                    className="rounded-xl border-slate-200 h-12"
+                                    value={editForm.name}
+                                    onChange={e => setEditForm({ ...editForm, name: e.target.value })}
+                                    required
+                                />
+                            </div>
+                            <div className="space-y-2">
+                                <label className="text-sm font-bold text-slate-700 px-1">Description (Optional)</label>
+                                <Input
+                                    placeholder="e.g. Technology and software development"
+                                    className="rounded-xl border-slate-200 h-12"
+                                    value={editForm.description}
+                                    onChange={e => setEditForm({ ...editForm, description: e.target.value })}
+                                />
+                            </div>
+                            <div className="flex justify-end gap-3 mt-6">
+                                <Button type="button" variant="outline" onClick={() => setIsEditOpen(false)} className="rounded-xl font-bold border-slate-200 h-12 px-6">
+                                    Cancel
+                                </Button>
+                                <Button type="submit" className="bg-blue-600 hover:bg-blue-700 text-white rounded-xl font-bold h-12 px-6" disabled={editLoading}>
+                                    {editLoading ? 'Saving...' : 'Save Changes'}
+                                </Button>
+                            </div>
+                        </form>
+                    </DialogContent>
+                </Dialog>
             </div>
 
             <div className="bg-white rounded-3xl shadow-premium border border-slate-100 overflow-hidden">
@@ -167,14 +243,24 @@ export function DepartmentsTab() {
                                             </Badge>
                                         </TableCell>
                                         <TableCell className="text-right pr-8">
-                                            <Button
-                                                variant="ghost"
-                                                size="icon"
-                                                className="h-10 w-10 text-slate-300 hover:text-red-600 hover:bg-red-50 rounded-xl transition-all"
-                                                onClick={() => handleDelete(dept.id, dept.name)}
-                                            >
-                                                <Trash2 className="w-5 h-5" />
-                                            </Button>
+                                            <div className="flex items-center justify-end gap-2">
+                                                <Button
+                                                    variant="ghost"
+                                                    size="icon"
+                                                    className="h-10 w-10 text-slate-300 hover:text-blue-600 hover:bg-blue-50 rounded-xl transition-all"
+                                                    onClick={() => openEdit(dept)}
+                                                >
+                                                    <Pencil className="w-5 h-5" />
+                                                </Button>
+                                                <Button
+                                                    variant="ghost"
+                                                    size="icon"
+                                                    className="h-10 w-10 text-slate-300 hover:text-red-600 hover:bg-red-50 rounded-xl transition-all"
+                                                    onClick={() => handleDelete(dept.id, dept.name)}
+                                                >
+                                                    <Trash2 className="w-5 h-5" />
+                                                </Button>
+                                            </div>
                                         </TableCell>
                                     </TableRow>
                                 )

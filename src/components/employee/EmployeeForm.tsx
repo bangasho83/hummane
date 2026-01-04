@@ -37,7 +37,6 @@ export function EmployeeForm({
         employeeId: '',
         name: '',
         email: '',
-        position: '',
         department: '',
         roleId: '',
         startDate: '',
@@ -54,7 +53,6 @@ export function EmployeeForm({
                 employeeId: employee.employeeId,
                 name: employee.name,
                 email: employee.email,
-                position: employee.position,
                 department: employee.department,
                 roleId: employee.roleId || '',
                 startDate: employee.startDate,
@@ -68,7 +66,6 @@ export function EmployeeForm({
                 employeeId: '',
                 name: '',
                 email: '',
-                position: '',
                 department: '',
                 roleId: '',
                 startDate: '',
@@ -93,7 +90,7 @@ export function EmployeeForm({
                 employeeId: formData.employeeId,
                 name: formData.name,
                 email: formData.email,
-                position: formData.position,
+                position: employee?.position || '',
                 department: formData.department,
                 roleId: formData.roleId || undefined,
                 startDate: formData.startDate,
@@ -105,7 +102,10 @@ export function EmployeeForm({
 
             // Validate with Zod schema
             const validated = employeeSchema.parse(employeeData)
-            await onSubmit(validated)
+            await onSubmit({
+                ...validated,
+                position: validated.position || ''
+            })
         } catch (error) {
             if (error instanceof z.ZodError) {
                 const fieldErrors: Record<string, string> = {}
@@ -203,50 +203,34 @@ export function EmployeeForm({
                 )}
             </div>
 
-            <div className="grid grid-cols-2 gap-4">
-                <div className="space-y-2">
-                    <Label htmlFor="position">Position</Label>
-                    <Input
-                        id="position"
-                        placeholder="Software Engineer"
-                        value={formData.position}
-                        onChange={(e) => handleChange('position', e.target.value)}
-                        required
-                        className={errors.position ? 'border-red-500' : ''}
-                    />
-                    {errors.position && (
-                        <p className="text-xs text-red-600 mt-1">{errors.position}</p>
-                    )}
-                </div>
-                <div className="space-y-2">
-                    <Label htmlFor="department">Department</Label>
-                    {departments.length > 0 ? (
-                        <>
-                            <Select
-                                value={formData.department}
-                                onValueChange={(value) => handleChange('department', value)}
-                            >
-                                <SelectTrigger id="department" className={`rounded-xl border-slate-200 ${errors.department ? 'border-red-500' : ''}`}>
-                                    <SelectValue placeholder="Select Department" />
-                                </SelectTrigger>
-                                <SelectContent>
-                                    {departments.map((dept) => (
-                                        <SelectItem key={dept.id} value={dept.name}>
-                                            {dept.name}
-                                        </SelectItem>
-                                    ))}
-                                </SelectContent>
-                            </Select>
-                            {errors.department && (
-                                <p className="text-xs text-red-600 mt-1">{errors.department}</p>
-                            )}
-                        </>
-                    ) : (
-                        <div className="text-sm p-3 bg-slate-50 border border-dashed border-slate-200 rounded-xl text-slate-500">
-                            No departments found. <Link href="/dashboard/departments" className="text-blue-600 font-bold hover:underline">Create one</Link> first.
-                        </div>
-                    )}
-                </div>
+            <div className="space-y-2">
+                <Label htmlFor="department">Department</Label>
+                {departments.length > 0 ? (
+                    <>
+                        <Select
+                            value={formData.department}
+                            onValueChange={(value) => handleChange('department', value)}
+                        >
+                            <SelectTrigger id="department" className={`rounded-xl border-slate-200 ${errors.department ? 'border-red-500' : ''}`}>
+                                <SelectValue placeholder="Select Department" />
+                            </SelectTrigger>
+                            <SelectContent>
+                                {departments.map((dept) => (
+                                    <SelectItem key={dept.id} value={dept.name}>
+                                        {dept.name}
+                                    </SelectItem>
+                                ))}
+                            </SelectContent>
+                        </Select>
+                        {errors.department && (
+                            <p className="text-xs text-red-600 mt-1">{errors.department}</p>
+                        )}
+                    </>
+                ) : (
+                    <div className="text-sm p-3 bg-slate-50 border border-dashed border-slate-200 rounded-xl text-slate-500">
+                        No departments found. <Link href="/dashboard/departments" className="text-blue-600 font-bold hover:underline">Create one</Link> first.
+                    </div>
+                )}
             </div>
 
             <div className="space-y-2">

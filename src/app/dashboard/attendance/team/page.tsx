@@ -136,7 +136,12 @@ export default function AttendanceTeamPage() {
                                         </TableHead>
                                         {leaveTypesOrdered.map((lt) => (
                                             <TableHead key={lt.id} className="py-4 text-[10px] font-extrabold uppercase tracking-widest text-slate-400 text-center">
-                                                {lt.code}
+                                                <div className="flex flex-col items-center gap-1">
+                                                    <span>{lt.code}</span>
+                                                    <span className="text-[9px] font-semibold tracking-normal text-slate-300">
+                                                        Quota {lt.quota ?? 0}
+                                                    </span>
+                                                </div>
                                             </TableHead>
                                         ))}
                                         <TableHead className="py-4 text-[10px] font-extrabold uppercase tracking-widest text-slate-400 text-center pr-8">
@@ -158,13 +163,24 @@ export default function AttendanceTeamPage() {
                                                 <TableRow key={emp.id} className="hover:bg-slate-50/50 border-slate-50">
                                                     <TableCell className="pl-8 py-4">
                                                         <div className="font-bold text-slate-900">{emp.name}</div>
-                                                        <div className="text-[11px] text-slate-500 font-medium">{emp.department}</div>
+                                                        <div className="text-[11px] text-slate-500 font-medium">
+                                                            {emp.department}
+                                                        </div>
                                                     </TableCell>
                                                     {leaveTypesOrdered.map((lt) => {
                                                         const count = getCount(emp.id, lt.id, lt.name)
                                                         const matchesEmployment = lt.employmentType === emp.employmentType
+                                                        const quotaLimit = lt.quota ?? 0
+                                                        const isOverQuota = matchesEmployment && count > quotaLimit
                                                         return (
-                                                            <TableCell key={lt.id} className="text-center text-sm font-semibold text-slate-600">
+                                                            <TableCell
+                                                                key={lt.id}
+                                                                className={cn(
+                                                                    "text-center text-sm font-semibold",
+                                                                    matchesEmployment ? "text-slate-600" : "text-slate-400",
+                                                                    isOverQuota ? "text-red-600" : ""
+                                                                )}
+                                                            >
                                                                 {matchesEmployment ? (count || 0) : '—'}
                                                             </TableCell>
                                                         )

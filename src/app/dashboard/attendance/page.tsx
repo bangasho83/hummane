@@ -4,6 +4,7 @@ import { useEffect, useState } from 'react'
 import { DashboardShell } from '@/components/layout/DashboardShell'
 import { Calendar as CalendarIcon, Plus, Check } from 'lucide-react'
 import { useApp } from '@/lib/context/AppContext'
+import type { LeaveRecord } from '@/types'
 import { Button } from '@/components/ui/button'
 import { Card, CardContent } from '@/components/ui/card'
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table'
@@ -23,6 +24,8 @@ export default function AttendancePage() {
     const [endDate, setEndDate] = useState('')
     const [startTime, setStartTime] = useState('09:00')
     const [endTime, setEndTime] = useState('18:00')
+    const [note, setNote] = useState('')
+    const [attachment, setAttachment] = useState<File | null>(null)
     const [loading, setLoading] = useState(false)
     const [today, setToday] = useState<Date | null>(null)
     const [dates, setDates] = useState<Date[]>([])
@@ -120,19 +123,29 @@ export default function AttendancePage() {
             leaveEntries.push({ date: startDate, amount: diffHours })
         }
 
-        if (leaveType) {
-            const alreadyUsed = leaves
-                .filter(l => (l.leaveTypeId ? l.leaveTypeId === leaveType.id : l.type === leaveType.name) && l.employeeId === selectedEmployee)
-                .reduce((sum, l) => sum + (l.amount ?? 1), 0)
-            const quotaLimit = leaveType.quota ?? 0
-            if (alreadyUsed + requestedUnits > quotaLimit) {
-                toast(`Cannot register leave: ${leaveType.code} quota of ${quotaLimit} ${leaveType.unit}${quotaLimit !== 1 ? 's' : ''} reached`, 'error')
-                return
-            }
+        // Allow leave registration even if quota is exceeded or zero.
+
+        const buildPayload = async () => {
+            if (!attachment) return undefined
+            return await new Promise<LeaveRecord['attachments']>((resolve, reject) => {
+                const reader = new FileReader()
+                reader.onload = () => {
+                    resolve([
+                        {
+                            name: attachment.name,
+                            type: attachment.type,
+                            dataUrl: reader.result as string
+                        }
+                    ])
+                }
+                reader.onerror = () => reject(reader.error)
+                reader.readAsDataURL(attachment)
+            })
         }
 
         setLoading(true)
         try {
+            const attachments = await buildPayload()
             for (const entry of leaveEntries) {
                 await addLeave({
                     employeeId: selectedEmployee,
@@ -140,7 +153,9 @@ export default function AttendancePage() {
                     type: leaveType ? leaveType.name : selectedType || 'Personal',
                     leaveTypeId: leaveType?.id,
                     unit,
-                    amount: entry.amount
+                    amount: entry.amount,
+                    note: note.trim() || undefined,
+                    attachments
                 } as any)
             }
             toast('Leave registered successfully', 'success')
@@ -151,6 +166,8 @@ export default function AttendancePage() {
             setEndDate('')
             setStartTime('09:00')
             setEndTime('18:00')
+            setNote('')
+            setAttachment(null)
         } catch (error) {
             toast('Failed to register leave', 'error')
         } finally {
@@ -315,6 +332,26 @@ export default function AttendancePage() {
                                         </div>
                                     )
                                 })()}
+                                <div className="space-y-2">
+                                    <label className="text-sm font-bold text-slate-700 px-1">Note (Optional)</label>
+                                    <Input
+                                        placeholder="Add a quick note for this leave"
+                                        className="h-12 rounded-xl border-slate-200"
+                                        value={note}
+                                        onChange={(e) => setNote(e.target.value)}
+                                    />
+                                </div>
+                                <div className="space-y-2">
+                                    <label className="text-sm font-bold text-slate-700 px-1">Attachment (Optional)</label>
+                                    <Input
+                                        type="file"
+                                        className="h-12 rounded-xl border-slate-200"
+                                        onChange={(e) => setAttachment(e.target.files?.[0] || null)}
+                                    />
+                                    {attachment && (
+                                        <p className="text-xs text-slate-500 px-1">Selected: {attachment.name}</p>
+                                    )}
+                                </div>
                                 <div className="flex justify-end gap-3 mt-6">
                                     <Button type="button" variant="outline" onClick={() => setIsDialogOpen(false)} className="rounded-xl font-bold border-slate-200 h-12 px-6">
                                         Cancel

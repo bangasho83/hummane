@@ -21,7 +21,7 @@ interface EmployeeTableProps {
 
 export function EmployeeTable({ employees }: EmployeeTableProps) {
     const router = useRouter()
-    const { deleteEmployee } = useApp()
+    const { deleteEmployee, currentCompany } = useApp()
     const [searchTerm, setSearchTerm] = useState('')
     const [departmentFilter, setDepartmentFilter] = useState<string>('all')
     const [positionFilter, setPositionFilter] = useState<string>('all')
@@ -205,7 +205,7 @@ export function EmployeeTable({ employees }: EmployeeTableProps) {
                                         <span className="text-sm font-medium text-slate-500">{formatDate(employee.startDate)}</span>
                                     </TableCell>
                                     <TableCell className="text-right">
-                                        <span className="font-bold text-slate-900">{formatCurrency(employee.salary)}</span>
+                                        <span className="font-bold text-slate-900">{formatCurrency(employee.salary, currentCompany?.currency)}</span>
                                     </TableCell>
                                     <TableCell className="text-right pr-8">
                                         <div className="flex items-center justify-end gap-2">

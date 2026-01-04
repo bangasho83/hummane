@@ -15,6 +15,7 @@ import { Label } from '@/components/ui/label'
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select'
 import { Input } from '@/components/ui/input'
 import { toast } from '@/components/ui/toast'
+import { ArrowLeft } from 'lucide-react'
 
 const documentTypes = [
     'Government ID',
@@ -29,7 +30,7 @@ const documentTypes = [
 export default function EmployeeProfilePage() {
     const params = useParams()
     const router = useRouter()
-    const { employees, leaves, leaveTypes, getDocuments, addDocument, deleteDocument } = useApp()
+    const { employees, leaves, leaveTypes, getDocuments, addDocument, deleteDocument, currentCompany } = useApp()
     const [employee, setEmployee] = useState<Employee | null>(null)
     const [docs, setDocs] = useState<EmployeeDocument[]>([])
     const [activeTab, setActiveTab] = useState<'general' | 'attendance' | 'documents'>('general')
@@ -101,10 +102,20 @@ export default function EmployeeProfilePage() {
     return (
         <DashboardShell>
             <div className="animate-in fade-in duration-500 slide-in-from-bottom-4 space-y-6">
-                <div className="flex justify-between items-end">
-                    <div>
-                        <h1 className="text-3xl font-extrabold text-slate-900 tracking-tight">{employee.name}</h1>
-                        <p className="text-slate-500 font-medium">{employee.position} • {employee.department}</p>
+                <div className="flex items-center justify-between">
+                    <div className="flex items-center gap-4">
+                        <Button
+                            variant="ghost"
+                            size="icon"
+                            onClick={() => router.push('/dashboard/team')}
+                            className="rounded-xl hover:bg-white hover:shadow-sm border border-transparent hover:border-slate-100"
+                        >
+                            <ArrowLeft className="w-5 h-5" />
+                        </Button>
+                        <div>
+                            <h1 className="text-3xl font-extrabold text-slate-900 tracking-tight">{employee.name}</h1>
+                            <p className="text-slate-500 font-medium">{employee.position} • {employee.department}</p>
+                        </div>
                     </div>
                     <Badge className="bg-blue-50 text-blue-700 border-blue-100">{employee.employmentType}</Badge>
                 </div>
@@ -137,7 +148,7 @@ export default function EmployeeProfilePage() {
                             <InfoRow label="Employment Type" value={employee.employmentType} />
                             <InfoRow label="Joining Date" value={formatDate(employee.startDate)} />
                             <InfoRow label="Gender" value={employee.gender} />
-                            <InfoRow label="Monthly Salary" value={formatCurrency(employee.salary)} />
+                            <InfoRow label="Monthly Salary" value={formatCurrency(employee.salary, currentCompany?.currency)} />
                         </CardContent>
                     </Card>
                 )}

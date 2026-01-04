@@ -12,6 +12,7 @@ export interface Company {
     name: string
     industry: string
     size: string
+    currency?: string
     ownerId: string
     createdAt: string
 }
@@ -51,6 +52,12 @@ export interface LeaveRecord {
     leaveTypeId?: string
     unit?: 'Day' | 'Hour'
     amount?: number
+    note?: string
+    attachments?: {
+        name: string
+        type: string
+        dataUrl: string
+    }[]
     createdAt: string
 }
 
@@ -79,6 +86,12 @@ export interface Job {
     companyId: string
     title: string
     roleId?: string
+    department?: string
+    employmentType?: Employee['employmentType']
+    location?: {
+        city: string
+        country: string
+    }
     salary: {
         min: number
         max: number
@@ -102,7 +115,11 @@ export interface Applicant {
     currentSalary: string
     expectedSalary: string
     noticePeriod: string
-    resumeUrl?: string
+    resumeFile?: {
+        name: string
+        type: string
+        dataUrl: string
+    }
     linkedinUrl?: string
     status: 'new' | 'screening' | 'interview' | 'offer' | 'rejected' | 'hired'
     appliedDate: string

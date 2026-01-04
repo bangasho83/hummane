@@ -24,6 +24,7 @@ interface AppContextType {
     deleteEmployee: (id: string) => void
     refreshEmployees: () => void
     createDepartment: (departmentData: Omit<Department, 'id' | 'companyId' | 'createdAt'>) => Promise<Department>
+    updateDepartment: (id: string, departmentData: Partial<Omit<Department, 'id' | 'companyId' | 'createdAt'>>) => Promise<Department | null>
     deleteDepartment: (id: string) => void
     refreshDepartments: () => void
     createHoliday: (holiday: Omit<Holiday, 'id' | 'companyId' | 'createdAt'>) => Holiday
@@ -33,6 +34,7 @@ interface AppContextType {
     deleteDocument: (id: string) => void
     getDocuments: (employeeId: string) => EmployeeDocument[]
     createLeaveType: (leaveTypeData: Omit<LeaveType, 'id' | 'companyId' | 'createdAt' | 'updatedAt'>) => LeaveType
+    updateLeaveType: (id: string, leaveTypeData: Partial<Omit<LeaveType, 'id' | 'companyId' | 'createdAt' | 'updatedAt'>>) => LeaveType | null
     deleteLeaveType: (id: string) => void
     refreshLeaveTypes: () => void
     addLeave: (leaveData: Omit<LeaveRecord, 'id' | 'companyId' | 'createdAt'>) => Promise<LeaveRecord>
@@ -255,6 +257,23 @@ export function AppProvider({ children }: { children: ReactNode }) {
         }
     }
 
+    const updateDepartment = async (
+        id: string,
+        departmentData: Partial<Omit<Department, 'id' | 'companyId' | 'createdAt'>>
+    ): Promise<Department | null> => {
+        try {
+            const updated = dataStore.updateDepartment(id, departmentData)
+            if (currentCompany) {
+                setDepartments(dataStore.getDepartmentsByCompanyId(currentCompany.id))
+                setEmployees(dataStore.getEmployeesByCompanyId(currentCompany.id))
+            }
+            return updated
+        } catch (error) {
+            console.error('Update department error:', error)
+            throw error
+        }
+    }
+
     const deleteDepartment = (id: string) => {
         try {
             dataStore.deleteDepartment(id)
@@ -358,6 +377,23 @@ export function AppProvider({ children }: { children: ReactNode }) {
             }
         } catch (error) {
             console.error('Delete leave type error:', error)
+            throw error
+        }
+    }
+
+    const updateLeaveType = (
+        id: string,
+        leaveTypeData: Partial<Omit<LeaveType, 'id' | 'companyId' | 'createdAt' | 'updatedAt'>>
+    ) => {
+        try {
+            const updated = dataStore.updateLeaveType(id, leaveTypeData)
+            if (currentCompany) {
+                setLeaveTypes(dataStore.getLeaveTypesByCompanyId(currentCompany.id))
+                setLeaves(dataStore.getLeavesByCompanyId(currentCompany.id))
+            }
+            return updated
+        } catch (error) {
+            console.error('Update leave type error:', error)
             throw error
         }
     }
@@ -558,12 +594,14 @@ export function AppProvider({ children }: { children: ReactNode }) {
                 deleteEmployee,
                 refreshEmployees,
                 createDepartment,
+                updateDepartment,
                 deleteDepartment,
                 refreshDepartments,
                 createHoliday,
                 deleteHoliday,
                 refreshHolidays,
                 createLeaveType,
+                updateLeaveType,
                 deleteLeaveType,
                 refreshLeaveTypes,
                 addDocument,

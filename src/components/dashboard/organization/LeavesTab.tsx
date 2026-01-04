@@ -7,13 +7,15 @@ import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select'
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table'
-import { Plus, Trash2, Leaf, Search } from 'lucide-react'
+import { Plus, Trash2, Leaf, Search, Pencil } from 'lucide-react'
 import { toast } from '@/components/ui/toast'
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from '@/components/ui/dialog'
+import type { LeaveType } from '@/types'
 
 export function LeavesTab() {
-    const { leaveTypes, createLeaveType, deleteLeaveType } = useApp()
+    const { leaveTypes, createLeaveType, updateLeaveType, deleteLeaveType } = useApp()
     const [isAddOpen, setIsAddOpen] = useState(false)
+    const [isEditOpen, setIsEditOpen] = useState(false)
     const [searchTerm, setSearchTerm] = useState('')
     const [form, setForm] = useState({
         name: '',
@@ -22,7 +24,16 @@ export function LeavesTab() {
         quota: '0',
         employmentType: 'Permanent'
     })
+    const [editForm, setEditForm] = useState({
+        name: '',
+        code: '',
+        unit: 'Day',
+        quota: '0',
+        employmentType: 'Permanent'
+    })
+    const [editing, setEditing] = useState<LeaveType | null>(null)
     const [loading, setLoading] = useState(false)
+    const [editLoading, setEditLoading] = useState(false)
 
     const filtered = useMemo(() => {
         return leaveTypes.filter(lt =>
@@ -55,6 +66,39 @@ export function LeavesTab() {
             toast(error?.message || 'Failed to add leave type', 'error')
         } finally {
             setLoading(false)
+        }
+    }
+
+    const openEdit = (lt: LeaveType) => {
+        setEditing(lt)
+        setEditForm({
+            name: lt.name,
+            code: lt.code,
+            unit: lt.unit,
+            quota: String(lt.quota),
+            employmentType: lt.employmentType
+        })
+        setIsEditOpen(true)
+    }
+
+    const handleEdit = (e: React.FormEvent) => {
+        e.preventDefault()
+        if (!editing) return
+        setEditLoading(true)
+        try {
+            updateLeaveType(editing.id, {
+                name: editForm.name,
+                code: editForm.code,
+                unit: editForm.unit as 'Day' | 'Hour',
+                quota: parseFloat(editForm.quota) || 0,
+                employmentType: editForm.employmentType as any
+            })
+            toast('Leave type updated', 'success')
+            setIsEditOpen(false)
+        } catch (error: any) {
+            toast(error?.message || 'Failed to update leave type', 'error')
+        } finally {
+            setEditLoading(false)
         }
     }
 
@@ -171,6 +215,100 @@ export function LeavesTab() {
                         </form>
                     </DialogContent>
                 </Dialog>
+
+                <Dialog
+                    open={isEditOpen}
+                    onOpenChange={(open) => {
+                        setIsEditOpen(open)
+                        if (!open) {
+                            setEditing(null)
+                        }
+                    }}
+                >
+                    <DialogContent className="sm:max-w-xl rounded-3xl bg-white border-slate-200">
+                        <DialogHeader>
+                            <DialogTitle className="text-2xl font-bold text-slate-900">Edit Leave Type</DialogTitle>
+                        </DialogHeader>
+                        <form onSubmit={handleEdit} className="space-y-4 py-4">
+                            <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                                <div className="space-y-2">
+                                    <Label className="text-sm font-bold text-slate-700 px-1">Leave Name</Label>
+                                    <Input
+                                        className="rounded-xl border-slate-200 h-12"
+                                        value={editForm.name}
+                                        onChange={(e) => setEditForm(prev => ({ ...prev, name: e.target.value }))}
+                                        required
+                                    />
+                                </div>
+                                <div className="space-y-2">
+                                    <Label className="text-sm font-bold text-slate-700 px-1">Leave Code</Label>
+                                    <Input
+                                        className="rounded-xl border-slate-200 h-12 uppercase"
+                                        value={editForm.code}
+                                        onChange={(e) => setEditForm(prev => ({ ...prev, code: e.target.value.toUpperCase() }))}
+                                        required
+                                    />
+                                </div>
+                            </div>
+                            <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                                <div className="space-y-2">
+                                    <Label className="text-sm font-bold text-slate-700 px-1">Units of Measure</Label>
+                                    <Select
+                                        value={editForm.unit}
+                                        onValueChange={(value) => setEditForm(prev => ({ ...prev, unit: value }))}
+                                    >
+                                        <SelectTrigger className="rounded-xl border-slate-200 h-12">
+                                            <SelectValue placeholder="Select unit" />
+                                        </SelectTrigger>
+                                        <SelectContent>
+                                            <SelectItem value="Day">Day</SelectItem>
+                                            <SelectItem value="Hour">Hour</SelectItem>
+                                        </SelectContent>
+                                    </Select>
+                                </div>
+                            </div>
+                            <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                                <div className="space-y-2">
+                                    <Label className="text-sm font-bold text-slate-700 px-1">Employment Type</Label>
+                                    <Select
+                                        value={editForm.employmentType}
+                                        onValueChange={(value) => setEditForm(prev => ({ ...prev, employmentType: value }))}
+                                    >
+                                        <SelectTrigger className="rounded-xl border-slate-200 h-12">
+                                            <SelectValue placeholder="Select employment type" />
+                                        </SelectTrigger>
+                                        <SelectContent>
+                                            <SelectItem value="Permanent">Permanent</SelectItem>
+                                            <SelectItem value="Probation">Probation</SelectItem>
+                                            <SelectItem value="Contract">Contract</SelectItem>
+                                            <SelectItem value="Intern">Intern</SelectItem>
+                                            <SelectItem value="Part-time">Part-time</SelectItem>
+                                        </SelectContent>
+                                    </Select>
+                                </div>
+                                <div className="space-y-2">
+                                    <Label className="text-sm font-bold text-slate-700 px-1">Quota (per year)</Label>
+                                    <Input
+                                        type="number"
+                                        min="0"
+                                        className="rounded-xl border-slate-200 h-12"
+                                        value={editForm.quota}
+                                        onChange={(e) => setEditForm(prev => ({ ...prev, quota: e.target.value }))}
+                                        required
+                                    />
+                                </div>
+                            </div>
+                            <div className="flex justify-end gap-3 mt-6">
+                                <Button type="button" variant="outline" onClick={() => setIsEditOpen(false)} className="rounded-xl font-bold border-slate-200 h-12 px-6">
+                                    Cancel
+                                </Button>
+                                <Button type="submit" className="bg-blue-600 hover:bg-blue-700 text-white rounded-xl font-bold h-12 px-6" disabled={editLoading}>
+                                    {editLoading ? 'Saving...' : 'Save Changes'}
+                                </Button>
+                            </div>
+                        </form>
+                    </DialogContent>
+                </Dialog>
             </div>
 
             <div className="bg-white rounded-3xl shadow-premium border border-slate-100 overflow-hidden">
@@ -200,7 +338,7 @@ export function LeavesTab() {
                     <TableBody>
                         {filtered.length === 0 ? (
                             <TableRow>
-                                <TableCell colSpan={5} className="p-20 text-center text-slate-500">
+                                <TableCell colSpan={6} className="p-20 text-center text-slate-500">
                                     No leave types yet. Add your first one to get started.
                                 </TableCell>
                             </TableRow>
@@ -231,14 +369,24 @@ export function LeavesTab() {
                                         <span className="text-sm font-medium text-slate-500">{lt.quota}</span>
                                     </TableCell>
                                     <TableCell className="text-right pr-8">
-                                        <Button
-                                            variant="ghost"
-                                            size="icon"
-                                            className="h-10 w-10 text-slate-300 hover:text-red-600 hover:bg-red-50 rounded-xl transition-all"
-                                            onClick={() => handleDelete(lt.id)}
-                                        >
-                                            <Trash2 className="w-5 h-5" />
-                                        </Button>
+                                        <div className="flex items-center justify-end gap-2">
+                                            <Button
+                                                variant="ghost"
+                                                size="icon"
+                                                className="h-10 w-10 text-slate-300 hover:text-blue-600 hover:bg-blue-50 rounded-xl transition-all"
+                                                onClick={() => openEdit(lt)}
+                                            >
+                                                <Pencil className="w-5 h-5" />
+                                            </Button>
+                                            <Button
+                                                variant="ghost"
+                                                size="icon"
+                                                className="h-10 w-10 text-slate-300 hover:text-red-600 hover:bg-red-50 rounded-xl transition-all"
+                                                onClick={() => handleDelete(lt.id)}
+                                            >
+                                                <Trash2 className="w-5 h-5" />
+                                            </Button>
+                                        </div>
                                     </TableCell>
                                 </TableRow>
                             ))

@@ -1,0 +1,253 @@
+'use client'
+
+import { useEffect, useState } from 'react'
+import { useRouter } from 'next/navigation'
+import { Button } from '@/components/ui/button'
+import { Card, CardContent } from '@/components/ui/card'
+import { Input } from '@/components/ui/input'
+import { Label } from '@/components/ui/label'
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select'
+import { useApp } from '@/lib/context/AppContext'
+import type { Job } from '@/types'
+import { toast } from '@/components/ui/toast'
+
+type JobFormProps = {
+    mode: 'create' | 'edit'
+    job?: Job | null
+}
+
+export function JobForm({ mode, job }: JobFormProps) {
+    const { roles, departments, currentCompany, createJob, updateJob } = useApp()
+    const router = useRouter()
+    const [loading, setLoading] = useState(false)
+    const [form, setForm] = useState({
+        title: job?.title || '',
+        roleId: job?.roleId || '',
+        department: job?.department || '',
+        employmentType: (job?.employmentType || 'Permanent') as Job['employmentType'],
+        location: {
+            city: job?.location?.city || '',
+            country: job?.location?.country || ''
+        },
+        salary: job?.salary || { min: 0, max: 0, currency: currentCompany?.currency || 'USD' },
+        experience: job?.experience || '',
+        status: (job?.status || 'open') as 'open' | 'closed'
+    })
+
+    useEffect(() => {
+        if (job) {
+            setForm({
+                title: job.title,
+                roleId: job.roleId || '',
+                department: job.department || '',
+                employmentType: (job.employmentType || 'Permanent') as Job['employmentType'],
+                location: {
+                    city: job.location?.city || '',
+                    country: job.location?.country || ''
+                },
+                salary: job.salary || { min: 0, max: 0, currency: currentCompany?.currency || 'USD' },
+                experience: job.experience,
+                status: job.status
+            })
+        }
+    }, [job, currentCompany?.currency])
+
+    const handleSubmit = async (e: React.FormEvent) => {
+        e.preventDefault()
+        if (!form.title || !form.experience) {
+            toast('Please fill in all required fields', 'error')
+            return
+        }
+
+        setLoading(true)
+        try {
+            if (mode === 'create') {
+                await createJob(form)
+                toast('Job created successfully', 'success')
+            } else if (job) {
+                await updateJob(job.id, form)
+                toast('Job updated successfully', 'success')
+            }
+            router.push('/dashboard/jobs')
+        } catch (error) {
+            toast('Failed to save job', 'error')
+        } finally {
+            setLoading(false)
+        }
+    }
+
+    return (
+        <form onSubmit={handleSubmit} className="space-y-6">
+            <Card className="border border-slate-100 shadow-premium rounded-3xl bg-white">
+                <CardContent className="p-6 space-y-4">
+                    <div className="space-y-2">
+                        <Label className="text-sm font-bold text-slate-700 px-1">Job Title *</Label>
+                        <Input
+                            placeholder="e.g. Senior Software Engineer"
+                            className="rounded-xl border-slate-200 h-12"
+                            value={form.title}
+                            onChange={(e) => setForm({ ...form, title: e.target.value })}
+                            required
+                        />
+                    </div>
+                    <div className="space-y-2">
+                        <Label className="text-sm font-bold text-slate-700 px-1">Role</Label>
+                        <Select
+                            value={form.roleId || 'none'}
+                            onValueChange={(value) => setForm({ ...form, roleId: value === 'none' ? '' : value })}
+                        >
+                            <SelectTrigger className="rounded-xl border-slate-200 h-12">
+                                <SelectValue placeholder="Select Role" />
+                            </SelectTrigger>
+                            <SelectContent>
+                                <SelectItem value="none">None</SelectItem>
+                                {roles.map((role) => (
+                                    <SelectItem key={role.id} value={role.id}>
+                                        {role.title}
+                                    </SelectItem>
+                                ))}
+                            </SelectContent>
+                        </Select>
+                    </div>
+                    <div className="space-y-2">
+                        <Label className="text-sm font-bold text-slate-700 px-1">Department</Label>
+                        {departments.length > 0 ? (
+                            <Select
+                                value={form.department || 'none'}
+                                onValueChange={(value) => setForm({ ...form, department: value === 'none' ? '' : value })}
+                            >
+                                <SelectTrigger className="rounded-xl border-slate-200 h-12">
+                                    <SelectValue placeholder="Select Department" />
+                                </SelectTrigger>
+                                <SelectContent>
+                                    <SelectItem value="none">None</SelectItem>
+                                    {departments.map((dept) => (
+                                        <SelectItem key={dept.id} value={dept.name}>
+                                            {dept.name}
+                                        </SelectItem>
+                                    ))}
+                                </SelectContent>
+                            </Select>
+                        ) : (
+                            <div className="text-sm p-3 bg-slate-50 border border-dashed border-slate-200 rounded-xl text-slate-500">
+                                No departments found.
+                            </div>
+                        )}
+                    </div>
+                    <div className="space-y-2">
+                        <Label className="text-sm font-bold text-slate-700 px-1">Employment Type</Label>
+                        <Select
+                            value={form.employmentType}
+                            onValueChange={(value) => setForm({ ...form, employmentType: value as any })}
+                        >
+                            <SelectTrigger className="rounded-xl border-slate-200 h-12">
+                                <SelectValue placeholder="Select employment type" />
+                            </SelectTrigger>
+                            <SelectContent>
+                                <SelectItem value="Permanent">Permanent</SelectItem>
+                                <SelectItem value="Probation">Probation</SelectItem>
+                                <SelectItem value="Contract">Contract</SelectItem>
+                                <SelectItem value="Intern">Intern</SelectItem>
+                                <SelectItem value="Part-time">Part-time</SelectItem>
+                            </SelectContent>
+                        </Select>
+                    </div>
+                    <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                        <div className="space-y-2">
+                            <Label className="text-sm font-bold text-slate-700 px-1">City</Label>
+                            <Input
+                                placeholder="e.g. Dubai"
+                                className="rounded-xl border-slate-200 h-12"
+                                value={form.location.city}
+                                onChange={(e) => setForm({
+                                    ...form,
+                                    location: { ...form.location, city: e.target.value }
+                                })}
+                            />
+                        </div>
+                        <div className="space-y-2">
+                            <Label className="text-sm font-bold text-slate-700 px-1">Country</Label>
+                            <Input
+                                placeholder="e.g. UAE"
+                                className="rounded-xl border-slate-200 h-12"
+                                value={form.location.country}
+                                onChange={(e) => setForm({
+                                    ...form,
+                                    location: { ...form.location, country: e.target.value }
+                                })}
+                            />
+                        </div>
+                    </div>
+                    <div className="grid grid-cols-2 gap-4">
+                        <div className="space-y-2">
+                            <Label className="text-sm font-bold text-slate-700 px-1">Min Salary</Label>
+                            <Input
+                                type="number"
+                                placeholder="50000"
+                                className="rounded-xl border-slate-200 h-12"
+                                value={form.salary.min || ''}
+                                onChange={(e) => setForm({
+                                    ...form,
+                                    salary: { ...form.salary, min: parseInt(e.target.value) || 0 }
+                                })}
+                            />
+                        </div>
+                        <div className="space-y-2">
+                            <Label className="text-sm font-bold text-slate-700 px-1">Max Salary</Label>
+                            <Input
+                                type="number"
+                                placeholder="80000"
+                                className="rounded-xl border-slate-200 h-12"
+                                value={form.salary.max || ''}
+                                onChange={(e) => setForm({
+                                    ...form,
+                                    salary: { ...form.salary, max: parseInt(e.target.value) || 0 }
+                                })}
+                            />
+                        </div>
+                    </div>
+                    <div className="space-y-2">
+                        <Label className="text-sm font-bold text-slate-700 px-1">Experience Required *</Label>
+                        <Input
+                            placeholder="e.g. 3-5 years"
+                            className="rounded-xl border-slate-200 h-12"
+                            value={form.experience}
+                            onChange={(e) => setForm({ ...form, experience: e.target.value })}
+                            required
+                        />
+                    </div>
+                    <div className="space-y-2">
+                        <Label className="text-sm font-bold text-slate-700 px-1">Status</Label>
+                        <Select
+                            value={form.status}
+                            onValueChange={(value: 'open' | 'closed') => setForm({ ...form, status: value })}
+                        >
+                            <SelectTrigger className="rounded-xl border-slate-200 h-12">
+                                <SelectValue />
+                            </SelectTrigger>
+                            <SelectContent>
+                                <SelectItem value="open">Open</SelectItem>
+                                <SelectItem value="closed">Closed</SelectItem>
+                            </SelectContent>
+                        </Select>
+                    </div>
+                </CardContent>
+            </Card>
+
+            <div className="flex justify-end gap-3">
+                <Button
+                    type="button"
+                    variant="outline"
+                    className="rounded-xl border-slate-200"
+                    onClick={() => router.push('/dashboard/jobs')}
+                    disabled={loading}
+                >
+                    Cancel
+                </Button>
+                <Button type="submit" className="rounded-xl bg-blue-600 text-white" disabled={loading}>
+                    {loading ? 'Saving...' : mode === 'create' ? 'Create Job' : 'Save Changes'}
+                </Button>
+            </div>
+        </form>
+    )
+}
