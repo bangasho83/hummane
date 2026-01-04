@@ -4,6 +4,7 @@ import { useState, useEffect } from 'react'
 import { useRouter, useParams } from 'next/navigation'
 import { useApp } from '@/lib/context/AppContext'
 import { EmployeeForm } from '@/components/employee/EmployeeForm'
+import { JobDescriptionPreview } from '@/components/employee/JobDescriptionPreview'
 import { toast } from '@/components/ui/toast'
 import { ArrowLeft } from 'lucide-react'
 import { Button } from '@/components/ui/button'
@@ -14,9 +15,10 @@ import { Card, CardContent } from '@/components/ui/card'
 export default function EditEmployeePage() {
     const router = useRouter()
     const params = useParams()
-    const { employees, updateEmployee } = useApp()
+    const { employees, updateEmployee, roles } = useApp()
     const [employee, setEmployee] = useState<Employee | null>(null)
     const [loading, setLoading] = useState(false)
+    const [selectedRoleId, setSelectedRoleId] = useState('')
     const employeeId = params.id as string
 
     // Redirect if not logged in or no company (these checks are typically handled by DashboardShell or a parent layout)
@@ -34,11 +36,14 @@ export default function EditEmployeePage() {
         const emp = employees.find(e => e.id === employeeId)
         if (emp) {
             setEmployee(emp)
+            setSelectedRoleId(emp.roleId || '')
         } else if (employees.length > 0) {
             toast('Employee not found', 'error')
             router.push('/dashboard/team')
         }
     }, [employeeId, employees, router])
+
+    const selectedRole = roles.find(role => role.id === selectedRoleId)
 
     const handleSubmit = async (data: any) => {
         if (!employee) return
@@ -84,7 +89,7 @@ export default function EditEmployeePage() {
                     </div>
                 </div>
 
-                <div className="max-w-3xl">
+                <div className="grid grid-cols-1 xl:grid-cols-[minmax(0,1fr)_420px] gap-6">
                     <Card className="border border-slate-100 shadow-premium rounded-3xl bg-white overflow-hidden">
                         <CardContent className="p-8">
                             {employee ? (
@@ -94,12 +99,17 @@ export default function EditEmployeePage() {
                                     onCancel={handleCancel}
                                     submitLabel="Update Employee Info"
                                     loading={loading}
+                                    onRoleChange={setSelectedRoleId}
                                 />
                             ) : (
                                 <div className="py-12 text-center text-slate-400">Loading form...</div>
                             )}
                         </CardContent>
                     </Card>
+                    <JobDescriptionPreview
+                        title={selectedRole?.title || 'Job Description'}
+                        description={selectedRole?.description}
+                    />
                 </div>
             </div>
         </DashboardShell>

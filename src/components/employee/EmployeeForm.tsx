@@ -23,6 +23,7 @@ interface EmployeeFormProps {
     onCancel: () => void
     submitLabel?: string
     loading?: boolean
+    onRoleChange?: (roleId: string) => void
 }
 
 export function EmployeeForm({
@@ -30,7 +31,8 @@ export function EmployeeForm({
     onSubmit,
     onCancel,
     submitLabel = 'Save Employee',
-    loading = false
+    loading = false,
+    onRoleChange
 }: EmployeeFormProps) {
     const { departments, roles, employees } = useApp()
     const [formData, setFormData] = useState({
@@ -77,6 +79,12 @@ export function EmployeeForm({
         }
         setErrors({})
     }, [employee, employees])
+
+    useEffect(() => {
+        if (onRoleChange) {
+            onRoleChange(formData.roleId || '')
+        }
+    }, [formData.roleId, onRoleChange])
 
     const handleSubmit = async (e: React.FormEvent) => {
         e.preventDefault()
@@ -253,11 +261,6 @@ export function EmployeeForm({
                                 ))}
                             </SelectContent>
                         </Select>
-                        {formData.roleId && formData.roleId !== "none" && roles.find(r => r.id === formData.roleId) && (
-                            <p className="text-xs text-slate-500 mt-2 p-3 bg-slate-50 rounded-xl border border-slate-100">
-                                <span className="font-bold">JD:</span> {roles.find(r => r.id === formData.roleId)?.description}
-                            </p>
-                        )}
                     </>
                 ) : (
                     <div className="text-sm p-3 bg-slate-50 border border-dashed border-slate-200 rounded-xl text-slate-500">

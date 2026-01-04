@@ -5,6 +5,7 @@ import { useRouter } from 'next/navigation'
 import { ArrowLeft } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 import { EmployeeForm } from '@/components/employee/EmployeeForm'
+import { JobDescriptionPreview } from '@/components/employee/JobDescriptionPreview'
 import { useApp } from '@/lib/context/AppContext'
 import { toast } from '@/components/ui/toast'
 import { DashboardShell } from '@/components/layout/DashboardShell'
@@ -12,8 +13,10 @@ import { Card, CardContent } from '@/components/ui/card'
 
 export default function AddEmployeePage() {
     const router = useRouter()
-    const { createEmployee, currentCompany } = useApp()
+    const { createEmployee, currentCompany, roles } = useApp()
     const [loading, setLoading] = useState(false)
+    const [selectedRoleId, setSelectedRoleId] = useState('')
+    const selectedRole = roles.find(role => role.id === selectedRoleId)
 
     const handleSubmit = async (data: any) => {
         setLoading(true)
@@ -54,7 +57,7 @@ export default function AddEmployeePage() {
                     </div>
                 </div>
 
-                <div className="max-w-3xl">
+                <div className="grid grid-cols-1 xl:grid-cols-[minmax(0,1fr)_420px] gap-6">
                     <Card className="border border-slate-100 shadow-premium rounded-3xl bg-white overflow-hidden">
                         <CardContent className="p-8">
                             <EmployeeForm
@@ -62,9 +65,14 @@ export default function AddEmployeePage() {
                                 onCancel={handleCancel}
                                 submitLabel="Register Employee"
                                 loading={loading}
+                                onRoleChange={setSelectedRoleId}
                             />
                         </CardContent>
                     </Card>
+                    <JobDescriptionPreview
+                        title={selectedRole?.title || 'Job Description'}
+                        description={selectedRole?.description}
+                    />
                 </div>
             </div>
         </DashboardShell>
