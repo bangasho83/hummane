@@ -1,9 +1,9 @@
 'use client'
 
-import { useEffect, useState } from 'react'
+import { useEffect, useMemo, useState } from 'react'
 import { useRouter } from 'next/navigation'
 import { DashboardShell } from '@/components/layout/DashboardShell'
-import { Plus, Trash2, Users, Search } from 'lucide-react'
+import { Plus, Trash2, Users, Search, Briefcase } from 'lucide-react'
 import { useApp } from '@/lib/context/AppContext'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
@@ -34,12 +34,14 @@ const createEmptyApplicant = (
 
 export default function ApplicantsPage() {
     const router = useRouter()
-    const { applicants, jobs, createApplicant, deleteApplicant } = useApp()
+    const { applicants, jobs, roles, createApplicant, deleteApplicant } = useApp()
     const [isAddOpen, setIsAddOpen] = useState(false)
     const [loading, setLoading] = useState(false)
     const [searchTerm, setSearchTerm] = useState('')
     const [todayDate, setTodayDate] = useState('')
     const [newApplicant, setNewApplicant] = useState(() => createEmptyApplicant(''))
+    const [departmentFilter, setDepartmentFilter] = useState('all')
+    const [roleFilter, setRoleFilter] = useState('all')
 
     useEffect(() => {
         const today = new Date().toISOString().split('T')[0]
@@ -47,11 +49,52 @@ export default function ApplicantsPage() {
         setNewApplicant(prev => ({ ...prev, appliedDate: today }))
     }, [])
 
-    const filteredApplicants = applicants.filter(applicant =>
-        applicant.fullName.toLowerCase().includes(searchTerm.toLowerCase()) ||
-        applicant.email.toLowerCase().includes(searchTerm.toLowerCase()) ||
-        applicant.positionApplied.toLowerCase().includes(searchTerm.toLowerCase())
-    )
+    const departments = useMemo(() => {
+        const unique = [...new Set(jobs.map(job => job.department).filter(Boolean) as string[])]
+        return unique.sort()
+    }, [jobs])
+
+    const rolesById = useMemo(() => {
+        const map = new Map<string, string>()
+        roles.forEach(role => map.set(role.id, role.title))
+        return map
+    }, [roles])
+
+    const roleOptions = useMemo(() => {
+        const ids = [...new Set(jobs.map(job => job.roleId).filter(Boolean) as string[])]
+        return ids
+            .map(id => ({ id, title: rolesById.get(id) || 'Unknown role' }))
+            .sort((a, b) => a.title.localeCompare(b.title))
+    }, [jobs, rolesById])
+
+    const jobById = useMemo(() => new Map(jobs.map(job => [job.id, job])), [jobs])
+    const jobByTitle = useMemo(() => new Map(jobs.map(job => [job.title, job])), [jobs])
+
+    const getApplicantJob = (applicant: Applicant) => {
+        if (applicant.jobId && jobById.has(applicant.jobId)) {
+            return jobById.get(applicant.jobId)
+        }
+        return jobByTitle.get(applicant.positionApplied)
+    }
+
+    const filteredApplicants = applicants.filter(applicant => {
+        const job = getApplicantJob(applicant)
+        const matchesSearch =
+            applicant.fullName.toLowerCase().includes(searchTerm.toLowerCase()) ||
+            applicant.email.toLowerCase().includes(searchTerm.toLowerCase()) ||
+            applicant.positionApplied.toLowerCase().includes(searchTerm.toLowerCase())
+        const matchesDepartment = departmentFilter === 'all' || job?.department === departmentFilter
+        const matchesRole = roleFilter === 'all' || job?.roleId === roleFilter
+        return matchesSearch && matchesDepartment && matchesRole
+    })
+
+    const clearFilters = () => {
+        setSearchTerm('')
+        setDepartmentFilter('all')
+        setRoleFilter('all')
+    }
+
+    const hasActiveFilters = searchTerm || departmentFilter !== 'all' || roleFilter !== 'all'
 
     const handleAdd = async (e: React.FormEvent) => {
         e.preventDefault()
@@ -91,6 +134,11 @@ export default function ApplicantsPage() {
             case 'hired': return 'bg-emerald-100 text-emerald-700'
             default: return 'bg-slate-100 text-slate-700'
         }
+    }
+
+    const getRoleTitle = (roleId?: string) => {
+        if (!roleId) return 'No role assigned'
+        return rolesById.get(roleId) || 'Unknown role'
     }
 
     return (
@@ -165,7 +213,18 @@ export default function ApplicantsPage() {
                                             <Label className="text-sm font-bold text-slate-700 px-1">Position Applied *</Label>
                                             <Select
                                                 value={newApplicant.positionApplied || "none"}
-                                                onValueChange={(value) => setNewApplicant({ ...newApplicant, positionApplied: value === "none" ? "" : value })}
+                                                onValueChange={(value) => {
+                                                    if (value === 'none') {
+                                                        setNewApplicant({ ...newApplicant, positionApplied: '', jobId: '' })
+                                                        return
+                                                    }
+                                                    const selectedJob = jobs.find(job => job.title === value)
+                                                    setNewApplicant({
+                                                        ...newApplicant,
+                                                        positionApplied: value,
+                                                        jobId: selectedJob?.id || ''
+                                                    })
+                                                }}
                                             >
                                                 <SelectTrigger className="rounded-xl border-slate-200 h-12">
                                                     <SelectValue placeholder="Select job title" />
@@ -325,14 +384,52 @@ export default function ApplicantsPage() {
 
                 <div className="bg-white rounded-3xl shadow-premium border border-slate-100 overflow-hidden">
                     <div className="p-8 border-b border-slate-100">
-                        <div className="relative flex-1 group max-w-md">
-                            <Search className="absolute left-4 top-1/2 transform -translate-y-1/2 text-slate-400 w-4 h-4 group-focus-within:text-blue-500 transition-colors" />
-                            <Input
-                                placeholder="Search applicants..."
-                                className="pl-11 bg-slate-50 border-slate-100 h-12 rounded-2xl focus-visible:ring-blue-500/20"
-                                value={searchTerm}
-                                onChange={e => setSearchTerm(e.target.value)}
-                            />
+                        <div className="flex items-center gap-4 flex-wrap">
+                            <div className="flex-1 min-w-[300px]">
+                                <div className="relative group">
+                                    <Search className="absolute left-4 top-1/2 transform -translate-y-1/2 text-slate-400 w-4 h-4 group-focus-within:text-blue-500 transition-colors" />
+                                    <Input
+                                        placeholder="Search applicants..."
+                                        className="pl-11 bg-slate-50 border-slate-100 h-12 rounded-2xl focus-visible:ring-blue-500/20"
+                                        value={searchTerm}
+                                        onChange={e => setSearchTerm(e.target.value)}
+                                    />
+                                </div>
+                            </div>
+                            <div className="flex items-center gap-3">
+                                <Select value={departmentFilter} onValueChange={setDepartmentFilter}>
+                                    <SelectTrigger className="w-[180px] bg-slate-50 border-slate-100 h-12 rounded-2xl">
+                                        <SelectValue placeholder="Department" />
+                                    </SelectTrigger>
+                                    <SelectContent>
+                                        <SelectItem value="all">All Departments</SelectItem>
+                                        {departments.map((dept) => (
+                                            <SelectItem key={dept} value={dept}>{dept}</SelectItem>
+                                        ))}
+                                    </SelectContent>
+                                </Select>
+                                <Select value={roleFilter} onValueChange={setRoleFilter}>
+                                    <SelectTrigger className="w-[180px] bg-slate-50 border-slate-100 h-12 rounded-2xl">
+                                        <SelectValue placeholder="Role" />
+                                    </SelectTrigger>
+                                    <SelectContent>
+                                        <SelectItem value="all">All Roles</SelectItem>
+                                        {roleOptions.map((role) => (
+                                            <SelectItem key={role.id} value={role.id}>{role.title}</SelectItem>
+                                        ))}
+                                    </SelectContent>
+                                </Select>
+                                {hasActiveFilters && (
+                                    <Button
+                                        variant="ghost"
+                                        size="sm"
+                                        onClick={clearFilters}
+                                        className="text-slate-500 hover:text-red-500 font-bold"
+                                    >
+                                        Reset
+                                    </Button>
+                                )}
+                            </div>
                         </div>
                     </div>
 
@@ -354,6 +451,8 @@ export default function ApplicantsPage() {
                                 <TableRow className="hover:bg-transparent border-slate-100">
                                     <TableHead className="pl-8 py-4 text-[10px] font-extrabold uppercase tracking-widest text-slate-400">Name</TableHead>
                                     <TableHead className="py-4 text-[10px] font-extrabold uppercase tracking-widest text-slate-400">Position</TableHead>
+                                    <TableHead className="py-4 text-[10px] font-extrabold uppercase tracking-widest text-slate-400">Role</TableHead>
+                                    <TableHead className="py-4 text-[10px] font-extrabold uppercase tracking-widest text-slate-400">Department</TableHead>
                                     <TableHead className="py-4 text-[10px] font-extrabold uppercase tracking-widest text-slate-400">Experience</TableHead>
                                     <TableHead className="py-4 text-[10px] font-extrabold uppercase tracking-widest text-slate-400">Expected Salary</TableHead>
                                     <TableHead className="py-4 text-[10px] font-extrabold uppercase tracking-widest text-slate-400">Status</TableHead>
@@ -362,33 +461,45 @@ export default function ApplicantsPage() {
                                 </TableRow>
                             </TableHeader>
                             <TableBody>
-                                {filteredApplicants.map((applicant) => (
-                                    <TableRow key={applicant.id} className="hover:bg-slate-50/50 group border-slate-50" onClick={() => router.push(`/dashboard/applicants/${applicant.id}`)}>
-                                        <TableCell className="pl-8 py-5 font-bold text-blue-600 hover:text-blue-700">{applicant.fullName}</TableCell>
-                                        <TableCell className="text-slate-600">{applicant.positionApplied}</TableCell>
-                                        <TableCell className="text-slate-600">{applicant.yearsOfExperience} {applicant.yearsOfExperience === 1 ? 'year' : 'years'}</TableCell>
-                                        <TableCell className="text-slate-600">{applicant.expectedSalary || 'Not specified'}</TableCell>
-                                        <TableCell>
-                                            <span className={`inline-flex items-center px-3 py-1 rounded-full text-xs font-bold ${getStatusColor(applicant.status)}`}>
-                                                {applicant.status.charAt(0).toUpperCase() + applicant.status.slice(1)}
-                                            </span>
-                                        </TableCell>
-                                        <TableCell className="text-slate-600">{new Date(applicant.appliedDate).toLocaleDateString()}</TableCell>
-                                        <TableCell className="text-right pr-8">
-                                            <Button
-                                                variant="ghost"
-                                                size="icon"
-                                                onClick={(e) => {
-                                                    e.stopPropagation()
-                                                    handleDelete(applicant.id, applicant.fullName)
-                                                }}
-                                                className="h-10 w-10 text-slate-300 hover:text-red-600 hover:bg-red-50 rounded-xl transition-all"
-                                            >
-                                                <Trash2 className="w-5 h-5" />
-                                            </Button>
-                                        </TableCell>
-                                    </TableRow>
-                                ))}
+                                {filteredApplicants.map((applicant) => {
+                                    const job = getApplicantJob(applicant)
+                                    return (
+                                        <TableRow key={applicant.id} className="hover:bg-slate-50/50 group border-slate-50" onClick={() => router.push(`/dashboard/applicants/${applicant.id}`)}>
+                                            <TableCell className="pl-8 py-5 font-bold text-slate-900">{applicant.fullName}</TableCell>
+                                            <TableCell className="text-slate-600">{applicant.positionApplied}</TableCell>
+                                            <TableCell className="text-slate-600">
+                                                {job ? (
+                                                    <div className="flex items-center gap-2">
+                                                        <Briefcase className="w-4 h-4 text-slate-400" />
+                                                        {getRoleTitle(job.roleId)}
+                                                    </div>
+                                                ) : '—'}
+                                            </TableCell>
+                                            <TableCell className="text-slate-600">{job?.department || '—'}</TableCell>
+                                            <TableCell className="text-slate-600">{applicant.yearsOfExperience} {applicant.yearsOfExperience === 1 ? 'year' : 'years'}</TableCell>
+                                            <TableCell className="text-slate-600">{applicant.expectedSalary || 'Not specified'}</TableCell>
+                                            <TableCell>
+                                                <span className={`inline-flex items-center px-3 py-1 rounded-full text-xs font-bold ${getStatusColor(applicant.status)}`}>
+                                                    {applicant.status.charAt(0).toUpperCase() + applicant.status.slice(1)}
+                                                </span>
+                                            </TableCell>
+                                            <TableCell className="text-slate-600">{new Date(applicant.appliedDate).toLocaleDateString()}</TableCell>
+                                            <TableCell className="text-right pr-8">
+                                                <Button
+                                                    variant="ghost"
+                                                    size="icon"
+                                                    onClick={(e) => {
+                                                        e.stopPropagation()
+                                                        handleDelete(applicant.id, applicant.fullName)
+                                                    }}
+                                                    className="h-10 w-10 text-slate-300 hover:text-red-600 hover:bg-red-50 rounded-xl transition-all"
+                                                >
+                                                    <Trash2 className="w-5 h-5" />
+                                                </Button>
+                                            </TableCell>
+                                        </TableRow>
+                                    )
+                                })}
                             </TableBody>
                         </Table>
                     )}
