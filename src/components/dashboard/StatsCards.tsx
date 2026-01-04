@@ -2,37 +2,30 @@
 
 import { useMemo } from 'react'
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
-import { Users, Building2, DollarSign, UserPlus } from 'lucide-react'
-import type { Employee } from '@/types'
-import { formatCurrency } from '@/lib/utils'
-import { useApp } from '@/lib/context/AppContext'
+import { Users, Briefcase, CalendarCheck, UserCheck } from 'lucide-react'
+import type { Applicant, Employee, Job, LeaveType } from '@/types'
 
 interface StatsCardsProps {
     employees: Employee[]
+    jobs: Job[]
+    leaveTypes: LeaveType[]
+    applicants: Applicant[]
 }
 
-export function StatsCards({ employees }: StatsCardsProps) {
-    const { currentCompany } = useApp()
+export function StatsCards({ employees, jobs, leaveTypes, applicants }: StatsCardsProps) {
     const stats = useMemo(() => {
         const totalEmployees = employees.length
-
-        const uniqueDepartments = new Set(employees.map(emp => emp.department)).size
-
-        const totalSalary = employees.reduce((sum, emp) => sum + emp.salary, 0)
-        const avgSalary = totalEmployees > 0 ? totalSalary / totalEmployees : 0
-
-        // Find newest hire
-        const newestHire = [...employees].sort((a, b) =>
-            new Date(b.startDate).getTime() - new Date(a.startDate).getTime()
-        )[0]
+        const openJobs = jobs.filter(job => job.status === 'open').length
+        const activeLeaveTypes = leaveTypes.length
+        const activeApplicants = applicants.filter(app => app.status !== 'rejected' && app.status !== 'hired').length
 
         return {
             totalEmployees,
-            uniqueDepartments,
-            avgSalary,
-            newestHireName: newestHire?.name || 'N/A'
+            openJobs,
+            activeLeaveTypes,
+            activeApplicants
         }
-    }, [employees])
+    }, [employees, jobs, leaveTypes, applicants])
 
     const cards = [
         {
@@ -41,31 +34,35 @@ export function StatsCards({ employees }: StatsCardsProps) {
             icon: Users,
             color: 'text-blue-600',
             bgColor: 'bg-blue-50',
-            gradient: 'from-blue-600/10 to-transparent'
+            gradient: 'from-blue-600/10 to-transparent',
+            caption: 'Active team members'
         },
         {
-            title: 'Departments',
-            value: stats.uniqueDepartments.toString(),
-            icon: Building2,
-            color: 'text-purple-600',
-            bgColor: 'bg-purple-50',
-            gradient: 'from-purple-600/10 to-transparent'
+            title: 'Open Jobs',
+            value: stats.openJobs.toString(),
+            icon: Briefcase,
+            color: 'text-indigo-600',
+            bgColor: 'bg-indigo-50',
+            gradient: 'from-indigo-600/10 to-transparent',
+            caption: 'Hiring in progress'
         },
         {
-            title: 'Average Salary',
-            value: formatCurrency(stats.avgSalary, currentCompany?.currency),
-            icon: DollarSign,
-            color: 'text-green-600',
-            bgColor: 'bg-green-50',
-            gradient: 'from-green-600/10 to-transparent'
+            title: 'Leave Types',
+            value: stats.activeLeaveTypes.toString(),
+            icon: CalendarCheck,
+            color: 'text-emerald-600',
+            bgColor: 'bg-emerald-50',
+            gradient: 'from-emerald-600/10 to-transparent',
+            caption: 'Configured policies'
         },
         {
-            title: 'Newest Hire',
-            value: stats.newestHireName,
-            icon: UserPlus,
-            color: 'text-orange-600',
-            bgColor: 'bg-orange-50',
-            gradient: 'from-orange-600/10 to-transparent'
+            title: 'Active Applicants',
+            value: stats.activeApplicants.toString(),
+            icon: UserCheck,
+            color: 'text-amber-600',
+            bgColor: 'bg-amber-50',
+            gradient: 'from-amber-600/10 to-transparent',
+            caption: 'In the pipeline'
         }
     ]
 
@@ -84,7 +81,7 @@ export function StatsCards({ employees }: StatsCardsProps) {
                     </CardHeader>
                     <CardContent className="relative z-10">
                         <div className="text-3xl font-extrabold text-slate-900 tracking-tight">{card.value}</div>
-                        <p className="text-[10px] text-slate-400 mt-1 font-medium italic">Updated just now</p>
+                        <p className="text-[11px] text-slate-400 mt-1 font-medium">{card.caption}</p>
                     </CardContent>
                 </Card>
             ))}
