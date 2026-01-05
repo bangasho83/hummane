@@ -1,44 +1,83 @@
 'use client'
 
-import { useState } from 'react'
+import { useMemo, useState } from 'react'
 import { DashboardShell } from '@/components/layout/DashboardShell'
 import { Calculator, Search, DollarSign } from 'lucide-react'
 import { useApp } from '@/lib/context/AppContext'
 import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
+import { Button } from '@/components/ui/button'
 import { Card, CardContent } from '@/components/ui/card'
-import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table'
+import { Table, TableBody, TableCell, TableFooter, TableHead, TableHeader, TableRow } from '@/components/ui/table'
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select'
 import { formatCurrency } from '@/lib/utils'
 
 export default function PayrollPage() {
     const { employees, currentCompany } = useApp()
     const [searchTerm, setSearchTerm] = useState('')
+    const [departmentFilter, setDepartmentFilter] = useState('all')
+    const [positionFilter, setPositionFilter] = useState('all')
     const [config, setConfig] = useState({
-        monthsPerYear: 12,
         daysPerMonth: 30,
         hoursPerDay: 8
     })
 
-    const filteredEmployees = employees.filter(emp =>
-        emp.name.toLowerCase().includes(searchTerm.toLowerCase()) ||
-        emp.department.toLowerCase().includes(searchTerm.toLowerCase()) ||
-        emp.position.toLowerCase().includes(searchTerm.toLowerCase())
-    )
+    const departments = useMemo(() => {
+        const unique = [...new Set(employees.map(emp => emp.department))]
+        return unique.sort()
+    }, [employees])
+
+    const positions = useMemo(() => {
+        const unique = [...new Set(employees.map(emp => emp.position))]
+        return unique.sort()
+    }, [employees])
+
+    const filteredEmployees = useMemo(() => {
+        return employees.filter(emp => {
+            const matchesSearch =
+                emp.name.toLowerCase().includes(searchTerm.toLowerCase()) ||
+                emp.department.toLowerCase().includes(searchTerm.toLowerCase()) ||
+                emp.position.toLowerCase().includes(searchTerm.toLowerCase())
+
+            const matchesDepartment = departmentFilter === 'all' || emp.department === departmentFilter
+            const matchesPosition = positionFilter === 'all' || emp.position === positionFilter
+
+            return matchesSearch && matchesDepartment && matchesPosition
+        })
+    }, [employees, searchTerm, departmentFilter, positionFilter])
+
+    const hasActiveFilters = searchTerm || departmentFilter !== 'all' || positionFilter !== 'all'
+
+    const clearFilters = () => {
+        setSearchTerm('')
+        setDepartmentFilter('all')
+        setPositionFilter('all')
+    }
 
     const formatMoney = (amount: number) => formatCurrency(amount, currentCompany?.currency)
 
     const calculateSalary = (annualSalary: number) => {
-        const monthly = annualSalary / (config.monthsPerYear || 1)
+        const monthly = annualSalary / 12
         const daily = monthly / (config.daysPerMonth || 1)
         const hourly = daily / (config.hoursPerDay || 1)
 
         return {
-            annual: annualSalary,
             monthly,
             daily,
             hourly
         }
     }
+
+    const totals = filteredEmployees.reduce(
+        (acc, emp) => {
+            const salary = calculateSalary(emp.salary)
+            acc.monthly += salary.monthly
+            acc.daily += salary.daily
+            acc.hourly += salary.hourly
+            return acc
+        },
+        { monthly: 0, daily: 0, hourly: 0 }
+    )
 
     return (
         <DashboardShell>
@@ -63,16 +102,7 @@ export default function PayrollPage() {
                             <h3 className="text-lg font-bold text-slate-900">Payroll Configuration</h3>
                         </div>
 
-                        <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
-                            <div className="space-y-2">
-                                <Label className="text-xs font-bold text-slate-400 uppercase tracking-widest">Months / Year</Label>
-                                <Input
-                                    type="number"
-                                    value={config.monthsPerYear}
-                                    onChange={(e) => setConfig({ ...config, monthsPerYear: Number(e.target.value) })}
-                                    className="h-12 rounded-xl bg-slate-50 border-slate-200 font-bold text-slate-900"
-                                />
-                            </div>
+                        <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
                             <div className="space-y-2">
                                 <Label className="text-xs font-bold text-slate-400 uppercase tracking-widest">Days / Month</Label>
                                 <Input
@@ -94,15 +124,56 @@ export default function PayrollPage() {
                         </div>
                     </div>
 
-                    <div className="p-8 border-b border-slate-100 flex items-center gap-4">
-                        <div className="relative flex-1 group">
-                            <Search className="absolute left-4 top-1/2 transform -translate-y-1/2 w-4 h-4 text-slate-400 group-focus-within:text-blue-500 transition-colors" />
-                            <Input
-                                placeholder="Search employees..."
-                                className="pl-11 bg-slate-50 border-slate-100 h-12 rounded-2xl focus-visible:ring-blue-500/20"
-                                value={searchTerm}
-                                onChange={(e) => setSearchTerm(e.target.value)}
-                            />
+                    <div className="p-8 border-b border-slate-100">
+                        <div className="flex items-center gap-4 flex-wrap">
+                            <div className="flex-1 min-w-[300px]">
+                                <div className="relative group">
+                                    <Search className="absolute left-4 top-1/2 transform -translate-y-1/2 w-4 h-4 text-slate-400 group-focus-within:text-blue-500 transition-colors" />
+                                    <Input
+                                        placeholder="Search employees..."
+                                        className="pl-11 bg-slate-50 border-slate-100 h-12 rounded-2xl focus-visible:ring-blue-500/20"
+                                        value={searchTerm}
+                                        onChange={(e) => setSearchTerm(e.target.value)}
+                                    />
+                                </div>
+                            </div>
+
+                            <div className="flex items-center gap-3">
+                                <Select value={departmentFilter} onValueChange={setDepartmentFilter}>
+                                    <SelectTrigger className="w-[180px] bg-slate-50 border-slate-100 h-12 rounded-2xl">
+                                        <SelectValue placeholder="Department" />
+                                    </SelectTrigger>
+                                    <SelectContent>
+                                        <SelectItem value="all">All Departments</SelectItem>
+                                        {departments.map(dept => (
+                                            <SelectItem key={dept} value={dept}>{dept}</SelectItem>
+                                        ))}
+                                    </SelectContent>
+                                </Select>
+
+                                <Select value={positionFilter} onValueChange={setPositionFilter}>
+                                    <SelectTrigger className="w-[180px] bg-slate-50 border-slate-100 h-12 rounded-2xl">
+                                        <SelectValue placeholder="Position" />
+                                    </SelectTrigger>
+                                    <SelectContent>
+                                        <SelectItem value="all">All Positions</SelectItem>
+                                        {positions.map(pos => (
+                                            <SelectItem key={pos} value={pos}>{pos}</SelectItem>
+                                        ))}
+                                    </SelectContent>
+                                </Select>
+
+                                {hasActiveFilters && (
+                                    <Button
+                                        variant="ghost"
+                                        size="sm"
+                                        onClick={clearFilters}
+                                        className="text-slate-500 hover:text-red-500 font-bold"
+                                    >
+                                        Reset
+                                    </Button>
+                                )}
+                            </div>
                         </div>
                     </div>
 
@@ -110,8 +181,7 @@ export default function PayrollPage() {
                         <TableHeader className="bg-slate-50/50">
                             <TableRow className="hover:bg-transparent border-slate-100">
                                 <TableHead className="pl-8 py-4 text-[10px] font-extrabold uppercase tracking-widest text-slate-400">Employee</TableHead>
-                                <TableHead className="text-right py-4 text-[10px] font-extrabold uppercase tracking-widest text-slate-400">Annual</TableHead>
-                                <TableHead className="text-right py-4 text-[10px] font-extrabold uppercase tracking-widest text-slate-400">Monthly ({config.monthsPerYear}m)</TableHead>
+                                <TableHead className="text-right py-4 text-[10px] font-extrabold uppercase tracking-widest text-slate-400">Monthly</TableHead>
                                 <TableHead className="text-right py-4 text-[10px] font-extrabold uppercase tracking-widest text-slate-400">Daily ({config.daysPerMonth}d)</TableHead>
                                 <TableHead className="text-right pr-8 py-4 text-[10px] font-extrabold uppercase tracking-widest text-slate-400">Hourly ({config.hoursPerDay}h)</TableHead>
                             </TableRow>
@@ -119,7 +189,7 @@ export default function PayrollPage() {
                         <TableBody>
                             {filteredEmployees.length === 0 ? (
                                 <TableRow>
-                                    <TableCell colSpan={5} className="border-0">
+                                    <TableCell colSpan={4} className="border-0">
                                         <div className="p-20 flex flex-col items-center justify-center text-center">
                                             <div className="w-20 h-20 bg-slate-50 rounded-3xl flex items-center justify-center mb-6">
                                                 <DollarSign className="w-10 h-10 text-slate-200" />
@@ -152,9 +222,6 @@ export default function PayrollPage() {
                                                 </div>
                                             </TableCell>
                                             <TableCell className="text-right font-bold text-slate-900">
-                                                {formatMoney(salary.annual)}
-                                            </TableCell>
-                                            <TableCell className="text-right font-medium text-slate-500">
                                                 {formatMoney(salary.monthly)}
                                             </TableCell>
                                             <TableCell className="text-right font-medium text-slate-500">
@@ -168,6 +235,22 @@ export default function PayrollPage() {
                                 })
                             )}
                         </TableBody>
+                        {filteredEmployees.length > 0 && (
+                            <TableFooter className="bg-slate-50/70">
+                                <TableRow className="hover:bg-transparent border-slate-100">
+                                    <TableCell className="pl-8 py-5 font-extrabold text-slate-900">Totals</TableCell>
+                                    <TableCell className="text-right font-extrabold text-slate-900">
+                                        {formatMoney(totals.monthly)}
+                                    </TableCell>
+                                    <TableCell className="text-right font-bold text-slate-700">
+                                        {formatMoney(totals.daily)}
+                                    </TableCell>
+                                    <TableCell className="text-right pr-8 font-bold text-slate-700">
+                                        {formatMoney(totals.hourly)}
+                                    </TableCell>
+                                </TableRow>
+                            </TableFooter>
+                        )}
                     </Table>
 
                     <div className="p-8 border-t border-slate-50 bg-slate-50/30">
