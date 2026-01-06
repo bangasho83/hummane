@@ -81,6 +81,11 @@ export default function AttendancePage() {
             toast('Please select an employee', 'error')
             return
         }
+        const trimmedNote = note.trim()
+        if (!trimmedNote) {
+            toast('Please add a note for this leave', 'error')
+            return
+        }
 
         const leaveType = leaveTypes.find(lt => lt.id === selectedType)
         const unit = leaveType?.unit || 'Day'
@@ -154,7 +159,7 @@ export default function AttendancePage() {
                     leaveTypeId: leaveType?.id,
                     unit,
                     amount: entry.amount,
-                    note: note.trim() || undefined,
+                    note: trimmedNote,
                     attachments
                 } as any)
             }
@@ -333,12 +338,13 @@ export default function AttendancePage() {
                                     )
                                 })()}
                                 <div className="space-y-2">
-                                    <label className="text-sm font-bold text-slate-700 px-1">Note (Optional)</label>
+                                    <label className="text-sm font-bold text-slate-700 px-1">Note</label>
                                     <Input
                                         placeholder="Add a quick note for this leave"
                                         className="h-12 rounded-xl border-slate-200"
                                         value={note}
                                         onChange={(e) => setNote(e.target.value)}
+                                        required
                                     />
                                 </div>
                                 <div className="space-y-2">

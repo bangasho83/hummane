@@ -9,7 +9,7 @@ import { StatsCards } from '@/components/dashboard/StatsCards'
 import { DashboardShell } from '@/components/layout/DashboardShell'
 import { formatCurrency, formatDate } from '@/lib/utils'
 
-const EMPLOYMENT_TYPES = ['Permanent', 'Probation', 'Contract', 'Intern', 'Part-time'] as const
+const EMPLOYMENT_TYPES = ['Contract', 'Full-time', 'Intern', 'Part-time'] as const
 
 export default function DashboardPage() {
     const router = useRouter()

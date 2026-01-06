@@ -101,10 +101,10 @@ export function EmployeeTable({ employees }: EmployeeTableProps) {
 
                         <Select value={positionFilter} onValueChange={setPositionFilter}>
                             <SelectTrigger className="w-[180px] bg-slate-50 border-slate-100 h-12 rounded-2xl">
-                                <SelectValue placeholder="Position" />
+                            <SelectValue placeholder="Role" />
                             </SelectTrigger>
                             <SelectContent>
-                                <SelectItem value="all">All Positions</SelectItem>
+                                <SelectItem value="all">All Roles</SelectItem>
                                 {positions.map(pos => (
                                     <SelectItem key={pos} value={pos}>{pos}</SelectItem>
                                 ))}
@@ -132,7 +132,7 @@ export function EmployeeTable({ employees }: EmployeeTableProps) {
                         <TableRow className="hover:bg-transparent border-slate-100">
                             <TableHead className="w-[220px] pl-8 py-4 text-[10px] font-extrabold uppercase tracking-widest text-slate-400">Employee</TableHead>
                             <TableHead className="py-4 text-[10px] font-extrabold uppercase tracking-widest text-slate-400">Employee ID</TableHead>
-                            <TableHead className="py-4 text-[10px] font-extrabold uppercase tracking-widest text-slate-400">Position</TableHead>
+                            <TableHead className="py-4 text-[10px] font-extrabold uppercase tracking-widest text-slate-400">Role</TableHead>
                             <TableHead className="py-4 text-[10px] font-extrabold uppercase tracking-widest text-slate-400">Department</TableHead>
                             <TableHead className="py-4 text-[10px] font-extrabold uppercase tracking-widest text-slate-400">Manager</TableHead>
                             <TableHead className="py-4 text-[10px] font-extrabold uppercase tracking-widest text-slate-400">Employment</TableHead>

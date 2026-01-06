@@ -23,8 +23,8 @@ const createEmptyApplicant = (
     positionApplied: '',
     jobId: '',
     yearsOfExperience: 0,
-    currentSalary: '',
-    expectedSalary: '',
+    currentSalary: 0,
+    expectedSalary: 0,
     noticePeriod: '',
     resumeFile: undefined,
     linkedinUrl: '',
@@ -100,6 +100,18 @@ export default function ApplicantsPage() {
         e.preventDefault()
         if (!newApplicant.fullName || !newApplicant.email || !newApplicant.positionApplied) {
             toast('Please fill in all required fields', 'error')
+            return
+        }
+        if (!Number.isInteger(newApplicant.yearsOfExperience) || newApplicant.yearsOfExperience < 0) {
+            toast('Years of experience must be a non-negative whole number', 'error')
+            return
+        }
+        if (!Number.isInteger(newApplicant.currentSalary) || newApplicant.currentSalary < 0) {
+            toast('Current salary must be a non-negative whole number', 'error')
+            return
+        }
+        if (!Number.isInteger(newApplicant.expectedSalary) || newApplicant.expectedSalary < 0) {
+            toast('Expected salary must be a non-negative whole number', 'error')
             return
         }
 
@@ -247,25 +259,87 @@ export default function ApplicantsPage() {
                                                     placeholder="1"
                                                     className="rounded-xl border-slate-200 h-12"
                                                     value={newApplicant.yearsOfExperience || ''}
-                                                    onChange={e => setNewApplicant({ ...newApplicant, yearsOfExperience: parseInt(e.target.value) || 0 })}
+                                                    min={0}
+                                                    step={1}
+                                                    inputMode="numeric"
+                                                    pattern="[0-9]*"
+                                                    onKeyDown={(e) => {
+                                                        if (e.key === '-' || e.key === '+' || e.key.toLowerCase() === 'e' || e.key === '.') {
+                                                            e.preventDefault()
+                                                        }
+                                                    }}
+                                                    onChange={e => {
+                                                        const raw = e.target.value
+                                                        if (raw === '') {
+                                                            setNewApplicant({ ...newApplicant, yearsOfExperience: 0 })
+                                                            return
+                                                        }
+                                                        const parsed = Number.parseInt(raw, 10)
+                                                        setNewApplicant({
+                                                            ...newApplicant,
+                                                            yearsOfExperience: Number.isFinite(parsed) && parsed >= 0 ? parsed : 0
+                                                        })
+                                                    }}
                                                 />
                                             </div>
                                             <div className="space-y-2">
                                                 <Label className="text-sm font-bold text-slate-700 px-1">Current Salary</Label>
                                                 <Input
-                                                    placeholder="70k"
+                                                    type="number"
+                                                    placeholder="70000"
                                                     className="rounded-xl border-slate-200 h-12"
-                                                    value={newApplicant.currentSalary}
-                                                    onChange={e => setNewApplicant({ ...newApplicant, currentSalary: e.target.value })}
+                                                    value={newApplicant.currentSalary || ''}
+                                                    min={0}
+                                                    step={1}
+                                                    inputMode="numeric"
+                                                    pattern="[0-9]*"
+                                                    onKeyDown={(e) => {
+                                                        if (e.key === '-' || e.key === '+' || e.key.toLowerCase() === 'e' || e.key === '.') {
+                                                            e.preventDefault()
+                                                        }
+                                                    }}
+                                                    onChange={e => {
+                                                        const raw = e.target.value
+                                                        if (raw === '') {
+                                                            setNewApplicant({ ...newApplicant, currentSalary: 0 })
+                                                            return
+                                                        }
+                                                        const parsed = Number.parseInt(raw, 10)
+                                                        setNewApplicant({
+                                                            ...newApplicant,
+                                                            currentSalary: Number.isFinite(parsed) && parsed >= 0 ? parsed : 0
+                                                        })
+                                                    }}
                                                 />
                                             </div>
                                             <div className="space-y-2">
                                                 <Label className="text-sm font-bold text-slate-700 px-1">Expected Salary</Label>
                                                 <Input
-                                                    placeholder="80-90k"
+                                                    type="number"
+                                                    placeholder="90000"
                                                     className="rounded-xl border-slate-200 h-12"
-                                                    value={newApplicant.expectedSalary}
-                                                    onChange={e => setNewApplicant({ ...newApplicant, expectedSalary: e.target.value })}
+                                                    value={newApplicant.expectedSalary || ''}
+                                                    min={0}
+                                                    step={1}
+                                                    inputMode="numeric"
+                                                    pattern="[0-9]*"
+                                                    onKeyDown={(e) => {
+                                                        if (e.key === '-' || e.key === '+' || e.key.toLowerCase() === 'e' || e.key === '.') {
+                                                            e.preventDefault()
+                                                        }
+                                                    }}
+                                                    onChange={e => {
+                                                        const raw = e.target.value
+                                                        if (raw === '') {
+                                                            setNewApplicant({ ...newApplicant, expectedSalary: 0 })
+                                                            return
+                                                        }
+                                                        const parsed = Number.parseInt(raw, 10)
+                                                        setNewApplicant({
+                                                            ...newApplicant,
+                                                            expectedSalary: Number.isFinite(parsed) && parsed >= 0 ? parsed : 0
+                                                        })
+                                                    }}
                                                 />
                                             </div>
                                         </div>

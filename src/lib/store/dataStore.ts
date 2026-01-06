@@ -290,6 +290,7 @@ export class DataStore {
             const sanitizedDepartment = sanitizeInput(employeeData.department)
             const sanitizedEmployeeId = sanitizeInput(employeeData.employeeId)
             const sanitizedManager = sanitizeInput(employeeData.reportingManager)
+            const sanitizedRoleId = sanitizeInput(employeeData.roleId)
 
             // Validate salary
             if (employeeData.salary < 0 || !isFinite(employeeData.salary)) {
@@ -310,6 +311,7 @@ export class DataStore {
                 email: sanitizedEmail,
                 position: sanitizedPosition,
                 department: sanitizedDepartment,
+                roleId: sanitizedRoleId,
                 startDate: employeeData.startDate,
                 employmentType: employeeData.employmentType,
                 reportingManager: sanitizedManager,
@@ -335,7 +337,7 @@ export class DataStore {
                     ...emp,
                     // Backfill legacy records so UI/validation is consistent
                     employeeId: emp.employeeId || `LEGACY-${emp.id}`,
-                employmentType: emp.employmentType || 'Permanent',
+                employmentType: emp.employmentType || 'Full-time',
                 reportingManager: emp.reportingManager || 'Unassigned',
                 gender: emp.gender || 'Prefer not to say'
                 }))
@@ -353,11 +355,11 @@ export class DataStore {
 
             // Sanitize inputs if provided
             const sanitizedData: Partial<Employee> = {}
-            if (employeeData.name) sanitizedData.name = sanitizeInput(employeeData.name)
-            if (employeeData.email) sanitizedData.email = sanitizeEmail(employeeData.email)
-            if (employeeData.position) sanitizedData.position = sanitizeInput(employeeData.position)
-            if (employeeData.department) sanitizedData.department = sanitizeInput(employeeData.department)
-            if (employeeData.employeeId) {
+            if (employeeData.name !== undefined) sanitizedData.name = sanitizeInput(employeeData.name)
+            if (employeeData.email !== undefined) sanitizedData.email = sanitizeEmail(employeeData.email)
+            if (employeeData.position !== undefined) sanitizedData.position = sanitizeInput(employeeData.position)
+            if (employeeData.department !== undefined) sanitizedData.department = sanitizeInput(employeeData.department)
+            if (employeeData.employeeId !== undefined) {
                 const sanitizedEmployeeId = sanitizeInput(employeeData.employeeId)
                 const duplicate = data.employees.some(emp =>
                     emp.companyId === data.employees[index].companyId &&
@@ -369,10 +371,11 @@ export class DataStore {
                 }
                 sanitizedData.employeeId = sanitizedEmployeeId
             }
-            if (employeeData.reportingManager) sanitizedData.reportingManager = sanitizeInput(employeeData.reportingManager)
-            if (employeeData.startDate) sanitizedData.startDate = employeeData.startDate
-            if (employeeData.employmentType) sanitizedData.employmentType = employeeData.employmentType
-            if (employeeData.gender) sanitizedData.gender = employeeData.gender
+            if (employeeData.reportingManager !== undefined) sanitizedData.reportingManager = sanitizeInput(employeeData.reportingManager)
+            if (employeeData.roleId !== undefined) sanitizedData.roleId = sanitizeInput(employeeData.roleId)
+            if (employeeData.startDate !== undefined) sanitizedData.startDate = employeeData.startDate
+            if (employeeData.employmentType !== undefined) sanitizedData.employmentType = employeeData.employmentType
+            if (employeeData.gender !== undefined) sanitizedData.gender = employeeData.gender
             if (employeeData.salary !== undefined) {
                 if (employeeData.salary < 0 || !isFinite(employeeData.salary)) {
                     throw new Error('Invalid salary amount')
@@ -455,7 +458,7 @@ export class DataStore {
             const data = this.getData()
             return data.leaveTypes.filter(lt => lt.companyId === companyId).map(lt => ({
                 ...lt,
-                employmentType: lt.employmentType || 'Permanent',
+                employmentType: lt.employmentType || 'Full-time',
                 quota: lt.quota !== undefined ? lt.quota : 0
             }))
         } catch (error) {
@@ -1003,6 +1006,9 @@ export class DataStore {
             const data = this.getData()
             if (!data.applicants) data.applicants = []
 
+            const normalizeInt = (value: number) =>
+                Number.isFinite(value) ? Math.max(0, Math.trunc(value)) : 0
+
             const newApplicant: Applicant = {
                 id: `id_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`,
                 companyId,
@@ -1012,8 +1018,8 @@ export class DataStore {
                 phone: sanitizeInput(applicantData.phone),
                 positionApplied: sanitizeInput(applicantData.positionApplied),
                 yearsOfExperience: applicantData.yearsOfExperience,
-                currentSalary: sanitizeInput(applicantData.currentSalary),
-                expectedSalary: sanitizeInput(applicantData.expectedSalary),
+                currentSalary: normalizeInt(applicantData.currentSalary),
+                expectedSalary: normalizeInt(applicantData.expectedSalary),
                 noticePeriod: sanitizeInput(applicantData.noticePeriod),
                 resumeFile: applicantData.resumeFile,
                 linkedinUrl: applicantData.linkedinUrl,
@@ -1042,6 +1048,9 @@ export class DataStore {
                 throw new Error('Applicant not found')
             }
 
+            const normalizeInt = (value: number) =>
+                Number.isFinite(value) ? Math.max(0, Math.trunc(value)) : 0
+
             const updatedApplicant: Applicant = {
                 ...data.applicants[applicantIndex],
                 ...applicantData,
@@ -1049,8 +1058,12 @@ export class DataStore {
                 email: applicantData.email ? sanitizeEmail(applicantData.email) : data.applicants[applicantIndex].email,
                 phone: applicantData.phone ? sanitizeInput(applicantData.phone) : data.applicants[applicantIndex].phone,
                 positionApplied: applicantData.positionApplied ? sanitizeInput(applicantData.positionApplied) : data.applicants[applicantIndex].positionApplied,
-                currentSalary: applicantData.currentSalary ? sanitizeInput(applicantData.currentSalary) : data.applicants[applicantIndex].currentSalary,
-                expectedSalary: applicantData.expectedSalary ? sanitizeInput(applicantData.expectedSalary) : data.applicants[applicantIndex].expectedSalary,
+                currentSalary: applicantData.currentSalary !== undefined
+                    ? normalizeInt(applicantData.currentSalary)
+                    : data.applicants[applicantIndex].currentSalary,
+                expectedSalary: applicantData.expectedSalary !== undefined
+                    ? normalizeInt(applicantData.expectedSalary)
+                    : data.applicants[applicantIndex].expectedSalary,
                 noticePeriod: applicantData.noticePeriod ? sanitizeInput(applicantData.noticePeriod) : data.applicants[applicantIndex].noticePeriod,
                 resumeFile: applicantData.resumeFile ?? data.applicants[applicantIndex].resumeFile,
                 updatedAt: new Date().toISOString()

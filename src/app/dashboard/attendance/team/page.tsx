@@ -158,7 +158,12 @@ export default function AttendanceTeamPage() {
                                         </TableRow>
                                     ) : (
                                         filteredEmployees.map((emp) => {
-                                            const total = leaveTypesOrdered.reduce((sum, lt) => sum + getCount(emp.id, lt.id, lt.name), 0)
+                                            const total = leaveTypesOrdered.reduce((sum, lt) => {
+                                                if (lt.employmentType !== emp.employmentType) return sum
+                                                const count = getCount(emp.id, lt.id, lt.name)
+                                                if (!Number.isInteger(count) || count <= 0) return sum
+                                                return sum + count
+                                            }, 0)
                                             return (
                                                 <TableRow key={emp.id} className="hover:bg-slate-50/50 border-slate-50">
                                                     <TableCell className="pl-8 py-4">

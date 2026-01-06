@@ -22,14 +22,14 @@ export function LeavesTab() {
         code: '',
         unit: 'Day',
         quota: '0',
-        employmentType: 'Permanent'
+        employmentType: 'Full-time'
     })
     const [editForm, setEditForm] = useState({
         name: '',
         code: '',
         unit: 'Day',
         quota: '0',
-        employmentType: 'Permanent'
+        employmentType: 'Full-time'
     })
     const [editing, setEditing] = useState<LeaveType | null>(null)
     const [loading, setLoading] = useState(false)
@@ -59,7 +59,7 @@ export function LeavesTab() {
                 code: '',
                 unit: 'Day',
                 quota: '0',
-                employmentType: 'Permanent'
+                employmentType: 'Full-time'
             })
             setIsAddOpen(false)
         } catch (error: any) {
@@ -183,9 +183,8 @@ export function LeavesTab() {
                                             <SelectValue placeholder="Select employment type" />
                                         </SelectTrigger>
                                         <SelectContent>
-                                            <SelectItem value="Permanent">Permanent</SelectItem>
-                                            <SelectItem value="Probation">Probation</SelectItem>
                                             <SelectItem value="Contract">Contract</SelectItem>
+                                            <SelectItem value="Full-time">Full-time</SelectItem>
                                             <SelectItem value="Intern">Intern</SelectItem>
                                             <SelectItem value="Part-time">Part-time</SelectItem>
                                         </SelectContent>
@@ -278,9 +277,8 @@ export function LeavesTab() {
                                             <SelectValue placeholder="Select employment type" />
                                         </SelectTrigger>
                                         <SelectContent>
-                                            <SelectItem value="Permanent">Permanent</SelectItem>
-                                            <SelectItem value="Probation">Probation</SelectItem>
                                             <SelectItem value="Contract">Contract</SelectItem>
+                                            <SelectItem value="Full-time">Full-time</SelectItem>
                                             <SelectItem value="Intern">Intern</SelectItem>
                                             <SelectItem value="Part-time">Part-time</SelectItem>
                                         </SelectContent>

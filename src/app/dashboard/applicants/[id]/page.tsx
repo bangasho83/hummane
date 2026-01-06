@@ -158,23 +158,85 @@ export default function ApplicantDetailPage() {
                                                     type="number"
                                                     className="rounded-xl border-slate-200 h-12"
                                                     value={editData.yearsOfExperience || ''}
-                                                    onChange={e => setEditData({ ...editData, yearsOfExperience: parseInt(e.target.value) || 0 })}
+                                                    min={0}
+                                                    step={1}
+                                                    inputMode="numeric"
+                                                    pattern="[0-9]*"
+                                                    onKeyDown={(e) => {
+                                                        if (e.key === '-' || e.key === '+' || e.key.toLowerCase() === 'e' || e.key === '.') {
+                                                            e.preventDefault()
+                                                        }
+                                                    }}
+                                                    onChange={e => {
+                                                        const raw = e.target.value
+                                                        if (raw === '') {
+                                                            setEditData({ ...editData, yearsOfExperience: 0 })
+                                                            return
+                                                        }
+                                                        const parsed = Number.parseInt(raw, 10)
+                                                        setEditData({
+                                                            ...editData,
+                                                            yearsOfExperience: Number.isFinite(parsed) && parsed >= 0 ? parsed : 0
+                                                        })
+                                                    }}
                                                 />
                                             </div>
                                             <div className="space-y-2">
                                                 <Label className="text-sm font-bold text-slate-700 px-1">Current Salary</Label>
                                                 <Input
+                                                    type="number"
                                                     className="rounded-xl border-slate-200 h-12"
                                                     value={editData.currentSalary || ''}
-                                                    onChange={e => setEditData({ ...editData, currentSalary: e.target.value })}
+                                                    min={0}
+                                                    step={1}
+                                                    inputMode="numeric"
+                                                    pattern="[0-9]*"
+                                                    onKeyDown={(e) => {
+                                                        if (e.key === '-' || e.key === '+' || e.key.toLowerCase() === 'e' || e.key === '.') {
+                                                            e.preventDefault()
+                                                        }
+                                                    }}
+                                                    onChange={e => {
+                                                        const raw = e.target.value
+                                                        if (raw === '') {
+                                                            setEditData({ ...editData, currentSalary: 0 })
+                                                            return
+                                                        }
+                                                        const parsed = Number.parseInt(raw, 10)
+                                                        setEditData({
+                                                            ...editData,
+                                                            currentSalary: Number.isFinite(parsed) && parsed >= 0 ? parsed : 0
+                                                        })
+                                                    }}
                                                 />
                                             </div>
                                             <div className="space-y-2">
                                                 <Label className="text-sm font-bold text-slate-700 px-1">Expected Salary</Label>
                                                 <Input
+                                                    type="number"
                                                     className="rounded-xl border-slate-200 h-12"
                                                     value={editData.expectedSalary || ''}
-                                                    onChange={e => setEditData({ ...editData, expectedSalary: e.target.value })}
+                                                    min={0}
+                                                    step={1}
+                                                    inputMode="numeric"
+                                                    pattern="[0-9]*"
+                                                    onKeyDown={(e) => {
+                                                        if (e.key === '-' || e.key === '+' || e.key.toLowerCase() === 'e' || e.key === '.') {
+                                                            e.preventDefault()
+                                                        }
+                                                    }}
+                                                    onChange={e => {
+                                                        const raw = e.target.value
+                                                        if (raw === '') {
+                                                            setEditData({ ...editData, expectedSalary: 0 })
+                                                            return
+                                                        }
+                                                        const parsed = Number.parseInt(raw, 10)
+                                                        setEditData({
+                                                            ...editData,
+                                                            expectedSalary: Number.isFinite(parsed) && parsed >= 0 ? parsed : 0
+                                                        })
+                                                    }}
                                                 />
                                             </div>
                                         </div>

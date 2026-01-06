@@ -42,7 +42,7 @@ export function EmployeeForm({
         department: '',
         roleId: '',
         startDate: '',
-        employmentType: 'Permanent',
+        employmentType: 'Full-time',
         reportingManager: 'self',
         gender: 'Male',
         salary: ''
@@ -71,7 +71,7 @@ export function EmployeeForm({
                 department: '',
                 roleId: '',
                 startDate: '',
-                employmentType: 'Permanent',
+                employmentType: 'Full-time',
                 reportingManager: 'self',
                 gender: 'Male',
                 salary: ''
@@ -100,7 +100,7 @@ export function EmployeeForm({
                 email: formData.email,
                 position: employee?.position || '',
                 department: formData.department,
-                roleId: formData.roleId || undefined,
+                roleId: formData.roleId,
                 startDate: formData.startDate,
                 employmentType: formData.employmentType as Employee['employmentType'],
                 reportingManager: managerName,
@@ -167,9 +167,8 @@ export function EmployeeForm({
                             <SelectValue placeholder="Select employment type" />
                         </SelectTrigger>
                         <SelectContent>
-                            <SelectItem value="Permanent">Permanent</SelectItem>
-                            <SelectItem value="Probation">Probation</SelectItem>
                             <SelectItem value="Contract">Contract</SelectItem>
+                            <SelectItem value="Full-time">Full-time</SelectItem>
                             <SelectItem value="Intern">Intern</SelectItem>
                             <SelectItem value="Part-time">Part-time</SelectItem>
                         </SelectContent>
@@ -235,25 +234,29 @@ export function EmployeeForm({
                         )}
                     </>
                 ) : (
-                    <div className="text-sm p-3 bg-slate-50 border border-dashed border-slate-200 rounded-xl text-slate-500">
-                        No departments found. <Link href="/dashboard/departments" className="text-blue-600 font-bold hover:underline">Create one</Link> first.
-                    </div>
+                    <>
+                        <div className="text-sm p-3 bg-slate-50 border border-dashed border-slate-200 rounded-xl text-slate-500">
+                            No departments found. <Link href="/dashboard/departments" className="text-blue-600 font-bold hover:underline">Create one</Link> first.
+                        </div>
+                        {errors.department && (
+                            <p className="text-xs text-red-600 mt-1">{errors.department}</p>
+                        )}
+                    </>
                 )}
             </div>
 
             <div className="space-y-2">
-                <Label htmlFor="role">Role / Job Description (Optional)</Label>
+                <Label htmlFor="role">Role / Job Description</Label>
                 {roles.length > 0 ? (
                     <>
                         <Select
-                            value={formData.roleId || "none"}
-                            onValueChange={(value) => handleChange('roleId', value === "none" ? "" : value)}
+                            value={formData.roleId}
+                            onValueChange={(value) => handleChange('roleId', value)}
                         >
-                            <SelectTrigger id="role" className="rounded-xl border-slate-200">
+                            <SelectTrigger id="role" className={`rounded-xl border-slate-200 ${errors.roleId ? 'border-red-500' : ''}`}>
                                 <SelectValue placeholder="Select Role" />
                             </SelectTrigger>
                             <SelectContent>
-                                <SelectItem value="none">None</SelectItem>
                                 {roles.map((role) => (
                                     <SelectItem key={role.id} value={role.id}>
                                         {role.title}
@@ -261,11 +264,19 @@ export function EmployeeForm({
                                 ))}
                             </SelectContent>
                         </Select>
+                        {errors.roleId && (
+                            <p className="text-xs text-red-600 mt-1">{errors.roleId}</p>
+                        )}
                     </>
                 ) : (
-                    <div className="text-sm p-3 bg-slate-50 border border-dashed border-slate-200 rounded-xl text-slate-500">
-                        No roles defined. <Link href="/dashboard/roles" className="text-blue-600 font-bold hover:underline">Create one</Link> to assign job descriptions.
-                    </div>
+                    <>
+                        <div className="text-sm p-3 bg-slate-50 border border-dashed border-slate-200 rounded-xl text-slate-500">
+                            No roles defined. <Link href="/dashboard/roles" className="text-blue-600 font-bold hover:underline">Create one</Link> to assign job descriptions.
+                        </div>
+                        {errors.roleId && (
+                            <p className="text-xs text-red-600 mt-1">{errors.roleId}</p>
+                        )}
+                    </>
                 )}
             </div>
 

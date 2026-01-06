@@ -25,9 +25,9 @@ export interface Employee {
     email: string
     position: string
     department: string
-    roleId?: string
+    roleId: string
     startDate: string
-    employmentType: 'Permanent' | 'Probation' | 'Contract' | 'Intern' | 'Part-time'
+    employmentType: 'Contract' | 'Full-time' | 'Intern' | 'Part-time'
     reportingManager: string
     gender: 'Male' | 'Female' | 'Non-binary' | 'Prefer not to say'
     salary: number
@@ -52,7 +52,7 @@ export interface LeaveRecord {
     leaveTypeId?: string
     unit?: 'Day' | 'Hour'
     amount?: number
-    note?: string
+    note: string
     attachments?: {
         name: string
         type: string
@@ -112,8 +112,8 @@ export interface Applicant {
     phone: string
     positionApplied: string
     yearsOfExperience: number
-    currentSalary: string
-    expectedSalary: string
+    currentSalary: number
+    expectedSalary: number
     noticePeriod: string
     resumeFile?: {
         name: string

@@ -68,14 +68,16 @@ export const employeeSchema = z.object({
     department: z.string()
         .min(1, 'Department is required')
         .trim(),
-    roleId: z.string().optional(),
+    roleId: z.string()
+        .min(1, 'Role is required')
+        .trim(),
     startDate: z.string()
         .regex(/^\d{4}-\d{2}-\d{2}$/, 'Invalid date format')
         .refine((date) => {
             const d = new Date(date)
             return d instanceof Date && !isNaN(d.getTime())
         }, 'Invalid date'),
-    employmentType: z.enum(['Permanent', 'Probation', 'Contract', 'Intern', 'Part-time']),
+    employmentType: z.enum(['Contract', 'Full-time', 'Intern', 'Part-time']),
     reportingManager: z.string()
         .min(2, 'Reporting Manager is required')
         .max(100, 'Name must be less than 100 characters')
@@ -130,7 +132,7 @@ export const leaveTypeSchema = z.object({
         .nonnegative('Quota must be zero or more')
         .max(365, 'Quota seems too high')
         .finite('Quota must be a valid number'),
-    employmentType: z.enum(['Permanent', 'Probation', 'Contract', 'Intern', 'Part-time'])
+    employmentType: z.enum(['Contract', 'Full-time', 'Intern', 'Part-time'])
 })
 
 // Type exports for TypeScript

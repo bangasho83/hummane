@@ -24,7 +24,7 @@ export function JobForm({ mode, job }: JobFormProps) {
         title: job?.title || '',
         roleId: job?.roleId || '',
         department: job?.department || '',
-        employmentType: (job?.employmentType || 'Permanent') as Job['employmentType'],
+        employmentType: (job?.employmentType || 'Full-time') as Job['employmentType'],
         location: {
             city: job?.location?.city || '',
             country: job?.location?.country || ''
@@ -40,7 +40,7 @@ export function JobForm({ mode, job }: JobFormProps) {
                 title: job.title,
                 roleId: job.roleId || '',
                 department: job.department || '',
-                employmentType: (job.employmentType || 'Permanent') as Job['employmentType'],
+                employmentType: (job.employmentType || 'Full-time') as Job['employmentType'],
                 location: {
                     city: job.location?.city || '',
                     country: job.location?.country || ''
@@ -144,9 +144,8 @@ export function JobForm({ mode, job }: JobFormProps) {
                                 <SelectValue placeholder="Select employment type" />
                             </SelectTrigger>
                             <SelectContent>
-                                <SelectItem value="Permanent">Permanent</SelectItem>
-                                <SelectItem value="Probation">Probation</SelectItem>
                                 <SelectItem value="Contract">Contract</SelectItem>
+                                <SelectItem value="Full-time">Full-time</SelectItem>
                                 <SelectItem value="Intern">Intern</SelectItem>
                                 <SelectItem value="Part-time">Part-time</SelectItem>
                             </SelectContent>

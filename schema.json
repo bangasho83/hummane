@@ -105,7 +105,7 @@
         "email": { "type": "string", "required": true, "description": "Work email." },
         "position": { "type": "string", "required": true, "description": "Position title (may be blank if unused)." },
         "department": { "type": "string", "required": true, "description": "Department name." },
-        "roleId": { "type": "string", "required": false, "description": "Role id reference." },
+        "roleId": { "type": "string", "required": true, "description": "Role id reference." },
         "startDate": { "type": "string", "required": true, "format": "yyyy-mm-dd", "description": "Joining date." },
         "employmentType": { "$ref": "EmploymentType", "required": true, "description": "Employment classification." },
         "reportingManager": { "type": "string", "required": true, "description": "Manager name or 'Self'." },
@@ -163,8 +163,8 @@
         "phone": { "type": "string", "required": true, "description": "Applicant phone." },
         "positionApplied": { "type": "string", "required": true, "description": "Job title applied for." },
         "yearsOfExperience": { "type": "number", "required": true, "description": "Years of experience." },
-        "currentSalary": { "type": "string", "required": true, "description": "Current salary text." },
-        "expectedSalary": { "type": "string", "required": true, "description": "Expected salary text." },
+        "currentSalary": { "type": "number", "required": true, "description": "Current salary amount." },
+        "expectedSalary": { "type": "number", "required": true, "description": "Expected salary amount." },
         "noticePeriod": { "type": "string", "required": true, "description": "Notice period text." },
         "resumeFile": { "$ref": "FileAttachment", "required": false, "description": "Uploaded resume file." },
         "linkedinUrl": { "type": "string", "required": false, "description": "LinkedIn URL." },
@@ -199,7 +199,7 @@
         "leaveTypeId": { "type": "string", "required": false, "description": "Leave type id reference." },
         "unit": { "$ref": "LeaveUnit", "required": false, "description": "Unit of measure." },
         "amount": { "type": "number", "required": false, "description": "Leave amount for the entry." },
-        "note": { "type": "string", "required": false, "description": "Optional note from employee." },
+        "note": { "type": "string", "required": true, "description": "Note from employee." },
         "attachments": {
           "type": "array",
           "required": false,
@@ -255,7 +255,7 @@
     }
   },
   "enums": {
-    "EmploymentType": ["Permanent", "Probation", "Contract", "Intern", "Part-time"],
+    "EmploymentType": ["Contract", "Full-time", "Intern", "Part-time"],
     "Gender": ["Male", "Female", "Non-binary", "Prefer not to say"],
     "LeaveUnit": ["Day", "Hour"],
     "JobStatus": ["open", "closed"],
