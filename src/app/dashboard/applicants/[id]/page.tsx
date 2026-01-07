@@ -159,11 +159,10 @@ export default function ApplicantDetailPage() {
                                                     className="rounded-xl border-slate-200 h-12"
                                                     value={editData.yearsOfExperience || ''}
                                                     min={0}
-                                                    step={1}
+                                                    step={0.1}
                                                     inputMode="numeric"
-                                                    pattern="[0-9]*"
                                                     onKeyDown={(e) => {
-                                                        if (e.key === '-' || e.key === '+' || e.key.toLowerCase() === 'e' || e.key === '.') {
+                                                        if (e.key === '-' || e.key === '+' || e.key.toLowerCase() === 'e') {
                                                             e.preventDefault()
                                                         }
                                                     }}
@@ -173,10 +172,12 @@ export default function ApplicantDetailPage() {
                                                             setEditData({ ...editData, yearsOfExperience: 0 })
                                                             return
                                                         }
-                                                        const parsed = Number.parseInt(raw, 10)
+                                                        const parsed = Number.parseFloat(raw)
                                                         setEditData({
                                                             ...editData,
-                                                            yearsOfExperience: Number.isFinite(parsed) && parsed >= 0 ? parsed : 0
+                                                            yearsOfExperience: Number.isFinite(parsed) && parsed >= 0
+                                                                ? Number.parseFloat(parsed.toFixed(1))
+                                                                : 0
                                                         })
                                                     }}
                                                 />

@@ -58,6 +58,10 @@ body {
   -moz-osx-font-smoothing: grayscale;
 }
 
+.ql-snow .ql-editor {
+  color: #000;
+}
+
 .glass {
   background: rgba(255, 255, 255, 0.7);
   backdrop-filter: blur(10px);

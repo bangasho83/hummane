@@ -237,10 +237,8 @@ export function DepartmentsTab() {
                                                 {dept.description || 'No description provided.'}
                                             </p>
                                         </TableCell>
-                                        <TableCell className="text-center">
-                                            <Badge className="bg-blue-50 text-blue-600 hover:bg-blue-100 border-none px-4 py-1.5 rounded-full font-bold">
-                                                {employeeCount} Members
-                                            </Badge>
+                                        <TableCell className="text-center text-sm font-medium text-slate-600">
+                                            {employeeCount}
                                         </TableCell>
                                         <TableCell className="text-right pr-8">
                                             <div className="flex items-center justify-end gap-2">

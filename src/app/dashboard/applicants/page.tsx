@@ -1,6 +1,6 @@
 'use client'
 
-import { useEffect, useMemo, useState } from 'react'
+import { useEffect, useMemo, useRef, useState } from 'react'
 import { useRouter } from 'next/navigation'
 import { DashboardShell } from '@/components/layout/DashboardShell'
 import { Plus, Trash2, Users, Search, Briefcase } from 'lucide-react'
@@ -42,6 +42,7 @@ export default function ApplicantsPage() {
     const [newApplicant, setNewApplicant] = useState(() => createEmptyApplicant(''))
     const [departmentFilter, setDepartmentFilter] = useState('all')
     const [roleFilter, setRoleFilter] = useState('all')
+    const resumeInputRef = useRef<HTMLInputElement | null>(null)
 
     useEffect(() => {
         const today = new Date().toISOString().split('T')[0]
@@ -102,8 +103,12 @@ export default function ApplicantsPage() {
             toast('Please fill in all required fields', 'error')
             return
         }
-        if (!Number.isInteger(newApplicant.yearsOfExperience) || newApplicant.yearsOfExperience < 0) {
-            toast('Years of experience must be a non-negative whole number', 'error')
+        if (newApplicant.yearsOfExperience < 0 || !Number.isFinite(newApplicant.yearsOfExperience)) {
+            toast('Years of experience must be a non-negative number', 'error')
+            return
+        }
+        if (Number.parseFloat(newApplicant.yearsOfExperience.toFixed(1)) !== newApplicant.yearsOfExperience) {
+            toast('Years of experience can have at most one decimal place', 'error')
             return
         }
         if (!Number.isInteger(newApplicant.currentSalary) || newApplicant.currentSalary < 0) {
@@ -260,11 +265,10 @@ export default function ApplicantsPage() {
                                                     className="rounded-xl border-slate-200 h-12"
                                                     value={newApplicant.yearsOfExperience || ''}
                                                     min={0}
-                                                    step={1}
+                                                    step={0.1}
                                                     inputMode="numeric"
-                                                    pattern="[0-9]*"
                                                     onKeyDown={(e) => {
-                                                        if (e.key === '-' || e.key === '+' || e.key.toLowerCase() === 'e' || e.key === '.') {
+                                                        if (e.key === '-' || e.key === '+' || e.key.toLowerCase() === 'e') {
                                                             e.preventDefault()
                                                         }
                                                     }}
@@ -274,10 +278,12 @@ export default function ApplicantsPage() {
                                                             setNewApplicant({ ...newApplicant, yearsOfExperience: 0 })
                                                             return
                                                         }
-                                                        const parsed = Number.parseInt(raw, 10)
+                                                        const parsed = Number.parseFloat(raw)
                                                         setNewApplicant({
                                                             ...newApplicant,
-                                                            yearsOfExperience: Number.isFinite(parsed) && parsed >= 0 ? parsed : 0
+                                                            yearsOfExperience: Number.isFinite(parsed) && parsed >= 0
+                                                                ? Number.parseFloat(parsed.toFixed(1))
+                                                                : 0
                                                         })
                                                     }}
                                                 />
@@ -364,6 +370,7 @@ export default function ApplicantsPage() {
                                                 type="file"
                                                 accept=".pdf,.doc,.docx,.png,.jpg,.jpeg"
                                                 className="rounded-xl border-slate-200 h-12"
+                                                ref={resumeInputRef}
                                                 onChange={(e) => {
                                                     const file = e.target.files?.[0]
                                                     if (!file) {
@@ -385,7 +392,21 @@ export default function ApplicantsPage() {
                                                 }}
                                             />
                                             {newApplicant.resumeFile && (
-                                                <p className="text-xs text-slate-500 px-1">Selected: {newApplicant.resumeFile.name}</p>
+                                                <div className="flex items-center justify-between text-xs text-slate-500 px-1">
+                                                    <span>Selected: {newApplicant.resumeFile.name}</span>
+                                                    <button
+                                                        type="button"
+                                                        className="font-semibold text-red-500 hover:text-red-600"
+                                                        onClick={() => {
+                                                            setNewApplicant({ ...newApplicant, resumeFile: undefined })
+                                                            if (resumeInputRef.current) {
+                                                                resumeInputRef.current.value = ''
+                                                            }
+                                                        }}
+                                                    >
+                                                        Remove
+                                                    </button>
+                                                </div>
                                             )}
                                         </div>
                                         <div className="space-y-2">
