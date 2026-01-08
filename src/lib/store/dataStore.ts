@@ -758,7 +758,7 @@ export class DataStore {
                 const rawWeight = q.weight
                 return {
                     id: q.id || this.generateId(),
-                    kind: q.kind === 'comment' ? 'comment' : 'score',
+                    kind: (q.kind === 'comment' ? 'comment' : 'score') as 'comment' | 'score',
                     prompt: sanitizeInput(q.prompt),
                     weight: q.kind === 'score' && typeof rawWeight === 'number' && Number.isFinite(rawWeight)
                         ? Math.max(0, Math.round(rawWeight))
@@ -808,7 +808,7 @@ export class DataStore {
                     const rawWeight = q.weight
                     return {
                         id: q.id || this.generateId(),
-                        kind: q.kind === 'comment' ? 'comment' : 'score',
+                        kind: (q.kind === 'comment' ? 'comment' : 'score') as 'comment' | 'score',
                         prompt: sanitizeInput(q.prompt),
                         weight: q.kind === 'score' && typeof rawWeight === 'number' && Number.isFinite(rawWeight)
                             ? Math.max(0, Math.round(rawWeight))
