@@ -42,10 +42,12 @@ export default function FeedbackDetailPage() {
     const percentScore = maxScore > 0 ? Math.round((totalScore / maxScore) * 100) : 0
     const avgScore = scoreAnswers.length > 0 ? (totalScore / scoreAnswers.length).toFixed(1) : '0.0'
 
+
     return (
         <DashboardShell>
             <div className="animate-in fade-in duration-500 slide-in-from-bottom-4 space-y-6">
-                <div className="flex items-center gap-4">
+                <div className="flex items-center justify-between">
+                    <div className="flex items-center gap-4">
                     <Button
                         variant="ghost"
                         size="icon"
@@ -67,6 +69,14 @@ export default function FeedbackDetailPage() {
                         <p className="text-xs font-bold text-slate-400 uppercase tracking-widest">Feedback Detail</p>
                         <h1 className="text-2xl font-extrabold text-slate-900 tracking-tight">{entry.id}</h1>
                     </div>
+                </div>
+                    <Button
+                        variant="outline"
+                        className="rounded-xl"
+                        onClick={() => router.push(`/dashboard/performance/feedback/${entry.id}/edit`)}
+                    >
+                        Edit Feedback
+                    </Button>
                 </div>
 
                 <Card className="border border-slate-100 shadow-premium rounded-3xl bg-white overflow-hidden">
@@ -125,7 +135,7 @@ export default function FeedbackDetailPage() {
                                                 {question?.prompt || 'Question unavailable'}
                                             </TableCell>
                                             <TableCell className="text-center py-5 font-semibold text-slate-900">
-                                                {question?.kind === 'comment' ? (
+                                                {(question?.kind ?? 'score') === 'comment' ? (
                                                     <div className="text-sm text-slate-600 whitespace-pre-wrap text-left">
                                                         {answer.comment || '—'}
                                                     </div>

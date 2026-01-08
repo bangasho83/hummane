@@ -1,7 +1,7 @@
 'use client'
 
-import { useMemo, useState } from 'react'
-import { useRouter } from 'next/navigation'
+import { useEffect, useMemo, useState } from 'react'
+import { useParams, useRouter } from 'next/navigation'
 import { DashboardShell } from '@/components/layout/DashboardShell'
 import { Card, CardContent } from '@/components/ui/card'
 import { Button } from '@/components/ui/button'
@@ -9,7 +9,6 @@ import { Label } from '@/components/ui/label'
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select'
 import { toast } from '@/components/ui/toast'
 import { useApp } from '@/lib/context/AppContext'
-import type { FeedbackCard } from '@/types'
 
 type DraftAnswer = {
     questionId: string
@@ -17,9 +16,13 @@ type DraftAnswer = {
     comment?: string
 }
 
-export default function NewFeedbackPage() {
+export default function EditFeedbackPage() {
+    const params = useParams()
     const router = useRouter()
-    const { feedbackCards, employees, applicants, createFeedbackEntry } = useApp()
+    const { feedbackCards, feedbackEntries, employees, applicants, updateFeedbackEntry } = useApp()
+    const entryId = params.id as string
+    const entry = useMemo(() => feedbackEntries.find(e => e.id === entryId) || null, [feedbackEntries, entryId])
+
     const [type, setType] = useState<'Team Member' | 'Applicant'>('Team Member')
     const [cardId, setCardId] = useState<string>('')
     const [subjectId, setSubjectId] = useState<string>('')
@@ -41,6 +44,39 @@ export default function NewFeedbackPage() {
             ? applicants.map(a => ({ id: a.id, label: a.fullName }))
             : employees.map(e => ({ id: e.id, label: e.name }))
     }, [type, applicants, employees])
+
+    useEffect(() => {
+        if (!entry) return
+        setType(entry.type)
+        setCardId(entry.cardId)
+        setSubjectId(entry.subjectId || '')
+        const card = feedbackCards.find(c => c.id === entry.cardId)
+        if (card) {
+            setAnswers(card.questions.map(q => {
+                const existing = entry.answers.find(a => a.questionId === q.id)
+                const kind = q.kind ?? 'score'
+                return {
+                    questionId: q.id,
+                    score: existing?.score ?? 0,
+                    comment: existing?.comment ?? (kind === 'comment' ? '' : undefined)
+                }
+            }))
+        } else {
+            setAnswers(entry.answers.map(a => ({
+                questionId: a.questionId,
+                score: a.score,
+                comment: a.comment
+            })))
+        }
+    }, [entry, feedbackCards])
+
+    if (!entry) {
+        return (
+            <DashboardShell>
+                <div className="p-8 text-slate-500">Feedback entry not found.</div>
+            </DashboardShell>
+        )
+    }
 
     const handleSelectCard = (value: string) => {
         setCardId(value)
@@ -99,10 +135,11 @@ export default function NewFeedbackPage() {
             toast('Please complete all comment fields', 'error')
             return
         }
+
         setSaving(true)
         const subject = subjects.find(s => s.id === subjectId)
         try {
-            await createFeedbackEntry({
+            await updateFeedbackEntry(entry.id, {
                 type,
                 cardId,
                 subjectId,
@@ -113,10 +150,10 @@ export default function NewFeedbackPage() {
                     comment: a.comment
                 }))
             })
-            toast('Feedback submitted', 'success')
+            toast('Feedback updated', 'success')
             router.push('/dashboard/performance/feedback')
         } catch (error) {
-            toast('Failed to submit feedback', 'error')
+            toast('Failed to update feedback', 'error')
         } finally {
             setSaving(false)
         }
@@ -126,9 +163,9 @@ export default function NewFeedbackPage() {
         <DashboardShell>
             <div className="animate-in fade-in duration-500 slide-in-from-bottom-4 space-y-6">
                 <div>
-                    <h1 className="text-3xl font-extrabold text-slate-900 tracking-tight">Add Feedback</h1>
+                    <h1 className="text-3xl font-extrabold text-slate-900 tracking-tight">Edit Feedback</h1>
                     <p className="text-slate-500 font-medium">
-                        Select a feedback card and score each question.
+                        Continue a draft or update submitted feedback.
                     </p>
                 </div>
 
@@ -259,7 +296,7 @@ export default function NewFeedbackPage() {
                                 onClick={handleSave}
                                 disabled={saving}
                             >
-                                {saving ? 'Submitting...' : 'Submit Feedback'}
+                                {saving ? 'Saving...' : 'Submit Feedback'}
                             </Button>
                         </div>
                     </CardContent>

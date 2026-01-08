@@ -37,6 +37,7 @@ interface AppContextType {
     deleteFeedbackCard: (id: string) => void
     refreshFeedbackCards: () => void
     createFeedbackEntry: (entry: Omit<FeedbackEntry, 'id' | 'companyId' | 'createdAt' | 'updatedAt'>) => Promise<FeedbackEntry>
+    updateFeedbackEntry: (id: string, updates: Partial<Omit<FeedbackEntry, 'id' | 'companyId' | 'createdAt'>>) => Promise<FeedbackEntry | null>
     deleteFeedbackEntry: (id: string) => void
     refreshFeedbackEntries: () => void
     addDocument: (doc: Omit<EmployeeDocument, 'id' | 'uploadedAt'>) => EmployeeDocument
@@ -404,6 +405,19 @@ export function AppProvider({ children }: { children: ReactNode }) {
         }
     }
 
+    const updateFeedbackEntry = async (id: string, updates: Partial<Omit<FeedbackEntry, 'id' | 'companyId' | 'createdAt'>>): Promise<FeedbackEntry | null> => {
+        try {
+            const updated = dataStore.updateFeedbackEntry(id, updates)
+            if (currentCompany) {
+                setFeedbackEntries(dataStore.getFeedbackEntriesByCompanyId(currentCompany.id))
+            }
+            return updated
+        } catch (error) {
+            console.error('Update feedback entry error:', error)
+            throw error
+        }
+    }
+
     const deleteFeedbackEntry = (id: string) => {
         try {
             dataStore.deleteFeedbackEntry(id)
@@ -703,6 +717,7 @@ export function AppProvider({ children }: { children: ReactNode }) {
                 deleteFeedbackCard,
                 refreshFeedbackCards,
                 createFeedbackEntry,
+                updateFeedbackEntry,
                 deleteFeedbackEntry,
                 refreshFeedbackEntries,
                 createLeaveType,

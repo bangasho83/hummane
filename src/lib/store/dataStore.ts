@@ -860,7 +860,7 @@ export class DataStore {
                 subjectName: entryData.subjectName ? sanitizeInput(entryData.subjectName) : undefined,
                 answers: entryData.answers.map((a) => ({
                     questionId: a.questionId,
-                    score: Number.isFinite(a.score) ? Math.min(5, Math.max(1, Math.round(a.score))) : 1,
+                    score: Number.isFinite(a.score) ? Math.min(5, Math.max(0, Math.round(a.score))) : 0,
                     comment: a.comment ? sanitizeInput(a.comment) : undefined
                 })),
                 createdAt: new Date().toISOString()
@@ -892,6 +892,41 @@ export class DataStore {
             this.saveData(data)
         } catch (error) {
             console.error('Error deleting feedback entry:', error)
+            throw error
+        }
+    }
+
+    updateFeedbackEntry(entryId: string, updates: Partial<Omit<FeedbackEntry, 'id' | 'companyId' | 'createdAt'>>): FeedbackEntry | null {
+        try {
+            const data = this.getData()
+            const index = (data.feedbackEntries || []).findIndex(entry => entry.id === entryId)
+            if (index === -1) return null
+
+            const existing = data.feedbackEntries[index]
+            const type = updates.type ? (updates.type === 'Applicant' ? 'Applicant' : 'Team Member') : existing.type
+            const answers = updates.answers
+                ? updates.answers.map((a) => ({
+                    questionId: a.questionId,
+                    score: Number.isFinite(a.score) ? Math.min(5, Math.max(0, Math.round(a.score))) : 0,
+                    comment: a.comment ? sanitizeInput(a.comment) : undefined
+                }))
+                : existing.answers
+
+            const updated: FeedbackEntry = {
+                ...existing,
+                type,
+                cardId: updates.cardId ?? existing.cardId,
+                subjectId: updates.subjectId ?? existing.subjectId,
+                subjectName: updates.subjectName !== undefined ? sanitizeInput(updates.subjectName) : existing.subjectName,
+                answers,
+                updatedAt: new Date().toISOString()
+            }
+
+            data.feedbackEntries[index] = updated
+            this.saveData(data)
+            return updated
+        } catch (error) {
+            console.error('Error updating feedback entry:', error)
             throw error
         }
     }
