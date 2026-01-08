@@ -31,7 +31,8 @@ const teamItems = [
 
 const hiringItems = [
     { name: 'Jobs', href: '/dashboard/jobs', icon: FileText },
-    { name: 'Applicants', href: '/dashboard/applicants', icon: Users },
+    { name: 'Applicants', href: '/dashboard/applicants', icon: Users, exact: true },
+    { name: 'Progress', href: '/dashboard/applicants/progress', icon: ClipboardList, exact: true },
 ]
 
 const performanceItems = [

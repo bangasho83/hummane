@@ -161,7 +161,7 @@ export default function ApplicantsPage() {
     return (
         <DashboardShell>
             <div className="animate-in fade-in duration-500 slide-in-from-bottom-4">
-                <div className="flex justify-between items-end mb-8">
+                <div className="flex justify-between items-end mb-6">
                     <div>
                         <h1 className="text-3xl font-extrabold text-slate-900 tracking-tight">
                             Applicants
@@ -559,7 +559,16 @@ export default function ApplicantsPage() {
                                 {filteredApplicants.map((applicant) => {
                                     const job = getApplicantJob(applicant)
                                     return (
-                                        <TableRow key={applicant.id} className="hover:bg-slate-50/50 group border-slate-50" onClick={() => router.push(`/dashboard/applicants/${applicant.id}`)}>
+                                        <TableRow
+                                            key={applicant.id}
+                                            className="hover:bg-slate-50/50 group border-slate-50 cursor-pointer"
+                                            onClick={() => {
+                                                if (typeof window !== 'undefined') {
+                                                    sessionStorage.setItem('applicantDetailBack', '/dashboard/applicants')
+                                                }
+                                                router.push(`/dashboard/applicants/${applicant.id}`)
+                                            }}
+                                        >
                                             <TableCell className="pl-8 py-5 font-bold text-slate-900">{applicant.fullName}</TableCell>
                                             <TableCell className="text-slate-600">{applicant.positionApplied}</TableCell>
                                             <TableCell className="text-slate-600">
