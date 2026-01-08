@@ -754,12 +754,17 @@ export class DataStore {
             }
 
             const subject = cardData.subject === 'Applicant' ? 'Applicant' : 'Team Member'
-            const questions = cardData.questions.map((q) => ({
-                id: q.id || this.generateId(),
-                kind: q.kind === 'comment' ? 'comment' : 'score',
-                prompt: sanitizeInput(q.prompt),
-                weight: q.kind === 'score' && Number.isFinite(q.weight) ? Math.max(0, Math.round(q.weight)) : undefined
-            }))
+            const questions = cardData.questions.map((q) => {
+                const rawWeight = q.weight
+                return {
+                    id: q.id || this.generateId(),
+                    kind: q.kind === 'comment' ? 'comment' : 'score',
+                    prompt: sanitizeInput(q.prompt),
+                    weight: q.kind === 'score' && typeof rawWeight === 'number' && Number.isFinite(rawWeight)
+                        ? Math.max(0, Math.round(rawWeight))
+                        : undefined
+                }
+            })
 
             const card: FeedbackCard = {
                 id: this.generateId(),
@@ -799,12 +804,17 @@ export class DataStore {
             const title = updates.title !== undefined ? sanitizeInput(updates.title) : existing.title
             const subject = updates.subject ? (updates.subject === 'Applicant' ? 'Applicant' : 'Team Member') : existing.subject
             const questions = updates.questions
-                ? updates.questions.map((q) => ({
-                    id: q.id || this.generateId(),
-                    kind: q.kind === 'comment' ? 'comment' : 'score',
-                    prompt: sanitizeInput(q.prompt),
-                    weight: q.kind === 'score' && Number.isFinite(q.weight) ? Math.max(0, Math.round(q.weight)) : undefined
-                }))
+                ? updates.questions.map((q) => {
+                    const rawWeight = q.weight
+                    return {
+                        id: q.id || this.generateId(),
+                        kind: q.kind === 'comment' ? 'comment' : 'score',
+                        prompt: sanitizeInput(q.prompt),
+                        weight: q.kind === 'score' && typeof rawWeight === 'number' && Number.isFinite(rawWeight)
+                            ? Math.max(0, Math.round(rawWeight))
+                            : undefined
+                    }
+                })
                 : existing.questions
 
             const updated: FeedbackCard = {
