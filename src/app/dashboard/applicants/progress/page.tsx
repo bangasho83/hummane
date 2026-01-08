@@ -73,11 +73,6 @@ export default function ApplicantsProgressPage() {
                             Track candidate status across the pipeline.
                         </p>
                     </div>
-                    <Button asChild className="bg-blue-600 hover:bg-blue-700 text-white rounded-2xl font-bold px-6 py-3 h-auto">
-                        <Link href="/dashboard/applicants">
-                            Add Applicant
-                        </Link>
-                    </Button>
                 </div>
 
                 <div className="overflow-x-auto">
