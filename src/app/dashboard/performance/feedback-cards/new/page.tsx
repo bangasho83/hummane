@@ -13,7 +13,7 @@ export default function NewFeedbackCardPage() {
     const { createFeedbackCard } = useApp()
     const [saving, setSaving] = useState(false)
 
-    const handleSave = async (payload: { title: string; subject: 'Team Member' | 'Applicant'; questions: { id: string; prompt: string; weight: number }[] }) => {
+    const handleSave = async (payload: { title: string; subject: 'Team Member' | 'Applicant'; questions: { id: string; kind: 'score' | 'comment'; prompt: string; weight?: number }[] }) => {
         setSaving(true)
         try {
             await createFeedbackCard(payload)
