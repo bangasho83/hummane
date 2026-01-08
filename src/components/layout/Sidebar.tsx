@@ -13,7 +13,8 @@ import {
     HelpCircle,
     LogOut,
     Briefcase,
-    FileText
+    FileText,
+    ClipboardList
 } from 'lucide-react'
 import { useApp } from '@/lib/context/AppContext'
 
@@ -25,12 +26,17 @@ const teamItems = [
     { name: 'Team', href: '/dashboard/team', icon: Users },
     { name: 'Attendance', href: '/dashboard/attendance', icon: Calendar },
     { name: 'Payroll', href: '/dashboard/payroll', icon: Wallet },
-    { name: 'Organization', href: '/dashboard/organization/general', icon: Building2 },
+    { name: 'Organization', href: '/dashboard/organization', icon: Building2 },
 ]
 
 const hiringItems = [
     { name: 'Jobs', href: '/dashboard/jobs', icon: FileText },
     { name: 'Applicants', href: '/dashboard/applicants', icon: Users },
+]
+
+const performanceItems = [
+    { name: 'Feedback', href: '/dashboard/performance/feedback', icon: ClipboardList, exact: true },
+    { name: 'Cards', href: '/dashboard/performance/feedback-cards', icon: FileText, exact: true },
 ]
 
 const secondaryItems = [
@@ -101,6 +107,17 @@ export function Sidebar() {
                         </p>
                         <nav>
                             {teamItems.map((item) => (
+                                <NavLink key={item.name} item={item} />
+                            ))}
+                        </nav>
+                    </div>
+
+                    <div>
+                        <p className="text-[10px] font-extrabold text-slate-400 uppercase tracking-widest mb-4 px-3">
+                            Performance
+                        </p>
+                        <nav>
+                            {performanceItems.map((item) => (
                                 <NavLink key={item.name} item={item} />
                             ))}
                         </nav>

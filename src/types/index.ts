@@ -135,6 +135,41 @@ export interface Holiday {
     createdAt: string
 }
 
+export interface FeedbackQuestion {
+    id: string
+    kind: 'score' | 'comment'
+    prompt: string
+    weight?: number
+}
+
+export interface FeedbackCard {
+    id: string
+    companyId: string
+    title: string
+    subject: 'Team Member' | 'Applicant'
+    questions: FeedbackQuestion[]
+    createdAt: string
+    updatedAt?: string
+}
+
+export interface FeedbackEntryAnswer {
+    questionId: string
+    score: number
+    comment?: string
+}
+
+export interface FeedbackEntry {
+    id: string
+    companyId: string
+    type: 'Team Member' | 'Applicant'
+    cardId: string
+    subjectId?: string
+    subjectName?: string
+    answers: FeedbackEntryAnswer[]
+    createdAt: string
+    updatedAt?: string
+}
+
 export type DocumentKind =
     | 'Government ID'
     | 'CV (Curriculum Vitae)'
@@ -161,6 +196,8 @@ export interface DataStoreSchema {
     leaves: LeaveRecord[]
     leaveTypes: LeaveType[]
     holidays: Holiday[]
+    feedbackCards: FeedbackCard[]
+    feedbackEntries: FeedbackEntry[]
     documents: EmployeeDocument[]
     roles: Role[]
     jobs: Job[]

@@ -219,6 +219,59 @@
         "createdAt": { "type": "string", "required": true, "format": "iso-8601", "description": "Creation timestamp." }
       }
     },
+    "FeedbackQuestion": {
+      "description": "Question inside a feedback card template.",
+      "fields": {
+        "id": { "type": "string", "required": true, "description": "Unique id." },
+        "kind": { "type": "string", "required": true, "description": "Question kind (score or comment)." },
+        "prompt": { "type": "string", "required": true, "description": "Question prompt." },
+        "weight": { "type": "number", "required": false, "description": "Question weight." }
+      }
+    },
+    "FeedbackCard": {
+      "description": "Feedback card template definition.",
+      "fields": {
+        "id": { "type": "string", "required": true, "description": "Unique id." },
+        "companyId": { "type": "string", "required": true, "description": "Owning company id." },
+        "title": { "type": "string", "required": true, "description": "Template title." },
+        "subject": { "type": "string", "required": true, "description": "Template subject." },
+        "questions": {
+          "type": "array",
+          "required": true,
+          "items": { "$ref": "FeedbackQuestion" },
+          "description": "Question list for the card."
+        },
+        "createdAt": { "type": "string", "required": true, "format": "iso-8601", "description": "Creation timestamp." },
+        "updatedAt": { "type": "string", "required": false, "format": "iso-8601", "description": "Last update timestamp." }
+      }
+    },
+    "FeedbackEntryAnswer": {
+      "description": "Answer for a feedback card question.",
+      "fields": {
+        "questionId": { "type": "string", "required": true, "description": "Question id reference." },
+        "score": { "type": "number", "required": true, "description": "Score from 1 to 5." },
+        "comment": { "type": "string", "required": false, "description": "Free text response." }
+      }
+    },
+    "FeedbackEntry": {
+      "description": "Submitted feedback entry.",
+      "fields": {
+        "id": { "type": "string", "required": true, "description": "Unique id." },
+        "companyId": { "type": "string", "required": true, "description": "Owning company id." },
+        "type": { "type": "string", "required": true, "description": "Feedback subject type." },
+        "cardId": { "type": "string", "required": true, "description": "Feedback card id." },
+        "subjectId": { "type": "string", "required": false, "description": "Employee or applicant id." },
+        "subjectName": { "type": "string", "required": false, "description": "Display name for subject." },
+        "answers": {
+          "type": "array",
+          "required": true,
+          "items": { "$ref": "FeedbackEntryAnswer" },
+          "description": "Answer list."
+        },
+        "createdAt": { "type": "string", "required": true, "format": "iso-8601", "description": "Creation timestamp." },
+        "updatedAt": { "type": "string", "required": false, "format": "iso-8601", "description": "Last update timestamp." }
+      }
+    },
     "EmployeeDocument": {
       "description": "Employee document stored as a data URL.",
       "fields": {

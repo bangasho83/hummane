@@ -1,7 +1,7 @@
 'use client'
 
 import React, { createContext, useContext, useState, useEffect, type ReactNode } from 'react'
-import type { User, Company, Employee, Department, LeaveRecord, Role, Job, Applicant, LeaveType, Holiday, EmployeeDocument } from '@/types'
+import type { User, Company, Employee, Department, LeaveRecord, Role, Job, Applicant, LeaveType, Holiday, EmployeeDocument, FeedbackCard, FeedbackEntry } from '@/types'
 import { dataStore } from '@/lib/store/dataStore'
 interface AppContextType {
     currentUser: User | null
@@ -11,6 +11,8 @@ interface AppContextType {
     leaves: LeaveRecord[]
     leaveTypes: LeaveType[]
     holidays: Holiday[]
+    feedbackCards: FeedbackCard[]
+    feedbackEntries: FeedbackEntry[]
     roles: Role[]
     jobs: Job[]
     applicants: Applicant[]
@@ -30,6 +32,13 @@ interface AppContextType {
     createHoliday: (holiday: Omit<Holiday, 'id' | 'companyId' | 'createdAt'>) => Holiday
     deleteHoliday: (id: string) => void
     refreshHolidays: () => void
+    createFeedbackCard: (cardData: Omit<FeedbackCard, 'id' | 'companyId' | 'createdAt' | 'updatedAt'>) => Promise<FeedbackCard>
+    updateFeedbackCard: (id: string, updates: Partial<Omit<FeedbackCard, 'id' | 'companyId' | 'createdAt'>>) => Promise<FeedbackCard | null>
+    deleteFeedbackCard: (id: string) => void
+    refreshFeedbackCards: () => void
+    createFeedbackEntry: (entry: Omit<FeedbackEntry, 'id' | 'companyId' | 'createdAt' | 'updatedAt'>) => Promise<FeedbackEntry>
+    deleteFeedbackEntry: (id: string) => void
+    refreshFeedbackEntries: () => void
     addDocument: (doc: Omit<EmployeeDocument, 'id' | 'uploadedAt'>) => EmployeeDocument
     deleteDocument: (id: string) => void
     getDocuments: (employeeId: string) => EmployeeDocument[]
@@ -62,6 +71,8 @@ export function AppProvider({ children }: { children: ReactNode }) {
     const [leaves, setLeaves] = useState<LeaveRecord[]>([])
     const [leaveTypes, setLeaveTypes] = useState<LeaveType[]>([])
     const [holidays, setHolidays] = useState<Holiday[]>([])
+    const [feedbackCards, setFeedbackCards] = useState<FeedbackCard[]>([])
+    const [feedbackEntries, setFeedbackEntries] = useState<FeedbackEntry[]>([])
     const [roles, setRoles] = useState<Role[]>([])
     const [jobs, setJobs] = useState<Job[]>([])
     const [applicants, setApplicants] = useState<Applicant[]>([])
@@ -81,6 +92,8 @@ export function AppProvider({ children }: { children: ReactNode }) {
                 setLeaves(dataStore.getLeavesByCompanyId(company.id))
                 setLeaveTypes(dataStore.getLeaveTypesByCompanyId(company.id))
                 setHolidays(dataStore.getHolidaysByCompanyId(company.id))
+                setFeedbackCards(dataStore.getFeedbackCardsByCompanyId(company.id))
+                setFeedbackEntries(dataStore.getFeedbackEntriesByCompanyId(company.id))
                 setRoles(dataStore.getRolesByCompanyId(company.id))
                 setJobs(dataStore.getJobsByCompanyId(company.id))
                 setApplicants(dataStore.getApplicantsByCompanyId(company.id))
@@ -108,6 +121,8 @@ export function AppProvider({ children }: { children: ReactNode }) {
                 setLeaves(dataStore.getLeavesByCompanyId(company.id))
                 setLeaveTypes(dataStore.getLeaveTypesByCompanyId(company.id))
                 setHolidays(dataStore.getHolidaysByCompanyId(company.id))
+                setFeedbackCards(dataStore.getFeedbackCardsByCompanyId(company.id))
+                setFeedbackEntries(dataStore.getFeedbackEntriesByCompanyId(company.id))
                 setRoles(dataStore.getRolesByCompanyId(company.id))
                 setJobs(dataStore.getJobsByCompanyId(company.id))
                 setApplicants(dataStore.getApplicantsByCompanyId(company.id))
@@ -327,6 +342,87 @@ export function AppProvider({ children }: { children: ReactNode }) {
             }
         } catch (error) {
             console.error('Refresh holidays error:', error)
+        }
+    }
+
+    const createFeedbackCard = async (cardData: Omit<FeedbackCard, 'id' | 'companyId' | 'createdAt' | 'updatedAt'>): Promise<FeedbackCard> => {
+        try {
+            if (!currentCompany) throw new Error('No company set up')
+            const created = dataStore.createFeedbackCard(currentCompany.id, cardData)
+            setFeedbackCards(dataStore.getFeedbackCardsByCompanyId(currentCompany.id))
+            return created
+        } catch (error) {
+            console.error('Create feedback card error:', error)
+            throw error
+        }
+    }
+
+    const updateFeedbackCard = async (id: string, updates: Partial<Omit<FeedbackCard, 'id' | 'companyId' | 'createdAt'>>): Promise<FeedbackCard | null> => {
+        try {
+            const updated = dataStore.updateFeedbackCard(id, updates)
+            if (currentCompany) {
+                setFeedbackCards(dataStore.getFeedbackCardsByCompanyId(currentCompany.id))
+            }
+            return updated
+        } catch (error) {
+            console.error('Update feedback card error:', error)
+            throw error
+        }
+    }
+
+    const deleteFeedbackCard = (id: string) => {
+        try {
+            dataStore.deleteFeedbackCard(id)
+            if (currentCompany) {
+                setFeedbackCards(dataStore.getFeedbackCardsByCompanyId(currentCompany.id))
+            }
+        } catch (error) {
+            console.error('Delete feedback card error:', error)
+            throw error
+        }
+    }
+
+    const refreshFeedbackCards = () => {
+        try {
+            if (currentCompany) {
+                setFeedbackCards(dataStore.getFeedbackCardsByCompanyId(currentCompany.id))
+            }
+        } catch (error) {
+            console.error('Refresh feedback cards error:', error)
+        }
+    }
+
+    const createFeedbackEntry = async (entry: Omit<FeedbackEntry, 'id' | 'companyId' | 'createdAt' | 'updatedAt'>): Promise<FeedbackEntry> => {
+        try {
+            if (!currentCompany) throw new Error('No company set up')
+            const created = dataStore.createFeedbackEntry(currentCompany.id, entry)
+            setFeedbackEntries(dataStore.getFeedbackEntriesByCompanyId(currentCompany.id))
+            return created
+        } catch (error) {
+            console.error('Create feedback entry error:', error)
+            throw error
+        }
+    }
+
+    const deleteFeedbackEntry = (id: string) => {
+        try {
+            dataStore.deleteFeedbackEntry(id)
+            if (currentCompany) {
+                setFeedbackEntries(dataStore.getFeedbackEntriesByCompanyId(currentCompany.id))
+            }
+        } catch (error) {
+            console.error('Delete feedback entry error:', error)
+            throw error
+        }
+    }
+
+    const refreshFeedbackEntries = () => {
+        try {
+            if (currentCompany) {
+                setFeedbackEntries(dataStore.getFeedbackEntriesByCompanyId(currentCompany.id))
+            }
+        } catch (error) {
+            console.error('Refresh feedback entries error:', error)
         }
     }
 
@@ -581,6 +677,8 @@ export function AppProvider({ children }: { children: ReactNode }) {
                 leaves,
                 leaveTypes,
                 holidays,
+                feedbackCards,
+                feedbackEntries,
                 roles,
                 jobs,
                 applicants,
@@ -600,6 +698,13 @@ export function AppProvider({ children }: { children: ReactNode }) {
                 createHoliday,
                 deleteHoliday,
                 refreshHolidays,
+                createFeedbackCard,
+                updateFeedbackCard,
+                deleteFeedbackCard,
+                refreshFeedbackCards,
+                createFeedbackEntry,
+                deleteFeedbackEntry,
+                refreshFeedbackEntries,
                 createLeaveType,
                 updateLeaveType,
                 deleteLeaveType,

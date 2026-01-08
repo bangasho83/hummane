@@ -1,4 +1,4 @@
-import type { User, Company, Employee, Department, DataStoreSchema, LeaveRecord, Role, Job, Applicant, LeaveType, Holiday } from '@/types'
+import type { User, Company, Employee, Department, DataStoreSchema, LeaveRecord, Role, Job, Applicant, LeaveType, Holiday, FeedbackCard, FeedbackEntry } from '@/types'
 import type { EmployeeDocument, DocumentKind } from '@/types'
 import { hashPassword, verifyPassword, sanitizeInput, sanitizeEmail, sanitizeRichText } from '@/lib/security/crypto'
 
@@ -29,6 +29,8 @@ export class DataStore {
                 applicants: [],
                 leaveTypes: [],
                     holidays: [],
+                    feedbackCards: [],
+                    feedbackEntries: [],
                     documents: [],
                 currentUser: null
             }
@@ -64,6 +66,8 @@ export class DataStore {
                 leaves: Array.isArray(parsed.leaves) ? parsed.leaves : [],
                 leaveTypes: Array.isArray(parsed.leaveTypes) ? parsed.leaveTypes : [],
                 holidays: Array.isArray(parsed.holidays) ? parsed.holidays : [],
+                feedbackCards: Array.isArray(parsed.feedbackCards) ? parsed.feedbackCards : [],
+                feedbackEntries: Array.isArray(parsed.feedbackEntries) ? parsed.feedbackEntries : [],
                 documents: Array.isArray(parsed.documents) ? parsed.documents : [],
                 roles: Array.isArray(parsed.roles) ? parsed.roles : [],
                 jobs: Array.isArray(parsed.jobs) ? parsed.jobs : [],
@@ -85,6 +89,8 @@ export class DataStore {
                 leaves: [],
                 leaveTypes: [],
                 holidays: [],
+                feedbackCards: [],
+                feedbackEntries: [],
                 documents: [],
                 roles: [],
                 jobs: [],
@@ -729,6 +735,153 @@ export class DataStore {
             this.saveData(data)
         } catch (error) {
             console.error('Error deleting holiday:', error)
+            throw error
+        }
+    }
+
+    // Feedback cards
+    createFeedbackCard(companyId: string, cardData: Omit<FeedbackCard, 'id' | 'companyId' | 'createdAt' | 'updatedAt'>): FeedbackCard {
+        try {
+            const data = this.getData()
+            if (!data.feedbackCards) data.feedbackCards = []
+
+            const title = sanitizeInput(cardData.title)
+            if (!title) {
+                throw new Error('Feedback card title is required')
+            }
+            if (!cardData.questions || cardData.questions.length === 0) {
+                throw new Error('Feedback card requires at least one question')
+            }
+
+            const subject = cardData.subject === 'Applicant' ? 'Applicant' : 'Team Member'
+            const questions = cardData.questions.map((q) => ({
+                id: q.id || this.generateId(),
+                kind: q.kind === 'comment' ? 'comment' : 'score',
+                prompt: sanitizeInput(q.prompt),
+                weight: q.kind === 'score' && Number.isFinite(q.weight) ? Math.max(0, Math.round(q.weight)) : undefined
+            }))
+
+            const card: FeedbackCard = {
+                id: this.generateId(),
+                companyId,
+                title,
+                subject,
+                questions,
+                createdAt: new Date().toISOString()
+            }
+
+            data.feedbackCards.push(card)
+            this.saveData(data)
+            return card
+        } catch (error) {
+            console.error('Error creating feedback card:', error)
+            throw error
+        }
+    }
+
+    getFeedbackCardsByCompanyId(companyId: string): FeedbackCard[] {
+        try {
+            const data = this.getData()
+            return (data.feedbackCards || []).filter(card => card.companyId === companyId)
+        } catch (error) {
+            console.error('Error getting feedback cards:', error)
+            return []
+        }
+    }
+
+    updateFeedbackCard(cardId: string, updates: Partial<Omit<FeedbackCard, 'id' | 'companyId' | 'createdAt'>>): FeedbackCard | null {
+        try {
+            const data = this.getData()
+            const index = (data.feedbackCards || []).findIndex(card => card.id === cardId)
+            if (index === -1) return null
+
+            const existing = data.feedbackCards[index]
+            const title = updates.title !== undefined ? sanitizeInput(updates.title) : existing.title
+            const subject = updates.subject ? (updates.subject === 'Applicant' ? 'Applicant' : 'Team Member') : existing.subject
+            const questions = updates.questions
+                ? updates.questions.map((q) => ({
+                    id: q.id || this.generateId(),
+                    kind: q.kind === 'comment' ? 'comment' : 'score',
+                    prompt: sanitizeInput(q.prompt),
+                    weight: q.kind === 'score' && Number.isFinite(q.weight) ? Math.max(0, Math.round(q.weight)) : undefined
+                }))
+                : existing.questions
+
+            const updated: FeedbackCard = {
+                ...existing,
+                title,
+                subject,
+                questions,
+                updatedAt: new Date().toISOString()
+            }
+
+            data.feedbackCards[index] = updated
+            this.saveData(data)
+            return updated
+        } catch (error) {
+            console.error('Error updating feedback card:', error)
+            throw error
+        }
+    }
+
+    deleteFeedbackCard(cardId: string): void {
+        try {
+            const data = this.getData()
+            data.feedbackCards = (data.feedbackCards || []).filter(card => card.id !== cardId)
+            this.saveData(data)
+        } catch (error) {
+            console.error('Error deleting feedback card:', error)
+            throw error
+        }
+    }
+
+    // Feedback entries
+    createFeedbackEntry(companyId: string, entryData: Omit<FeedbackEntry, 'id' | 'companyId' | 'createdAt' | 'updatedAt'>): FeedbackEntry {
+        try {
+            const data = this.getData()
+            if (!data.feedbackEntries) data.feedbackEntries = []
+
+            const entry: FeedbackEntry = {
+                id: this.generateId(),
+                companyId,
+                type: entryData.type === 'Applicant' ? 'Applicant' : 'Team Member',
+                cardId: entryData.cardId,
+                subjectId: entryData.subjectId,
+                subjectName: entryData.subjectName ? sanitizeInput(entryData.subjectName) : undefined,
+                answers: entryData.answers.map((a) => ({
+                    questionId: a.questionId,
+                    score: Number.isFinite(a.score) ? Math.min(5, Math.max(1, Math.round(a.score))) : 1,
+                    comment: a.comment ? sanitizeInput(a.comment) : undefined
+                })),
+                createdAt: new Date().toISOString()
+            }
+
+            data.feedbackEntries.push(entry)
+            this.saveData(data)
+            return entry
+        } catch (error) {
+            console.error('Error creating feedback entry:', error)
+            throw error
+        }
+    }
+
+    getFeedbackEntriesByCompanyId(companyId: string): FeedbackEntry[] {
+        try {
+            const data = this.getData()
+            return (data.feedbackEntries || []).filter(entry => entry.companyId === companyId)
+        } catch (error) {
+            console.error('Error getting feedback entries:', error)
+            return []
+        }
+    }
+
+    deleteFeedbackEntry(entryId: string): void {
+        try {
+            const data = this.getData()
+            data.feedbackEntries = (data.feedbackEntries || []).filter(entry => entry.id !== entryId)
+            this.saveData(data)
+        } catch (error) {
+            console.error('Error deleting feedback entry:', error)
             throw error
         }
     }
