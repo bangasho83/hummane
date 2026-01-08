@@ -9,6 +9,7 @@ import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@
 import { useApp } from '@/lib/context/AppContext'
 import { Progress } from '@/components/ui/progress'
 import { ArrowLeft } from 'lucide-react'
+import { Badge } from '@/components/ui/badge'
 
 export default function FeedbackDetailPage() {
     const params = useParams()
@@ -41,6 +42,15 @@ export default function FeedbackDetailPage() {
     const maxScore = scoreAnswers.length * 5
     const percentScore = maxScore > 0 ? Math.round((totalScore / maxScore) * 100) : 0
     const avgScore = scoreAnswers.length > 0 ? (totalScore / scoreAnswers.length).toFixed(1) : '0.0'
+    const isIncomplete = card
+        ? card.questions.some((q) => {
+            const kind = q.kind ?? 'score'
+            const answer = entry.answers.find(a => a.questionId === q.id)
+            if (!answer) return true
+            if (kind === 'comment') return !answer.comment?.trim()
+            return answer.score < 1 || answer.score > 5
+        })
+        : false
 
 
     return (
@@ -70,13 +80,18 @@ export default function FeedbackDetailPage() {
                         <h1 className="text-2xl font-extrabold text-slate-900 tracking-tight">{entry.id}</h1>
                     </div>
                 </div>
-                    <Button
-                        variant="outline"
-                        className="rounded-xl"
-                        onClick={() => router.push(`/dashboard/performance/feedback/${entry.id}/edit`)}
-                    >
-                        Edit Feedback
-                    </Button>
+                    <div className="flex items-center gap-3">
+                        {isIncomplete && (
+                            <Badge className="bg-yellow-100 text-yellow-700 border-yellow-200">Incomplete</Badge>
+                        )}
+                        <Button
+                            variant="outline"
+                            className="rounded-xl"
+                            onClick={() => router.push(`/dashboard/performance/feedback/${entry.id}/edit`)}
+                        >
+                            Edit Feedback
+                        </Button>
+                    </div>
                 </div>
 
                 <Card className="border border-slate-100 shadow-premium rounded-3xl bg-white overflow-hidden">

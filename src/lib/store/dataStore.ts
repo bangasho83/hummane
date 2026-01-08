@@ -858,6 +858,8 @@ export class DataStore {
                 cardId: entryData.cardId,
                 subjectId: entryData.subjectId,
                 subjectName: entryData.subjectName ? sanitizeInput(entryData.subjectName) : undefined,
+                authorId: entryData.authorId,
+                authorName: entryData.authorName ? sanitizeInput(entryData.authorName) : undefined,
                 answers: entryData.answers.map((a) => ({
                     questionId: a.questionId,
                     score: Number.isFinite(a.score) ? Math.min(5, Math.max(0, Math.round(a.score))) : 0,
@@ -918,6 +920,8 @@ export class DataStore {
                 cardId: updates.cardId ?? existing.cardId,
                 subjectId: updates.subjectId ?? existing.subjectId,
                 subjectName: updates.subjectName !== undefined ? sanitizeInput(updates.subjectName) : existing.subjectName,
+                authorId: updates.authorId ?? existing.authorId,
+                authorName: updates.authorName !== undefined ? sanitizeInput(updates.authorName) : existing.authorName,
                 answers,
                 updatedAt: new Date().toISOString()
             }

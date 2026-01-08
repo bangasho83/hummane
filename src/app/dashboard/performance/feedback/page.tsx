@@ -136,6 +136,7 @@ export default function FeedbackPage() {
                                     <TableHead className="pl-8 py-4 text-[10px] font-extrabold uppercase tracking-widest text-slate-400">ID</TableHead>
                                     <TableHead className="py-4 text-[10px] font-extrabold uppercase tracking-widest text-slate-400">Type</TableHead>
                                     <TableHead className="py-4 text-[10px] font-extrabold uppercase tracking-widest text-slate-400">Recipient</TableHead>
+                                    <TableHead className="py-4 text-[10px] font-extrabold uppercase tracking-widest text-slate-400">From</TableHead>
                                     <TableHead className="py-4 text-[10px] font-extrabold uppercase tracking-widest text-slate-400">Card</TableHead>
                                     <TableHead className="py-4 text-[10px] font-extrabold uppercase tracking-widest text-slate-400">Date</TableHead>
                                     <TableHead className="text-right pr-8 py-4 text-[10px] font-extrabold uppercase tracking-widest text-slate-400">Actions</TableHead>
@@ -144,13 +145,22 @@ export default function FeedbackPage() {
                             <TableBody>
                                 {filteredEntries.length === 0 ? (
                                     <TableRow>
-                                        <TableCell colSpan={6} className="py-12 text-center text-slate-500">
+                                        <TableCell colSpan={7} className="py-12 text-center text-slate-500">
                                             {feedbackEntries.length === 0 ? 'No feedback submitted yet.' : 'No matches for the selected filters.'}
                                         </TableCell>
                                     </TableRow>
                                 ) : (
                                     filteredEntries.map((entry) => {
                                         const card = cardsById.get(entry.cardId) as FeedbackCard | undefined
+                                        const isIncomplete = card
+                                            ? card.questions.some((q) => {
+                                                const kind = q.kind ?? 'score'
+                                                const answer = entry.answers.find(a => a.questionId === q.id)
+                                                if (!answer) return true
+                                                if (kind === 'comment') return !answer.comment?.trim()
+                                                return answer.score < 1 || answer.score > 5
+                                            })
+                                            : false
                                         return (
                                             <TableRow key={entry.id} className="hover:bg-slate-50/50 border-slate-50">
                                                 <TableCell className="pl-8 py-5 text-xs font-mono">
@@ -167,10 +177,20 @@ export default function FeedbackPage() {
                                                     </Link>
                                                 </TableCell>
                                                 <TableCell className="py-5 text-sm font-medium text-slate-600">
-                                                    {entry.type}
+                                                    <div className="flex items-center gap-2">
+                                                        <span>{entry.type}</span>
+                                                        {isIncomplete && (
+                                                            <span className="text-[10px] font-bold uppercase tracking-widest px-2 py-1 rounded-full bg-yellow-100 text-yellow-700">
+                                                                Incomplete
+                                                            </span>
+                                                        )}
+                                                    </div>
                                                 </TableCell>
                                                 <TableCell className="py-5 font-semibold text-slate-900">
                                                     {entry.subjectName || 'Unknown'}
+                                                </TableCell>
+                                                <TableCell className="py-5 text-sm font-medium text-slate-600">
+                                                    {entry.authorName || '—'}
                                                 </TableCell>
                                                 <TableCell className="py-5 text-sm text-slate-600">
                                                     {card?.title || 'Unknown'}

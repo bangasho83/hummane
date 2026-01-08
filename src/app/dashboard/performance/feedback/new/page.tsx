@@ -23,6 +23,7 @@ export default function NewFeedbackPage() {
     const [type, setType] = useState<'Team Member' | 'Applicant'>('Team Member')
     const [cardId, setCardId] = useState<string>('')
     const [subjectId, setSubjectId] = useState<string>('')
+    const [authorId, setAuthorId] = useState<string>('')
     const [answers, setAnswers] = useState<DraftAnswer[]>([])
     const [saving, setSaving] = useState(false)
 
@@ -41,6 +42,11 @@ export default function NewFeedbackPage() {
             ? applicants.map(a => ({ id: a.id, label: a.fullName }))
             : employees.map(e => ({ id: e.id, label: e.name }))
     }, [type, applicants, employees])
+
+    const authors = useMemo(
+        () => employees.map(e => ({ id: e.id, label: e.name })),
+        [employees]
+    )
 
     const handleSelectCard = (value: string) => {
         setCardId(value)
@@ -73,40 +79,25 @@ export default function NewFeedbackPage() {
             toast('Select a recipient', 'error')
             return
         }
+        if (!authorId) {
+            toast('Select who submitted the feedback', 'error')
+            return
+        }
         if (!selectedCard) {
             toast('Selected card not found', 'error')
             return
         }
-        if (answers.length !== selectedCard.questions.length) {
-            toast('Please answer every question', 'error')
-            return
-        }
-        const hasInvalidScore = selectedCard.questions.some((q) => {
-            if ((q.kind ?? 'score') !== 'score') return false
-            const answer = answers.find(a => a.questionId === q.id)
-            return !answer || answer.score < 1 || answer.score > 5
-        })
-        if (hasInvalidScore) {
-            toast('Please score every question', 'error')
-            return
-        }
-        const hasMissingComment = selectedCard.questions.some((q) => {
-            if ((q.kind ?? 'score') !== 'comment') return false
-            const answer = answers.find(a => a.questionId === q.id)
-            return !answer || !answer.comment?.trim()
-        })
-        if (hasMissingComment) {
-            toast('Please complete all comment fields', 'error')
-            return
-        }
         setSaving(true)
         const subject = subjects.find(s => s.id === subjectId)
+        const author = authors.find(a => a.id === authorId)
         try {
             await createFeedbackEntry({
                 type,
                 cardId,
                 subjectId,
                 subjectName: subject?.label,
+                authorId,
+                authorName: author?.label,
                 answers: answers.map(a => ({
                     questionId: a.questionId,
                     score: a.score,
@@ -134,7 +125,26 @@ export default function NewFeedbackPage() {
 
                 <Card className="border border-slate-100 shadow-premium rounded-3xl bg-white overflow-hidden">
                     <CardContent className="p-8 space-y-5">
-                        <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+                        <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
+                            <div className="space-y-2">
+                                <Label className="text-sm font-bold text-slate-700 px-1">From</Label>
+                                <Select
+                                    value={authorId || 'none'}
+                                    onValueChange={(value) => setAuthorId(value === 'none' ? '' : value)}
+                                >
+                                    <SelectTrigger className="h-11 rounded-xl border-slate-200">
+                                        <SelectValue placeholder="Select team member" />
+                                    </SelectTrigger>
+                                    <SelectContent>
+                                        <SelectItem value="none">Select</SelectItem>
+                                        {authors.map(author => (
+                                            <SelectItem key={author.id} value={author.id}>
+                                                {author.label}
+                                            </SelectItem>
+                                        ))}
+                                    </SelectContent>
+                                </Select>
+                            </div>
                             <div className="space-y-2">
                                 <Label className="text-sm font-bold text-slate-700 px-1">Type</Label>
                                 <Select

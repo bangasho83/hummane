@@ -165,6 +165,8 @@ export interface FeedbackEntry {
     cardId: string
     subjectId?: string
     subjectName?: string
+    authorId?: string
+    authorName?: string
     answers: FeedbackEntryAnswer[]
     createdAt: string
     updatedAt?: string

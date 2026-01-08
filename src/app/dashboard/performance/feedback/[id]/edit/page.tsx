@@ -113,29 +113,6 @@ export default function EditFeedbackPage() {
             toast('Selected card not found', 'error')
             return
         }
-        if (answers.length !== selectedCard.questions.length) {
-            toast('Please answer every question', 'error')
-            return
-        }
-        const hasInvalidScore = selectedCard.questions.some((q) => {
-            if ((q.kind ?? 'score') !== 'score') return false
-            const answer = answers.find(a => a.questionId === q.id)
-            return !answer || answer.score < 1 || answer.score > 5
-        })
-        if (hasInvalidScore) {
-            toast('Please score every question', 'error')
-            return
-        }
-        const hasMissingComment = selectedCard.questions.some((q) => {
-            if ((q.kind ?? 'score') !== 'comment') return false
-            const answer = answers.find(a => a.questionId === q.id)
-            return !answer || !answer.comment?.trim()
-        })
-        if (hasMissingComment) {
-            toast('Please complete all comment fields', 'error')
-            return
-        }
-
         setSaving(true)
         const subject = subjects.find(s => s.id === subjectId)
         try {

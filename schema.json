@@ -262,6 +262,8 @@
         "cardId": { "type": "string", "required": true, "description": "Feedback card id." },
         "subjectId": { "type": "string", "required": false, "description": "Employee or applicant id." },
         "subjectName": { "type": "string", "required": false, "description": "Display name for subject." },
+        "authorId": { "type": "string", "required": false, "description": "Team member id who submitted feedback." },
+        "authorName": { "type": "string", "required": false, "description": "Display name for the feedback author." },
         "answers": {
           "type": "array",
           "required": true,
