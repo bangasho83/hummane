@@ -49,25 +49,15 @@ const to24Hour = (time: string) => {
     return `${String(normalized).padStart(2, '0')}:${minute}`
 }
 
-const defaultSchedule: ScheduleRow[] = [
-    { day: 'Monday', open: true, start: '09:00', end: '17:00' },
-    { day: 'Tuesday', open: true, start: '09:00', end: '17:00' },
-    { day: 'Wednesday', open: true, start: '09:00', end: '17:00' },
-    { day: 'Thursday', open: true, start: '09:00', end: '17:00' },
-    { day: 'Friday', open: true, start: '09:00', end: '17:00' },
-    { day: 'Saturday', open: false, start: '09:00', end: '17:00' },
-    { day: 'Sunday', open: false, start: '09:00', end: '17:00' },
-]
-
 export function GeneralTab() {
-    const { currentCompany, companyApiResponse, updateCompany, holidays, createHoliday, deleteHoliday } = useApp()
+    const { currentCompany, updateCompany, holidays, createHoliday, deleteHoliday } = useApp()
     const [timezones, setTimezones] = useState<string[]>(fallbackTimezones)
-    const [timezone, setTimezone] = useState('UTC')
+    const [timezone, setTimezone] = useState('')
     const [industry, setIndustry] = useState('')
     const [currency, setCurrency] = useState('')
     const [isEditingSettings, setIsEditingSettings] = useState(false)
     const [settingsLoading, setSettingsLoading] = useState(false)
-    const [schedule, setSchedule] = useState<ScheduleRow[]>(() => [...defaultSchedule])
+    const [schedule, setSchedule] = useState<ScheduleRow[]>([])
     const [holidayRows, setHolidayRows] = useState([{ date: '', name: '' }])
     const [isHolidayDialogOpen, setIsHolidayDialogOpen] = useState(false)
     const [isEditingHours, setIsEditingHours] = useState(false)
@@ -82,13 +72,13 @@ export function GeneralTab() {
                 if (Array.isArray(data) && data.length) {
                     setTimezones(data)
                     if (!isEditingSettings) {
-                        setTimezone(currentCompany?.timezone || data[0])
+                        setTimezone(currentCompany?.timezone || '')
                     }
                 }
             } catch {
                 setTimezones(fallbackTimezones)
                 if (!isEditingSettings) {
-                    setTimezone(currentCompany?.timezone || fallbackTimezones[0])
+                    setTimezone(currentCompany?.timezone || '')
                 }
             }
         }
@@ -107,7 +97,7 @@ export function GeneralTab() {
     useEffect(() => {
         if (!currentCompany || isEditingHours) return
         if (!currentCompany.workingHours) {
-            setSchedule([...defaultSchedule])
+            setSchedule([])
             return
         }
         const nextSchedule = dayKeys.map(({ label, key }) => {
@@ -115,8 +105,8 @@ export function GeneralTab() {
             return {
                 day: label,
                 open: entry?.open ?? false,
-                start: entry?.start ? to24Hour(entry.start) : '09:00',
-                end: entry?.end ? to24Hour(entry.end) : '17:00'
+                start: entry?.start ? to24Hour(entry.start) : '',
+                end: entry?.end ? to24Hour(entry.end) : ''
             }
         })
         setSchedule(nextSchedule)
@@ -152,7 +142,7 @@ export function GeneralTab() {
         if (currentCompany) {
             setIndustry(currentCompany.industry || '')
             setCurrency(currentCompany.currency || '')
-            setTimezone(currentCompany.timezone || timezones[0] || 'UTC')
+            setTimezone(currentCompany.timezone || '')
         }
         setIsEditingSettings(false)
     }
@@ -199,9 +189,23 @@ export function GeneralTab() {
             })
             setSchedule(nextSchedule)
         } else {
-            setSchedule([...defaultSchedule])
+            setSchedule([])
         }
         setIsEditingHours(false)
+    }
+
+    const handleEditHours = () => {
+        if (schedule.length === 0) {
+            setSchedule(
+                dayKeys.map(({ label }) => ({
+                    day: label,
+                    open: false,
+                    start: '',
+                    end: ''
+                }))
+            )
+        }
+        setIsEditingHours(true)
     }
 
     const toggleDay = (day: string) => {
@@ -367,14 +371,6 @@ export function GeneralTab() {
                                     {currency || 'Not set'}
                                 </div>
                             )}
-                            <div className="rounded-2xl border border-slate-200 bg-slate-50 p-3">
-                                <p className="text-[10px] font-bold uppercase tracking-widest text-slate-500 mb-2">Company GET Response</p>
-                                <pre className="text-xs text-slate-600 whitespace-pre-wrap">
-                                    {companyApiResponse
-                                        ? JSON.stringify(companyApiResponse, null, 2)
-                                        : 'No API response yet.'}
-                                </pre>
-                            </div>
                         </div>
                     </CardContent>
                 </Card>
@@ -411,63 +407,71 @@ export function GeneralTab() {
                                     type="button"
                                     variant="outline"
                                     className="rounded-xl border-slate-200"
-                                    onClick={() => setIsEditingHours(true)}
+                                    onClick={handleEditHours}
                                 >
                                     Edit
                                 </Button>
                             )}
                         </div>
                         <div className="space-y-2">
-                            {schedule.map((row) => (
-                                <div
-                                    key={row.day}
-                                    className="flex flex-col sm:flex-row sm:items-center gap-3 p-3 rounded-2xl border border-slate-100 bg-slate-50/50"
-                                >
-                                    <div className="w-28 font-bold text-slate-800">{row.day}</div>
-                                    {isEditingHours ? (
-                                        <>
-                                            <div className="flex items-center gap-3">
-                                                <button
-                                                    type="button"
-                                                    onClick={() => toggleDay(row.day)}
-                                                    className={`relative inline-flex h-6 w-11 items-center rounded-full transition-colors ${row.open ? 'bg-blue-600' : 'bg-slate-300'
-                                                        }`}
-                                                    aria-pressed={row.open}
-                                                >
-                                                    <span
-                                                        className={`inline-block h-5 w-5 transform rounded-full bg-white shadow transition-transform ${row.open ? 'translate-x-5' : 'translate-x-1'
+                            {schedule.length === 0 && !isEditingHours ? (
+                                <div className="text-sm font-medium text-slate-500">Not set</div>
+                            ) : (
+                                schedule.map((row) => (
+                                    <div
+                                        key={row.day}
+                                        className="flex flex-col sm:flex-row sm:items-center gap-3 p-3 rounded-2xl border border-slate-100 bg-slate-50/50"
+                                    >
+                                        <div className="w-28 font-bold text-slate-800">{row.day}</div>
+                                        {isEditingHours ? (
+                                            <>
+                                                <div className="flex items-center gap-3">
+                                                    <button
+                                                        type="button"
+                                                        onClick={() => toggleDay(row.day)}
+                                                        className={`relative inline-flex h-6 w-11 items-center rounded-full transition-colors ${row.open ? 'bg-blue-600' : 'bg-slate-300'
                                                             }`}
+                                                        aria-pressed={row.open}
+                                                    >
+                                                        <span
+                                                            className={`inline-block h-5 w-5 transform rounded-full bg-white shadow transition-transform ${row.open ? 'translate-x-5' : 'translate-x-1'
+                                                                }`}
+                                                        />
+                                                    </button>
+                                                    <span className="text-sm font-semibold text-slate-700">
+                                                        {row.open ? 'Open' : 'Closed'}
+                                                    </span>
+                                                </div>
+                                                <div className="flex items-center gap-2 flex-1">
+                                                    <Input
+                                                        type="time"
+                                                        value={row.start}
+                                                        disabled={!row.open}
+                                                        onChange={(e) => updateHours(row.day, 'start', e.target.value)}
+                                                        className="h-11 rounded-xl border-slate-200 max-w-[140px]"
                                                     />
-                                                </button>
-                                                <span className="text-sm font-semibold text-slate-700">
-                                                    {row.open ? 'Open' : 'Closed'}
-                                                </span>
+                                                    <span className="text-slate-400 font-semibold">—</span>
+                                                    <Input
+                                                        type="time"
+                                                        value={row.end}
+                                                        disabled={!row.open}
+                                                        onChange={(e) => updateHours(row.day, 'end', e.target.value)}
+                                                        className="h-11 rounded-xl border-slate-200 max-w-[140px]"
+                                                    />
+                                                </div>
+                                            </>
+                                        ) : (
+                                            <div className="text-sm font-semibold text-slate-700">
+                                                {row.open
+                                                    ? row.start && row.end
+                                                        ? `${to12Hour(row.start)} – ${to12Hour(row.end)}`
+                                                        : 'Not set'
+                                                    : 'Closed'}
                                             </div>
-                                            <div className="flex items-center gap-2 flex-1">
-                                                <Input
-                                                    type="time"
-                                                    value={row.start}
-                                                    disabled={!row.open}
-                                                    onChange={(e) => updateHours(row.day, 'start', e.target.value)}
-                                                    className="h-11 rounded-xl border-slate-200 max-w-[140px]"
-                                                />
-                                                <span className="text-slate-400 font-semibold">—</span>
-                                                <Input
-                                                    type="time"
-                                                    value={row.end}
-                                                    disabled={!row.open}
-                                                    onChange={(e) => updateHours(row.day, 'end', e.target.value)}
-                                                    className="h-11 rounded-xl border-slate-200 max-w-[140px]"
-                                                />
-                                            </div>
-                                        </>
-                                    ) : (
-                                        <div className="text-sm font-semibold text-slate-700">
-                                            {row.open ? `${to12Hour(row.start)} – ${to12Hour(row.end)}` : 'Closed'}
-                                        </div>
-                                    )}
-                                </div>
-                            ))}
+                                        )}
+                                    </div>
+                                ))
+                            )}
                         </div>
                     </CardContent>
                 </Card>
