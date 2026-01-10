@@ -360,10 +360,11 @@ export function AppProvider({ children }: { children: ReactNode }) {
             ? card.questions
             : (fallback.questions || [])
 
-        const questions = rawQuestions.map((question, index) => {
+        const questions: FeedbackQuestion[] = rawQuestions.map((question, index) => {
             const fallbackQuestion = fallback.questions?.[index]
             const rawKind = (question as { kind?: string; type?: string }).kind || (question as { type?: string }).type
-            const kind = rawKind === 'comment' || rawKind === 'text' ? 'comment' : 'score'
+            const kind: FeedbackQuestion['kind'] =
+                rawKind === 'comment' || rawKind === 'text' ? 'comment' : 'score'
             const weight = kind === 'score'
                 ? question.weight ?? fallbackQuestion?.weight ?? 1
                 : undefined

@@ -1247,9 +1247,9 @@ export class DataStore {
             const data = this.getData()
             const existing = data.feedbackCards || []
             const preserved = existing.filter(card => card.companyId !== companyId)
-            const normalized = cards.map((card) => {
+            const normalized: FeedbackCard[] = cards.map((card) => {
                 const title = sanitizeInput(card.title)
-                const subject = card.subject === 'Applicant' ? 'Applicant' : 'Team Member'
+                const subject: FeedbackCard['subject'] = card.subject === 'Applicant' ? 'Applicant' : 'Team Member'
                 const questions = (card.questions || []).map((q) => {
                     const rawWeight = q.weight
                     return {
@@ -1407,10 +1407,10 @@ export class DataStore {
             const data = this.getData()
             const existing = data.feedbackEntries || []
             const preserved = existing.filter(entry => entry.companyId !== companyId)
-            const normalized = entries.map((entry) => ({
+            const normalized: FeedbackEntry[] = entries.map((entry) => ({
                 ...entry,
                 companyId: entry.companyId || companyId,
-                type: entry.type === 'Applicant' ? 'Applicant' : 'Team Member',
+                type: (entry.type === 'Applicant' ? 'Applicant' : 'Team Member') as FeedbackEntry['type'],
                 subjectName: entry.subjectName ? sanitizeInput(entry.subjectName) : undefined,
                 authorName: entry.authorName ? sanitizeInput(entry.authorName) : undefined,
                 answers: (entry.answers || []).map((a) => ({
