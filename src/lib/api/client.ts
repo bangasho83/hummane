@@ -116,13 +116,12 @@ export const exchangeFirebaseToken = async (firebaseToken: string) => {
   }
 
   const company = data.company as ApiCompany | undefined
-  const companyId = company?.id || user.companyId
-  if (!companyId) {
-    throw new Error('Missing company id in response')
-  }
+  const companyId = company?.id || user.companyId || null
 
   persistApiSession(accessToken, user)
-  persistCompanyId(companyId)
+  if (companyId) {
+    persistCompanyId(companyId)
+  }
 
   return { accessToken, user, company, companyId, authResponse: data }
 }

@@ -1,5 +1,7 @@
 'use client'
 
+import { useEffect } from 'react'
+import { usePathname, useRouter } from 'next/navigation'
 import { Sidebar } from './Sidebar'
 import { Bell, Search, User, ChevronDown } from 'lucide-react'
 import { useApp } from '@/lib/context/AppContext'
@@ -10,7 +12,16 @@ interface DashboardShellProps {
 }
 
 export function DashboardShell({ children }: DashboardShellProps) {
-    const { currentUser } = useApp()
+    const { currentUser, currentCompany } = useApp()
+    const router = useRouter()
+    const pathname = usePathname()
+
+    useEffect(() => {
+        if (!currentUser) return
+        if (currentCompany) return
+        if (pathname === '/company-setup') return
+        router.push('/company-setup')
+    }, [currentUser, currentCompany, pathname, router])
 
     return (
         <div className="flex min-h-screen bg-slate-50/50">

@@ -1098,9 +1098,7 @@ export function AppProvider({ children }: { children: ReactNode }) {
 
     useEffect(() => {
         if (!apiAccessToken) return
-        if (!apiCompanyId) {
-            void logout()
-        }
+        if (!apiCompanyId) return
     }, [apiAccessToken, apiCompanyId])
 
     useEffect(() => {
