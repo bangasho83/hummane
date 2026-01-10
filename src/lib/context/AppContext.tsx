@@ -362,7 +362,7 @@ export function AppProvider({ children }: { children: ReactNode }) {
 
         const questions = rawQuestions.map((question, index) => {
             const fallbackQuestion = fallback.questions?.[index]
-            const rawKind = (question as FeedbackQuestion & { type?: string }).kind || (question as { type?: string }).type
+            const rawKind = (question as { kind?: string; type?: string }).kind || (question as { type?: string }).type
             const kind = rawKind === 'comment' || rawKind === 'text' ? 'comment' : 'score'
             const weight = kind === 'score'
                 ? question.weight ?? fallbackQuestion?.weight ?? 1
