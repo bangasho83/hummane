@@ -60,7 +60,7 @@ const defaultSchedule: ScheduleRow[] = [
 ]
 
 export function GeneralTab() {
-    const { currentCompany, updateCompany, holidays, createHoliday, deleteHoliday } = useApp()
+    const { currentCompany, companyApiResponse, updateCompany, holidays, createHoliday, deleteHoliday } = useApp()
     const [timezones, setTimezones] = useState<string[]>(fallbackTimezones)
     const [timezone, setTimezone] = useState('UTC')
     const [industry, setIndustry] = useState('')
@@ -367,6 +367,14 @@ export function GeneralTab() {
                                     {currency || 'Not set'}
                                 </div>
                             )}
+                            <div className="rounded-2xl border border-slate-200 bg-slate-50 p-3">
+                                <p className="text-[10px] font-bold uppercase tracking-widest text-slate-500 mb-2">Company GET Response</p>
+                                <pre className="text-xs text-slate-600 whitespace-pre-wrap">
+                                    {companyApiResponse
+                                        ? JSON.stringify(companyApiResponse, null, 2)
+                                        : 'No API response yet.'}
+                                </pre>
+                            </div>
                         </div>
                     </CardContent>
                 </Card>
