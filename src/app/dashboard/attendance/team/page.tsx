@@ -1,8 +1,7 @@
 'use client'
 
 import { useMemo, useState } from 'react'
-import { DashboardShell } from '@/components/layout/DashboardShell'
-import { AttendanceTabs } from '@/components/attendance/AttendanceTabs'
+import { AttendanceTabs } from '@/features/attendance'
 import { useApp } from '@/lib/context/AppContext'
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table'
 import { Card, CardContent } from '@/components/ui/card'
@@ -60,135 +59,134 @@ export default function AttendanceTeamPage() {
     }
 
     return (
-        <DashboardShell>
-            <div className="animate-in fade-in duration-500 slide-in-from-bottom-4">
-                <div className="flex justify-between items-end mb-4">
-                    <div>
-                        <h1 className="text-3xl font-extrabold text-slate-900 tracking-tight">
-                            Team Leave Totals
-                        </h1>
-                        <p className="text-slate-500 font-medium">
-                            See leave consumption per team member by leave type.
-                        </p>
-                    </div>
+        <div className="animate-in fade-in duration-500 slide-in-from-bottom-4">
+            <div className="flex justify-between items-end mb-4">
+                <div>
+                    <h1 className="text-3xl font-extrabold text-slate-900 tracking-tight">
+                        Team Leave Totals
+                    </h1>
+                    <p className="text-slate-500 font-medium">
+                        See leave consumption per team member by leave type.
+                    </p>
                 </div>
+            </div>
 
-                <AttendanceTabs />
+            <AttendanceTabs />
 
-                <Card className="border-none shadow-premium rounded-3xl bg-white overflow-hidden">
-                    <CardContent className="p-0">
-                        <div className="p-8 border-b border-slate-100">
-                            <div className="flex items-center gap-4 flex-wrap">
-                                <div className="flex-1 min-w-[280px]">
-                                    <div className="relative">
-                                        <Input
-                                            placeholder="Search team..."
-                                            value={searchTerm}
-                                            onChange={(e) => setSearchTerm(e.target.value)}
-                                            className="pl-4 h-11 rounded-xl bg-slate-50 border-slate-200"
-                                        />
-                                    </div>
-                                </div>
-                                <div className="flex items-center gap-3 flex-wrap">
-                                    <Select value={departmentFilter} onValueChange={setDepartmentFilter}>
-                                        <SelectTrigger className="w-[180px] bg-slate-50 border-slate-200 h-11 rounded-xl">
-                                            <SelectValue placeholder="Department" />
-                                        </SelectTrigger>
-                                        <SelectContent>
-                                            <SelectItem value="all">All Departments</SelectItem>
-                                            {departments.map(dept => (
-                                                <SelectItem key={dept} value={dept}>{dept}</SelectItem>
-                                            ))}
-                                        </SelectContent>
-                                    </Select>
-
-                                    <Select value={positionFilter} onValueChange={setPositionFilter}>
-                                        <SelectTrigger className="w-[180px] bg-slate-50 border-slate-200 h-11 rounded-xl">
-                                            <SelectValue placeholder="Position" />
-                                        </SelectTrigger>
-                                        <SelectContent>
-                                            <SelectItem value="all">All Positions</SelectItem>
-                                            {positions.map(pos => (
-                                                <SelectItem key={pos} value={pos}>{pos}</SelectItem>
-                                            ))}
-                                        </SelectContent>
-                                    </Select>
-
-                                    {(searchTerm || departmentFilter !== 'all' || positionFilter !== 'all') && (
-                                        <button
-                                            type="button"
-                                            onClick={clearFilters}
-                                            className="text-sm font-semibold text-slate-500 hover:text-red-500"
-                                        >
-                                            Reset
-                                        </button>
-                                    )}
+            <Card className="border-none shadow-premium rounded-3xl bg-white overflow-hidden">
+                <CardContent className="p-0">
+                    <div className="p-8 border-b border-slate-100">
+                        <div className="flex items-center gap-4 flex-wrap">
+                            <div className="flex-1 min-w-[280px]">
+                                <div className="relative">
+                                    <Input
+                                        placeholder="Search team..."
+                                        value={searchTerm}
+                                        onChange={(e) => setSearchTerm(e.target.value)}
+                                        className="pl-4 h-11 rounded-xl bg-slate-50 border-slate-200"
+                                    />
                                 </div>
                             </div>
-                        </div>
-
-                        <div className="overflow-x-auto">
-                            <Table>
-                                <TableHeader className="bg-slate-50/50">
-                                    <TableRow className="hover:bg-transparent border-slate-100">
-                                        <TableHead className="w-64 pl-8 py-4 text-[10px] font-extrabold uppercase tracking-widest text-slate-400">
-                                            Employee
-                                        </TableHead>
-                                        {leaveTypesOrdered.map((lt) => (
-                                            <TableHead key={lt.id} className="py-4 text-[10px] font-extrabold uppercase tracking-widest text-slate-400 text-center">
-                                                <div className="flex flex-col items-center gap-1">
-                                                    <span>{lt.code}</span>
-                                                    <span className="text-[9px] font-semibold tracking-normal text-slate-300">
-                                                        Quota {lt.quota ?? 0}
-                                                    </span>
-                                                </div>
-                                            </TableHead>
+                            <div className="flex items-center gap-3 flex-wrap">
+                                <Select value={departmentFilter} onValueChange={setDepartmentFilter}>
+                                    <SelectTrigger className="w-[180px] bg-slate-50 border-slate-200 h-11 rounded-xl">
+                                        <SelectValue placeholder="Department" />
+                                    </SelectTrigger>
+                                    <SelectContent>
+                                        <SelectItem value="all">All Departments</SelectItem>
+                                        {departments.map(dept => (
+                                            <SelectItem key={dept} value={dept}>{dept}</SelectItem>
                                         ))}
-                                        <TableHead className="py-4 text-[10px] font-extrabold uppercase tracking-widest text-slate-400 text-center pr-8">
-                                            Total
+                                    </SelectContent>
+                                </Select>
+
+                                <Select value={positionFilter} onValueChange={setPositionFilter}>
+                                    <SelectTrigger className="w-[180px] bg-slate-50 border-slate-200 h-11 rounded-xl">
+                                        <SelectValue placeholder="Position" />
+                                    </SelectTrigger>
+                                    <SelectContent>
+                                        <SelectItem value="all">All Positions</SelectItem>
+                                        {positions.map(pos => (
+                                            <SelectItem key={pos} value={pos}>{pos}</SelectItem>
+                                        ))}
+                                    </SelectContent>
+                                </Select>
+
+                                {(searchTerm || departmentFilter !== 'all' || positionFilter !== 'all') && (
+                                    <button
+                                        type="button"
+                                        onClick={clearFilters}
+                                        className="text-sm font-semibold text-slate-500 hover:text-red-500"
+                                    >
+                                        Reset
+                                    </button>
+                                )}
+                            </div>
+                        </div>
+                    </div>
+
+                    <div className="overflow-x-auto">
+                        <Table>
+                            <TableHeader className="bg-slate-50/50">
+                                <TableRow className="hover:bg-transparent border-slate-100">
+                                    <TableHead className="w-64 pl-8 py-4 text-[10px] font-extrabold uppercase tracking-widest text-slate-400">
+                                        Employee
+                                    </TableHead>
+                                    {leaveTypesOrdered.map((lt) => (
+                                        <TableHead key={lt.id} className="py-4 text-[10px] font-extrabold uppercase tracking-widest text-slate-400 text-center">
+                                            <div className="flex flex-col items-center gap-1">
+                                                <span>{lt.code}</span>
+                                                <span className="text-[9px] font-semibold tracking-normal text-slate-300">
+                                                    Quota {lt.quota ?? 0}
+                                                </span>
+                                            </div>
                                         </TableHead>
+                                    ))}
+                                    <TableHead className="py-4 text-[10px] font-extrabold uppercase tracking-widest text-slate-400 text-center pr-8">
+                                        Total
+                                    </TableHead>
+                                </TableRow>
+                            </TableHeader>
+                            <TableBody>
+                                {filteredEmployees.length === 0 ? (
+                                    <TableRow>
+                                        <TableCell colSpan={leaveTypesOrdered.length + 2} className="p-12 text-center text-slate-500">
+                                            {employees.length === 0 ? 'No employees yet.' : 'No matches for the selected filters.'}
+                                        </TableCell>
                                     </TableRow>
-                                </TableHeader>
-                                <TableBody>
-                                    {filteredEmployees.length === 0 ? (
-                                        <TableRow>
-                                            <TableCell colSpan={leaveTypesOrdered.length + 2} className="p-12 text-center text-slate-500">
-                                                {employees.length === 0 ? 'No employees yet.' : 'No matches for the selected filters.'}
-                                            </TableCell>
-                                        </TableRow>
-                                    ) : (
-                                        filteredEmployees.map((emp) => {
-                                            const total = leaveTypesOrdered.reduce((sum, lt) => {
-                                                if (lt.employmentType !== emp.employmentType) return sum
-                                                const count = getCount(emp.id, lt.id, lt.name)
-                                                if (!Number.isInteger(count) || count <= 0) return sum
-                                                return sum + count
-                                            }, 0)
-                                            return (
-                                                <TableRow key={emp.id} className="hover:bg-slate-50/50 border-slate-50">
-                                                    <TableCell className="pl-8 py-4">
-                                                        <div className="font-bold text-slate-900">{emp.name}</div>
-                                                        <div className="text-[11px] text-slate-500 font-medium">
-                                                            {emp.department}
-                                                        </div>
-                                                    </TableCell>
-                                                    {leaveTypesOrdered.map((lt) => {
-                                                        const count = getCount(emp.id, lt.id, lt.name)
-                                                        const matchesEmployment = lt.employmentType === emp.employmentType
-                                                        const quotaLimit = lt.quota ?? 0
-                                                        const isOverQuota = matchesEmployment && count > quotaLimit
-                                                        return (
-                                                            <TableCell
-                                                                key={lt.id}
-                                                                className={cn(
-                                                                    "text-center text-sm font-semibold",
-                                                                    matchesEmployment ? "text-slate-600" : "text-slate-400",
-                                                                    isOverQuota ? "text-red-600" : ""
-                                                                )}
-                                                            >
-                                                                {matchesEmployment ? (count || 0) : '—'}
-                                                            </TableCell>
-                                                        )
+                                ) : (
+                                    filteredEmployees.map((emp) => {
+                                        const total = leaveTypesOrdered.reduce((sum, lt) => {
+                                            if (lt.employmentType !== emp.employmentType) return sum
+                                            const count = getCount(emp.id, lt.id, lt.name)
+                                            if (!Number.isInteger(count) || count <= 0) return sum
+                                            return sum + count
+                                        }, 0)
+                                                return (
+                                            <TableRow key={emp.id} className="hover:bg-slate-50/50 border-slate-50">
+                                                <TableCell className="pl-8 py-4">
+                                                    <div className="font-bold text-slate-900">{emp.name}</div>
+                                                    <div className="text-[11px] text-slate-500 font-medium">
+                                                        {emp.department}
+                                                    </div>
+                                                </TableCell>
+                                                {leaveTypesOrdered.map((lt) => {
+                                                    const count = getCount(emp.id, lt.id, lt.name)
+                                                    const matchesEmployment = lt.employmentType === emp.employmentType
+                                                    const quotaLimit = lt.quota ?? 0
+                                                    const isOverQuota = matchesEmployment && count > quotaLimit
+                                                            return (
+                                                        <TableCell
+                                                            key={lt.id}
+                                                            className={cn(
+                                                                "text-center text-sm font-semibold",
+                                                                matchesEmployment ? "text-slate-600" : "text-slate-400",
+                                                                isOverQuota ? "text-red-600" : ""
+                                                            )}
+                                                        >
+                                                            {matchesEmployment ? (count || 0) : '—'}
+                                                        </TableCell>
+    )
                                                     })}
                                                     <TableCell className="text-center pr-8">
                                                         <span className={cn("text-sm font-bold", total > 0 ? "text-slate-900" : "text-slate-400")}>
@@ -205,6 +203,5 @@ export default function AttendanceTeamPage() {
                     </CardContent>
                 </Card>
             </div>
-        </DashboardShell>
-    )
+)
 }

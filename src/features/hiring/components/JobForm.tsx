@@ -8,7 +8,7 @@ import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select'
 import { useApp } from '@/lib/context/AppContext'
-import type { Job } from '@/types'
+import { EMPLOYMENT_TYPES, JOB_STATUSES, type EmploymentType, type Job, type JobStatus } from '@/types'
 import { toast } from '@/components/ui/toast'
 
 type JobFormProps = {
@@ -16,22 +16,40 @@ type JobFormProps = {
     job?: Job | null
 }
 
+type JobFormState = {
+    title: string
+    roleId: string
+    department: string
+    employmentType: EmploymentType
+    location: {
+        city: string
+        country: string
+    }
+    salary: {
+        min: number
+        max: number
+        currency: string
+    }
+    experience: string
+    status: JobStatus
+}
+
 export function JobForm({ mode, job }: JobFormProps) {
     const { roles, departments, currentCompany, createJob, updateJob } = useApp()
     const router = useRouter()
     const [loading, setLoading] = useState(false)
-    const [form, setForm] = useState({
+    const [form, setForm] = useState<JobFormState>({
         title: job?.title || '',
         roleId: job?.roleId || '',
         department: job?.department || '',
-        employmentType: (job?.employmentType || 'Full-time') as Job['employmentType'],
+        employmentType: job?.employmentType ?? EMPLOYMENT_TYPES[1],
         location: {
             city: job?.location?.city || '',
             country: job?.location?.country || ''
         },
         salary: job?.salary || { min: 0, max: 0, currency: currentCompany?.currency || 'USD' },
         experience: job?.experience || '',
-        status: (job?.status || 'open') as 'open' | 'closed'
+        status: job?.status ?? JOB_STATUSES[0]
     })
 
     useEffect(() => {
@@ -40,7 +58,7 @@ export function JobForm({ mode, job }: JobFormProps) {
                 title: job.title,
                 roleId: job.roleId || '',
                 department: job.department || '',
-                employmentType: (job.employmentType || 'Full-time') as Job['employmentType'],
+                employmentType: job.employmentType ?? EMPLOYMENT_TYPES[1],
                 location: {
                     city: job.location?.city || '',
                     country: job.location?.country || ''
@@ -136,20 +154,21 @@ export function JobForm({ mode, job }: JobFormProps) {
                     </div>
                     <div className="space-y-2">
                         <Label className="text-sm font-bold text-slate-700 px-1">Employment Type</Label>
-                        <Select
-                            value={form.employmentType}
-                            onValueChange={(value) => setForm({ ...form, employmentType: value as any })}
-                        >
-                            <SelectTrigger className="rounded-xl border-slate-200 h-12">
-                                <SelectValue placeholder="Select employment type" />
-                            </SelectTrigger>
-                            <SelectContent>
-                                <SelectItem value="Contract">Contract</SelectItem>
-                                <SelectItem value="Full-time">Full-time</SelectItem>
-                                <SelectItem value="Intern">Intern</SelectItem>
-                                <SelectItem value="Part-time">Part-time</SelectItem>
-                            </SelectContent>
-                        </Select>
+                    <Select
+                        value={form.employmentType}
+                        onValueChange={(value) => setForm({ ...form, employmentType: value as EmploymentType })}
+                    >
+                        <SelectTrigger className="rounded-xl border-slate-200 h-12">
+                            <SelectValue placeholder="Select employment type" />
+                        </SelectTrigger>
+                        <SelectContent>
+                            {EMPLOYMENT_TYPES.map((type) => (
+                                <SelectItem key={type} value={type}>
+                                    {type}
+                                </SelectItem>
+                            ))}
+                        </SelectContent>
+                    </Select>
                     </div>
                     <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                         <div className="space-y-2">
@@ -217,18 +236,21 @@ export function JobForm({ mode, job }: JobFormProps) {
                     </div>
                     <div className="space-y-2">
                         <Label className="text-sm font-bold text-slate-700 px-1">Status</Label>
-                        <Select
-                            value={form.status}
-                            onValueChange={(value: 'open' | 'closed') => setForm({ ...form, status: value })}
-                        >
-                            <SelectTrigger className="rounded-xl border-slate-200 h-12">
-                                <SelectValue />
-                            </SelectTrigger>
-                            <SelectContent>
-                                <SelectItem value="open">Open</SelectItem>
-                                <SelectItem value="closed">Closed</SelectItem>
-                            </SelectContent>
-                        </Select>
+                    <Select
+                        value={form.status}
+                        onValueChange={(value) => setForm({ ...form, status: value as JobStatus })}
+                    >
+                        <SelectTrigger className="rounded-xl border-slate-200 h-12">
+                            <SelectValue />
+                        </SelectTrigger>
+                        <SelectContent>
+                            {JOB_STATUSES.map((status) => (
+                                <SelectItem key={status} value={status}>
+                                    {status.charAt(0).toUpperCase() + status.slice(1)}
+                                </SelectItem>
+                            ))}
+                        </SelectContent>
+                    </Select>
                     </div>
                 </CardContent>
             </Card>

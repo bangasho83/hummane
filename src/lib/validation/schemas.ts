@@ -1,4 +1,5 @@
 import { z } from 'zod'
+import { COMPANY_SIZES, EMPLOYMENT_TYPES, GENDER_OPTIONS, LEAVE_UNITS } from '@/types'
 
 /**
  * Validation schemas for all data models in the application
@@ -42,7 +43,7 @@ export const companySchema = z.object({
         .min(2, 'Industry must be at least 2 characters')
         .max(100, 'Industry must be less than 100 characters')
         .trim(),
-    size: z.enum(['1-10', '11-50', '51-200', '201-500', '500+'], {
+    size: z.enum(COMPANY_SIZES, {
         message: 'Please select a valid company size'
     })
 })
@@ -77,12 +78,12 @@ export const employeeSchema = z.object({
             const d = new Date(date)
             return d instanceof Date && !isNaN(d.getTime())
         }, 'Invalid date'),
-    employmentType: z.enum(['Contract', 'Full-time', 'Intern', 'Part-time']),
+    employmentType: z.enum(EMPLOYMENT_TYPES),
     reportingManager: z.string()
         .min(2, 'Reporting Manager is required')
         .max(100, 'Name must be less than 100 characters')
         .trim(),
-    gender: z.enum(['Male', 'Female', 'Non-binary', 'Prefer not to say']),
+    gender: z.enum(GENDER_OPTIONS),
     salary: z.number()
         .positive('Salary must be a positive number')
         .max(10000000, 'Salary seems unreasonably high')
@@ -113,7 +114,7 @@ export const leaveRecordSchema = z.object({
         }, 'Invalid date'),
     type: z.string().min(1, 'Leave type is required'),
     leaveTypeId: z.string().optional(),
-    unit: z.enum(['Day', 'Hour']).optional(),
+    unit: z.enum(LEAVE_UNITS).optional(),
     amount: z.number().positive().finite().optional()
 })
 
@@ -127,12 +128,12 @@ export const leaveTypeSchema = z.object({
         .min(1, 'Leave code is required')
         .max(10, 'Leave code must be less than 10 characters')
         .trim(),
-    unit: z.enum(['Day', 'Hour']),
+    unit: z.enum(LEAVE_UNITS),
     quota: z.number()
         .nonnegative('Quota must be zero or more')
         .max(365, 'Quota seems too high')
         .finite('Quota must be a valid number'),
-    employmentType: z.enum(['Contract', 'Full-time', 'Intern', 'Part-time'])
+    employmentType: z.enum(EMPLOYMENT_TYPES)
 })
 
 // Type exports for TypeScript

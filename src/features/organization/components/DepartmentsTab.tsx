@@ -69,7 +69,7 @@ export function DepartmentsTab() {
         }
     }
 
-    const handleDelete = (id: string, name: string) => {
+    const handleDelete = async (id: string, name: string) => {
         const hasEmployees = employees.some(emp => emp.department === name)
         if (hasEmployees) {
             toast('Cannot delete department with active employees', 'error')
@@ -77,8 +77,12 @@ export function DepartmentsTab() {
         }
 
         if (confirm(`Are you sure you want to delete ${name}?`)) {
-            deleteDepartment(id)
-            toast('Department deleted', 'success')
+            try {
+                await deleteDepartment(id)
+                toast('Department deleted', 'success')
+            } catch (error) {
+                toast('Failed to delete department', 'error')
+            }
         }
     }
 
@@ -272,6 +276,7 @@ export function DepartmentsTab() {
                     </p>
                 </div>
             </div>
+
         </div>
     )
 }

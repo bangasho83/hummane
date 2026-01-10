@@ -1,0 +1,7 @@
+export * from './components/DepartmentsTab'
+export * from './components/GeneralTab'
+export * from './components/LeavesTab'
+export * from './components/OrgPageFrame'
+export * from './components/OrgTabs'
+export * from './components/RoleForm'
+export * from './components/RolesTab'

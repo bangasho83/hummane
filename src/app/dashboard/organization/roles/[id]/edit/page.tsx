@@ -2,8 +2,7 @@
 
 import { useEffect, useMemo, useState } from 'react'
 import { useParams, useRouter } from 'next/navigation'
-import { OrgPageFrame } from '@/components/dashboard/organization/OrgPageFrame'
-import { RoleForm } from '@/components/dashboard/organization/RoleForm'
+import { OrgPageFrame, RoleForm } from '@/features/organization'
 import { useApp } from '@/lib/context/AppContext'
 import type { Role } from '@/types'
 import { toast } from '@/components/ui/toast'

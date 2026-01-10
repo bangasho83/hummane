@@ -245,6 +245,29 @@ export class DataStore {
         }
     }
 
+    upsertCompany(company: Company): Company {
+        try {
+            const data = this.getData()
+            const index = data.companies.findIndex((entry) => entry.id === company.id)
+            if (index >= 0) {
+                data.companies[index] = company
+            } else {
+                data.companies.push(company)
+            }
+
+            const owner = data.users.find((user) => user.id === company.ownerId)
+            if (owner) {
+                owner.companyId = company.id
+            }
+
+            this.saveData(data)
+            return company
+        } catch (error) {
+            console.error('Error upserting company:', error)
+            throw error
+        }
+    }
+
     getCompanyByOwnerId(ownerId: string): Company | undefined {
         try {
             const data = this.getData()
@@ -270,6 +293,14 @@ export class DataStore {
                 sanitizedData.currency = companyData.currency
                     ? sanitizeInput(companyData.currency).toUpperCase()
                     : ''
+            }
+            if (companyData.timezone !== undefined) {
+                sanitizedData.timezone = companyData.timezone
+                    ? sanitizeInput(companyData.timezone)
+                    : ''
+            }
+            if (companyData.workingHours !== undefined) {
+                sanitizedData.workingHours = companyData.workingHours
             }
 
             data.companies[index] = {
@@ -419,6 +450,76 @@ export class DataStore {
         }
     }
 
+    upsertEmployee(employee: Employee): Employee {
+        try {
+            const data = this.getData()
+            if (!data.employees) data.employees = []
+            const employeeId = employee.employeeId || `LEGACY-${employee.id}`
+            const normalized: Employee = {
+                ...employee,
+                employeeId: sanitizeInput(employeeId),
+                companyId: employee.companyId,
+                name: sanitizeInput(employee.name || 'Employee'),
+                email: sanitizeEmail(employee.email || ''),
+                position: sanitizeInput(employee.position || ''),
+                department: sanitizeInput(employee.department || ''),
+                roleId: sanitizeInput(employee.roleId || ''),
+                startDate: employee.startDate || new Date().toISOString().split('T')[0],
+                employmentType: employee.employmentType || 'Full-time',
+                reportingManager: sanitizeInput(employee.reportingManager || 'Unassigned'),
+                gender: employee.gender || 'Prefer not to say',
+                salary: Number.isFinite(employee.salary) ? employee.salary : 0,
+                createdAt: employee.createdAt || new Date().toISOString(),
+                updatedAt: employee.updatedAt || employee.createdAt || new Date().toISOString()
+            }
+            const index = data.employees.findIndex(entry => entry.id === employee.id)
+            if (index >= 0) {
+                data.employees[index] = normalized
+            } else {
+                data.employees.push(normalized)
+            }
+            this.saveData(data)
+            return normalized
+        } catch (error) {
+            console.error('Error upserting employee:', error)
+            throw error
+        }
+    }
+
+    setEmployeesForCompany(companyId: string, employees: Employee[]): Employee[] {
+        try {
+            const data = this.getData()
+            const existing = data.employees || []
+            const preserved = existing.filter(employee => employee.companyId !== companyId)
+            const normalized = employees.map(employee => {
+                const employeeId = employee.employeeId || `LEGACY-${employee.id}`
+                return {
+                    ...employee,
+                    companyId: employee.companyId || companyId,
+                    employeeId: sanitizeInput(employeeId),
+                    name: sanitizeInput(employee.name || 'Employee'),
+                    email: sanitizeEmail(employee.email || ''),
+                    position: sanitizeInput(employee.position || ''),
+                    department: sanitizeInput(employee.department || ''),
+                    roleId: sanitizeInput(employee.roleId || ''),
+                    startDate: employee.startDate || new Date().toISOString().split('T')[0],
+                    employmentType: employee.employmentType || 'Full-time',
+                    reportingManager: sanitizeInput(employee.reportingManager || 'Unassigned'),
+                    gender: employee.gender || 'Prefer not to say',
+                    salary: Number.isFinite(employee.salary) ? employee.salary : 0,
+                    createdAt: employee.createdAt || new Date().toISOString(),
+                    updatedAt: employee.updatedAt || employee.createdAt || new Date().toISOString()
+                }
+            })
+            data.employees = [...preserved, ...normalized]
+            this.saveData(data)
+            return data.employees
+        } catch (error) {
+            console.error('Error setting employees:', error)
+            return []
+        }
+    }
+
     // Leave type operations
     createLeaveType(leaveTypeData: Omit<LeaveType, 'id' | 'companyId' | 'createdAt' | 'updatedAt'>, companyId: string) {
         try {
@@ -541,6 +642,82 @@ export class DataStore {
         }
     }
 
+    upsertLeaveType(leaveType: LeaveType): LeaveType {
+        try {
+            const data = this.getData()
+            if (!data.leaveTypes) data.leaveTypes = []
+
+            const sanitizedName = sanitizeInput(leaveType.name)
+            const sanitizedCode = sanitizeInput(leaveType.code).toUpperCase()
+            const normalized: LeaveType = {
+                ...leaveType,
+                name: sanitizedName,
+                code: sanitizedCode,
+                employmentType: leaveType.employmentType || 'Full-time',
+                quota: leaveType.quota ?? 0,
+                createdAt: leaveType.createdAt || new Date().toISOString()
+            }
+
+            const index = data.leaveTypes.findIndex((entry) => entry.id === leaveType.id)
+            const existing = index >= 0 ? data.leaveTypes[index] : null
+            if (index >= 0) {
+                data.leaveTypes[index] = normalized
+            } else {
+                data.leaveTypes.push(normalized)
+            }
+
+            if (existing && data.leaves && data.leaves.length) {
+                if (existing.name !== normalized.name || existing.unit !== normalized.unit) {
+                    data.leaves = data.leaves.map(leave =>
+                        leave.leaveTypeId === normalized.id
+                            ? { ...leave, type: normalized.name, unit: normalized.unit }
+                            : leave
+                    )
+                }
+            }
+
+            this.saveData(data)
+            return normalized
+        } catch (error) {
+            console.error('Error upserting leave type:', error)
+            throw error
+        }
+    }
+
+    setLeaveTypesForCompany(companyId: string, leaveTypes: LeaveType[]): LeaveType[] {
+        try {
+            const data = this.getData()
+            const existing = data.leaveTypes || []
+            const preserved = existing.filter(lt => lt.companyId !== companyId)
+
+            const normalized = leaveTypes.map(lt => ({
+                ...lt,
+                companyId: lt.companyId || companyId,
+                name: sanitizeInput(lt.name),
+                code: sanitizeInput(lt.code).toUpperCase(),
+                employmentType: lt.employmentType || 'Full-time',
+                quota: lt.quota ?? 0,
+                createdAt: lt.createdAt || new Date().toISOString()
+            }))
+
+            data.leaveTypes = [...preserved, ...normalized]
+
+            if (data.leaves && data.leaves.length) {
+                const typeMap = new Map(normalized.map(lt => [lt.id, lt]))
+                data.leaves = data.leaves.map(leave => {
+                    const match = leave.leaveTypeId ? typeMap.get(leave.leaveTypeId) : null
+                    return match ? { ...leave, type: match.name, unit: match.unit } : leave
+                })
+            }
+
+            this.saveData(data)
+            return normalized
+        } catch (error) {
+            console.error('Error setting leave types:', error)
+            throw error
+        }
+    }
+
     // Department operations
     createDepartment(departmentData: Omit<Department, 'id' | 'companyId' | 'createdAt'>, companyId: string): Department {
         try {
@@ -550,6 +727,9 @@ export class DataStore {
             const sanitizedName = sanitizeInput(departmentData.name)
             const sanitizedDescription = departmentData.description
                 ? sanitizeInput(departmentData.description)
+                : undefined
+            const sanitizedManagerId = departmentData.managerId
+                ? sanitizeInput(departmentData.managerId)
                 : undefined
 
             // Check for duplicate department name in same company
@@ -566,6 +746,7 @@ export class DataStore {
                 companyId,
                 name: sanitizedName,
                 description: sanitizedDescription,
+                managerId: sanitizedManagerId,
                 createdAt: new Date().toISOString()
             }
             data.departments.push(department)
@@ -573,6 +754,72 @@ export class DataStore {
             return department
         } catch (error) {
             console.error('Error creating department:', error)
+            throw error
+        }
+    }
+
+    upsertDepartment(department: Department): Department {
+        try {
+            const data = this.getData()
+            if (!data.departments) data.departments = []
+
+            const sanitizedName = sanitizeInput(department.name)
+            const sanitizedDescription = department.description
+                ? sanitizeInput(department.description)
+                : undefined
+            const sanitizedManagerId = department.managerId
+                ? sanitizeInput(department.managerId)
+                : undefined
+
+            const normalized: Department = {
+                ...department,
+                name: sanitizedName,
+                description: sanitizedDescription,
+                managerId: sanitizedManagerId,
+                createdAt: department.createdAt || new Date().toISOString()
+            }
+
+            const index = data.departments.findIndex(item => item.id === department.id)
+            if (index >= 0) {
+                data.departments[index] = normalized
+            } else {
+                data.departments.push(normalized)
+            }
+
+            this.saveData(data)
+            return normalized
+        } catch (error) {
+            console.error('Error upserting department:', error)
+            throw error
+        }
+    }
+
+    setDepartmentsForCompany(companyId: string, departments: Department[]): Department[] {
+        try {
+            const data = this.getData()
+            const existing = data.departments || []
+            const preserved = existing.filter(dept => dept.companyId !== companyId)
+
+            const normalized = departments.map(dept => {
+                const sanitizedName = sanitizeInput(dept.name)
+                const sanitizedDescription = dept.description ? sanitizeInput(dept.description) : undefined
+                const sanitizedManagerId = dept.managerId ? sanitizeInput(dept.managerId) : undefined
+
+                return {
+                    ...dept,
+                    companyId: dept.companyId || companyId,
+                    name: sanitizedName,
+                    description: sanitizedDescription,
+                    managerId: sanitizedManagerId,
+                    createdAt: dept.createdAt || new Date().toISOString()
+                }
+            })
+
+            data.departments = [...preserved, ...normalized]
+            this.saveData(data)
+            return normalized
+        } catch (error) {
+            console.error('Error setting departments:', error)
             throw error
         }
     }
@@ -606,6 +853,9 @@ export class DataStore {
             const sanitizedDescription = updates.description !== undefined
                 ? sanitizeInput(updates.description)
                 : existing.description
+            const sanitizedManagerId = updates.managerId !== undefined
+                ? sanitizeInput(updates.managerId)
+                : existing.managerId
 
             const duplicate = data.departments.some(
                 d =>
@@ -620,7 +870,8 @@ export class DataStore {
             const updated: Department = {
                 ...existing,
                 name: sanitizedName,
-                description: sanitizedDescription
+                description: sanitizedDescription,
+                managerId: sanitizedManagerId
             }
             data.departments[index] = updated
 
@@ -687,6 +938,63 @@ export class DataStore {
         }
     }
 
+    upsertLeave(leave: LeaveRecord): LeaveRecord {
+        try {
+            const data = this.getData()
+            if (!data.leaves) data.leaves = []
+
+            const normalized: LeaveRecord = {
+                ...leave,
+                employeeId: sanitizeInput(leave.employeeId),
+                date: leave.date,
+                type: sanitizeInput(leave.type || 'Leave'),
+                unit: leave.unit,
+                amount: leave.amount,
+                note: sanitizeInput(leave.note || ''),
+                attachments: leave.attachments,
+                createdAt: leave.createdAt || new Date().toISOString()
+            }
+
+            const index = data.leaves.findIndex(entry => entry.id === leave.id)
+            if (index >= 0) {
+                data.leaves[index] = normalized
+            } else {
+                data.leaves.push(normalized)
+            }
+            this.saveData(data)
+            return normalized
+        } catch (error) {
+            console.error('Error upserting leave:', error)
+            throw error
+        }
+    }
+
+    setLeavesForCompany(companyId: string, leaves: LeaveRecord[]): LeaveRecord[] {
+        try {
+            const data = this.getData()
+            const existing = data.leaves || []
+            const preserved = existing.filter(leave => leave.companyId !== companyId)
+            const normalized = leaves.map(leave => ({
+                ...leave,
+                companyId: leave.companyId || companyId,
+                employeeId: sanitizeInput(leave.employeeId),
+                date: leave.date,
+                type: sanitizeInput(leave.type || 'Leave'),
+                unit: leave.unit,
+                amount: leave.amount,
+                note: sanitizeInput(leave.note || ''),
+                attachments: leave.attachments,
+                createdAt: leave.createdAt || new Date().toISOString()
+            }))
+            data.leaves = [...preserved, ...normalized]
+            this.saveData(data)
+            return data.leaves
+        } catch (error) {
+            console.error('Error setting leaves:', error)
+            return []
+        }
+    }
+
     // Holidays
     createHoliday(holidayData: Omit<Holiday, 'id' | 'companyId' | 'createdAt'>, companyId: string): Holiday {
         try {
@@ -714,6 +1022,54 @@ export class DataStore {
             return holiday
         } catch (error) {
             console.error('Error creating holiday:', error)
+            throw error
+        }
+    }
+
+    upsertHoliday(holiday: Holiday): Holiday {
+        try {
+            const data = this.getData()
+            if (!data.holidays) data.holidays = []
+
+            const normalized: Holiday = {
+                ...holiday,
+                name: sanitizeInput(holiday.name),
+                createdAt: holiday.createdAt || new Date().toISOString()
+            }
+
+            const index = data.holidays.findIndex((entry) => entry.id === holiday.id)
+            if (index >= 0) {
+                data.holidays[index] = normalized
+            } else {
+                data.holidays.push(normalized)
+            }
+
+            this.saveData(data)
+            return normalized
+        } catch (error) {
+            console.error('Error upserting holiday:', error)
+            throw error
+        }
+    }
+
+    setHolidaysForCompany(companyId: string, holidays: Holiday[]): Holiday[] {
+        try {
+            const data = this.getData()
+            const existing = data.holidays || []
+            const preserved = existing.filter(holiday => holiday.companyId !== companyId)
+
+            const normalized = holidays.map(holiday => ({
+                ...holiday,
+                companyId: holiday.companyId || companyId,
+                name: sanitizeInput(holiday.name),
+                createdAt: holiday.createdAt || new Date().toISOString()
+            }))
+
+            data.holidays = [...preserved, ...normalized]
+            this.saveData(data)
+            return normalized
+        } catch (error) {
+            console.error('Error setting holidays:', error)
             throw error
         }
     }
@@ -845,6 +1201,84 @@ export class DataStore {
         }
     }
 
+    upsertFeedbackCard(card: FeedbackCard): FeedbackCard {
+        try {
+            const data = this.getData()
+            if (!data.feedbackCards) data.feedbackCards = []
+
+            const title = sanitizeInput(card.title)
+            const subject = card.subject === 'Applicant' ? 'Applicant' : 'Team Member'
+            const questions = (card.questions || []).map((q) => {
+                const rawWeight = q.weight
+                return {
+                    id: q.id || this.generateId(),
+                    kind: (q.kind === 'comment' ? 'comment' : 'score') as 'comment' | 'score',
+                    prompt: sanitizeInput(q.prompt || ''),
+                    weight: q.kind === 'score' && typeof rawWeight === 'number' && Number.isFinite(rawWeight)
+                        ? Math.max(0, Math.round(rawWeight))
+                        : undefined
+                }
+            })
+
+            const normalized: FeedbackCard = {
+                ...card,
+                title,
+                subject,
+                questions,
+                createdAt: card.createdAt || new Date().toISOString()
+            }
+
+            const index = data.feedbackCards.findIndex(entry => entry.id === card.id)
+            if (index >= 0) {
+                data.feedbackCards[index] = normalized
+            } else {
+                data.feedbackCards.push(normalized)
+            }
+            this.saveData(data)
+            return normalized
+        } catch (error) {
+            console.error('Error upserting feedback card:', error)
+            throw error
+        }
+    }
+
+    setFeedbackCardsForCompany(companyId: string, cards: FeedbackCard[]): FeedbackCard[] {
+        try {
+            const data = this.getData()
+            const existing = data.feedbackCards || []
+            const preserved = existing.filter(card => card.companyId !== companyId)
+            const normalized = cards.map((card) => {
+                const title = sanitizeInput(card.title)
+                const subject = card.subject === 'Applicant' ? 'Applicant' : 'Team Member'
+                const questions = (card.questions || []).map((q) => {
+                    const rawWeight = q.weight
+                    return {
+                        id: q.id || this.generateId(),
+                        kind: (q.kind === 'comment' ? 'comment' : 'score') as 'comment' | 'score',
+                        prompt: sanitizeInput(q.prompt || ''),
+                        weight: q.kind === 'score' && typeof rawWeight === 'number' && Number.isFinite(rawWeight)
+                            ? Math.max(0, Math.round(rawWeight))
+                            : undefined
+                    }
+                })
+                return {
+                    ...card,
+                    companyId: card.companyId || companyId,
+                    title,
+                    subject,
+                    questions,
+                    createdAt: card.createdAt || new Date().toISOString()
+                }
+            })
+            data.feedbackCards = [...preserved, ...normalized]
+            this.saveData(data)
+            return data.feedbackCards
+        } catch (error) {
+            console.error('Error setting feedback cards:', error)
+            return []
+        }
+    }
+
     // Feedback entries
     createFeedbackEntry(companyId: string, entryData: Omit<FeedbackEntry, 'id' | 'companyId' | 'createdAt' | 'updatedAt'>): FeedbackEntry {
         try {
@@ -935,6 +1369,67 @@ export class DataStore {
         }
     }
 
+    upsertFeedbackEntry(entry: FeedbackEntry): FeedbackEntry {
+        try {
+            const data = this.getData()
+            if (!data.feedbackEntries) data.feedbackEntries = []
+
+            const normalized: FeedbackEntry = {
+                ...entry,
+                type: entry.type === 'Applicant' ? 'Applicant' : 'Team Member',
+                subjectName: entry.subjectName ? sanitizeInput(entry.subjectName) : undefined,
+                authorName: entry.authorName ? sanitizeInput(entry.authorName) : undefined,
+                answers: (entry.answers || []).map((a) => ({
+                    questionId: a.questionId,
+                    score: Number.isFinite(a.score) ? Math.min(5, Math.max(0, Math.round(a.score))) : 0,
+                    comment: a.comment ? sanitizeInput(a.comment) : undefined
+                })),
+                createdAt: entry.createdAt || new Date().toISOString(),
+                updatedAt: entry.updatedAt || entry.createdAt || new Date().toISOString()
+            }
+
+            const index = data.feedbackEntries.findIndex(existing => existing.id === entry.id)
+            if (index >= 0) {
+                data.feedbackEntries[index] = normalized
+            } else {
+                data.feedbackEntries.push(normalized)
+            }
+            this.saveData(data)
+            return normalized
+        } catch (error) {
+            console.error('Error upserting feedback entry:', error)
+            throw error
+        }
+    }
+
+    setFeedbackEntriesForCompany(companyId: string, entries: FeedbackEntry[]): FeedbackEntry[] {
+        try {
+            const data = this.getData()
+            const existing = data.feedbackEntries || []
+            const preserved = existing.filter(entry => entry.companyId !== companyId)
+            const normalized = entries.map((entry) => ({
+                ...entry,
+                companyId: entry.companyId || companyId,
+                type: entry.type === 'Applicant' ? 'Applicant' : 'Team Member',
+                subjectName: entry.subjectName ? sanitizeInput(entry.subjectName) : undefined,
+                authorName: entry.authorName ? sanitizeInput(entry.authorName) : undefined,
+                answers: (entry.answers || []).map((a) => ({
+                    questionId: a.questionId,
+                    score: Number.isFinite(a.score) ? Math.min(5, Math.max(0, Math.round(a.score))) : 0,
+                    comment: a.comment ? sanitizeInput(a.comment) : undefined
+                })),
+                createdAt: entry.createdAt || new Date().toISOString(),
+                updatedAt: entry.updatedAt || entry.createdAt || new Date().toISOString()
+            }))
+            data.feedbackEntries = [...preserved, ...normalized]
+            this.saveData(data)
+            return data.feedbackEntries
+        } catch (error) {
+            console.error('Error setting feedback entries:', error)
+            return []
+        }
+    }
+
     // Employee documents
     addDocument(doc: Omit<EmployeeDocument, 'id' | 'uploadedAt'>): EmployeeDocument {
         try {
@@ -1009,6 +1504,56 @@ export class DataStore {
             return role
         } catch (error) {
             console.error('Error creating role:', error)
+            throw error
+        }
+    }
+
+    upsertRole(role: Role): Role {
+        try {
+            const data = this.getData()
+            if (!data.roles) data.roles = []
+
+            const normalized: Role = {
+                ...role,
+                title: sanitizeInput(role.title),
+                description: sanitizeRichText(role.description),
+                createdAt: role.createdAt || new Date().toISOString()
+            }
+
+            const index = data.roles.findIndex((entry) => entry.id === role.id)
+            if (index >= 0) {
+                data.roles[index] = normalized
+            } else {
+                data.roles.push(normalized)
+            }
+
+            this.saveData(data)
+            return normalized
+        } catch (error) {
+            console.error('Error upserting role:', error)
+            throw error
+        }
+    }
+
+    setRolesForCompany(companyId: string, roles: Role[]): Role[] {
+        try {
+            const data = this.getData()
+            const existing = data.roles || []
+            const preserved = existing.filter(role => role.companyId !== companyId)
+
+            const normalized = roles.map(role => ({
+                ...role,
+                companyId: role.companyId || companyId,
+                title: sanitizeInput(role.title),
+                description: sanitizeRichText(role.description),
+                createdAt: role.createdAt || new Date().toISOString()
+            }))
+
+            data.roles = [...preserved, ...normalized]
+            this.saveData(data)
+            return normalized
+        } catch (error) {
+            console.error('Error setting roles:', error)
             throw error
         }
     }
@@ -1180,6 +1725,76 @@ export class DataStore {
         }
     }
 
+    upsertJob(job: Job): Job {
+        try {
+            const data = this.getData()
+            if (!data.jobs) data.jobs = []
+
+            const normalized: Job = {
+                ...job,
+                title: sanitizeInput(job.title),
+                department: job.department ? sanitizeInput(job.department) : undefined,
+                experience: job.experience ? sanitizeInput(job.experience) : '',
+                location: job.location
+                    ? {
+                        city: sanitizeInput(job.location.city),
+                        country: sanitizeInput(job.location.country)
+                    }
+                    : undefined,
+                salary: job.salary || { min: 0, max: 0, currency: 'USD' },
+                status: job.status || 'open',
+                createdAt: job.createdAt || new Date().toISOString(),
+                updatedAt: job.updatedAt || new Date().toISOString()
+            }
+
+            const index = data.jobs.findIndex((entry) => entry.id === job.id)
+            if (index >= 0) {
+                data.jobs[index] = normalized
+            } else {
+                data.jobs.push(normalized)
+            }
+
+            this.saveData(data)
+            return normalized
+        } catch (error) {
+            console.error('Error upserting job:', error)
+            throw error
+        }
+    }
+
+    setJobsForCompany(companyId: string, jobs: Job[]): Job[] {
+        try {
+            const data = this.getData()
+            const existing = data.jobs || []
+            const preserved = existing.filter(job => job.companyId !== companyId)
+
+            const normalized = jobs.map(job => ({
+                ...job,
+                companyId: job.companyId || companyId,
+                title: sanitizeInput(job.title),
+                department: job.department ? sanitizeInput(job.department) : undefined,
+                experience: job.experience ? sanitizeInput(job.experience) : '',
+                location: job.location
+                    ? {
+                        city: sanitizeInput(job.location.city),
+                        country: sanitizeInput(job.location.country)
+                    }
+                    : undefined,
+                salary: job.salary || { min: 0, max: 0, currency: 'USD' },
+                status: job.status || 'open',
+                createdAt: job.createdAt || new Date().toISOString(),
+                updatedAt: job.updatedAt || new Date().toISOString()
+            }))
+
+            data.jobs = [...preserved, ...normalized]
+            this.saveData(data)
+            return normalized
+        } catch (error) {
+            console.error('Error setting jobs:', error)
+            throw error
+        }
+    }
+
     // Applicant Management
     getApplicantsByCompanyId(companyId: string): Applicant[] {
         try {
@@ -1295,6 +1910,72 @@ export class DataStore {
             this.saveData(data)
         } catch (error) {
             console.error('Error deleting applicant:', error)
+            throw error
+        }
+    }
+
+    upsertApplicant(applicant: Applicant): Applicant {
+        try {
+            const data = this.getData()
+            if (!data.applicants) data.applicants = []
+
+            const normalized: Applicant = {
+                ...applicant,
+                fullName: sanitizeInput(applicant.fullName),
+                email: sanitizeEmail(applicant.email),
+                phone: sanitizeInput(applicant.phone || ''),
+                positionApplied: sanitizeInput(applicant.positionApplied || ''),
+                noticePeriod: sanitizeInput(applicant.noticePeriod || ''),
+                yearsOfExperience: Number.isFinite(applicant.yearsOfExperience) ? applicant.yearsOfExperience : 0,
+                currentSalary: Number.isFinite(applicant.currentSalary) ? applicant.currentSalary : 0,
+                expectedSalary: Number.isFinite(applicant.expectedSalary) ? applicant.expectedSalary : 0,
+                appliedDate: applicant.appliedDate || new Date().toISOString().split('T')[0],
+                createdAt: applicant.createdAt || new Date().toISOString(),
+                updatedAt: applicant.updatedAt || new Date().toISOString()
+            }
+
+            const index = data.applicants.findIndex((entry) => entry.id === applicant.id)
+            if (index >= 0) {
+                data.applicants[index] = normalized
+            } else {
+                data.applicants.push(normalized)
+            }
+
+            this.saveData(data)
+            return normalized
+        } catch (error) {
+            console.error('Error upserting applicant:', error)
+            throw error
+        }
+    }
+
+    setApplicantsForCompany(companyId: string, applicants: Applicant[]): Applicant[] {
+        try {
+            const data = this.getData()
+            const existing = data.applicants || []
+            const preserved = existing.filter(applicant => applicant.companyId !== companyId)
+
+            const normalized = applicants.map(applicant => ({
+                ...applicant,
+                companyId: applicant.companyId || companyId,
+                fullName: sanitizeInput(applicant.fullName || ''),
+                email: sanitizeEmail(applicant.email || ''),
+                phone: sanitizeInput(applicant.phone || ''),
+                positionApplied: sanitizeInput(applicant.positionApplied || ''),
+                noticePeriod: sanitizeInput(applicant.noticePeriod || ''),
+                yearsOfExperience: Number.isFinite(applicant.yearsOfExperience) ? applicant.yearsOfExperience : 0,
+                currentSalary: Number.isFinite(applicant.currentSalary) ? applicant.currentSalary : 0,
+                expectedSalary: Number.isFinite(applicant.expectedSalary) ? applicant.expectedSalary : 0,
+                appliedDate: applicant.appliedDate || new Date().toISOString().split('T')[0],
+                createdAt: applicant.createdAt || new Date().toISOString(),
+                updatedAt: applicant.updatedAt || new Date().toISOString()
+            }))
+
+            data.applicants = [...preserved, ...normalized]
+            this.saveData(data)
+            return normalized
+        } catch (error) {
+            console.error('Error setting applicants:', error)
             throw error
         }
     }

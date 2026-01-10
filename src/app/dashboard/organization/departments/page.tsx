@@ -1,7 +1,6 @@
 'use client'
 
-import { DepartmentsTab } from '@/components/dashboard/organization/DepartmentsTab'
-import { OrgPageFrame } from '@/components/dashboard/organization/OrgPageFrame'
+import { DepartmentsTab, OrgPageFrame } from '@/features/organization'
 
 export default function OrganizationDepartmentsPage() {
     return (

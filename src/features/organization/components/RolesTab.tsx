@@ -31,7 +31,7 @@ export function RolesTab() {
         }
     }
 
-    const handleDelete = (id: string, title: string) => {
+    const handleDelete = async (id: string, title: string) => {
         const hasEmployees = employees.some(emp => emp.roleId === id)
         if (hasEmployees) {
             toast('Cannot delete role assigned to employees', 'error')
@@ -39,8 +39,12 @@ export function RolesTab() {
         }
 
         if (confirm(`Are you sure you want to delete ${title}?`)) {
-            deleteRole(id)
-            toast('Role deleted', 'success')
+            try {
+                await deleteRole(id)
+                toast('Role deleted', 'success')
+            } catch (error) {
+                toast('Failed to delete role', 'error')
+            }
         }
     }
 

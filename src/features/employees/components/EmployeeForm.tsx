@@ -4,7 +4,7 @@ import { useState, useEffect } from 'react'
 import { Input } from '@/components/ui/input'
 import { Button } from '@/components/ui/button'
 import { Label } from '@/components/ui/label'
-import type { Employee } from '@/types'
+import { EMPLOYMENT_TYPES, GENDER_OPTIONS, type Employee, type EmploymentType, type Gender } from '@/types'
 import { useApp } from '@/lib/context/AppContext'
 import {
     Select,
@@ -26,6 +26,32 @@ interface EmployeeFormProps {
     onRoleChange?: (roleId: string) => void
 }
 
+type EmployeeFormState = {
+    employeeId: string
+    name: string
+    email: string
+    department: string
+    roleId: string
+    startDate: string
+    employmentType: EmploymentType
+    reportingManager: string
+    gender: Gender
+    salary: string
+}
+
+const getDefaultFormData = (): EmployeeFormState => ({
+    employeeId: '',
+    name: '',
+    email: '',
+    department: '',
+    roleId: '',
+    startDate: '',
+    employmentType: EMPLOYMENT_TYPES[1],
+    reportingManager: 'self',
+    gender: GENDER_OPTIONS[0],
+    salary: ''
+})
+
 export function EmployeeForm({
     employee,
     onSubmit,
@@ -35,18 +61,7 @@ export function EmployeeForm({
     onRoleChange
 }: EmployeeFormProps) {
     const { departments, roles, employees } = useApp()
-    const [formData, setFormData] = useState({
-        employeeId: '',
-        name: '',
-        email: '',
-        department: '',
-        roleId: '',
-        startDate: '',
-        employmentType: 'Full-time',
-        reportingManager: 'self',
-        gender: 'Male',
-        salary: ''
-    })
+    const [formData, setFormData] = useState<EmployeeFormState>(getDefaultFormData)
     const [errors, setErrors] = useState<Record<string, string>>({})
 
     useEffect(() => {
@@ -64,18 +79,7 @@ export function EmployeeForm({
                 salary: employee.salary.toString()
             })
         } else {
-            setFormData({
-                employeeId: '',
-                name: '',
-                email: '',
-                department: '',
-                roleId: '',
-                startDate: '',
-                employmentType: 'Full-time',
-                reportingManager: 'self',
-                gender: 'Male',
-                salary: ''
-            })
+            setFormData(getDefaultFormData())
         }
         setErrors({})
     }, [employee, employees])
@@ -102,9 +106,9 @@ export function EmployeeForm({
                 department: formData.department,
                 roleId: formData.roleId,
                 startDate: formData.startDate,
-                employmentType: formData.employmentType as Employee['employmentType'],
+                employmentType: formData.employmentType,
                 reportingManager: managerName,
-                gender: formData.gender as Employee['gender'],
+                gender: formData.gender,
                 salary: parseFloat(formData.salary)
             }
 
@@ -128,7 +132,7 @@ export function EmployeeForm({
         }
     }
 
-    const handleChange = (field: string, value: string) => {
+    const handleChange = <K extends keyof EmployeeFormState>(field: K, value: EmployeeFormState[K]) => {
         setFormData(prev => ({ ...prev, [field]: value }))
         // Clear error for this field when user starts typing
         if (errors[field]) {
@@ -161,16 +165,17 @@ export function EmployeeForm({
                     <Label htmlFor="employmentType">Employment Type</Label>
                     <Select
                         value={formData.employmentType}
-                        onValueChange={(value) => handleChange('employmentType', value)}
+                        onValueChange={(value) => handleChange('employmentType', value as EmploymentType)}
                     >
                         <SelectTrigger id="employmentType" className="rounded-xl border-slate-200">
                             <SelectValue placeholder="Select employment type" />
                         </SelectTrigger>
                         <SelectContent>
-                            <SelectItem value="Contract">Contract</SelectItem>
-                            <SelectItem value="Full-time">Full-time</SelectItem>
-                            <SelectItem value="Intern">Intern</SelectItem>
-                            <SelectItem value="Part-time">Part-time</SelectItem>
+                            {EMPLOYMENT_TYPES.map((type) => (
+                                <SelectItem key={type} value={type}>
+                                    {type}
+                                </SelectItem>
+                            ))}
                         </SelectContent>
                     </Select>
                     {errors.employmentType && (
@@ -326,16 +331,17 @@ export function EmployeeForm({
                     <Label htmlFor="gender">Gender</Label>
                     <Select
                         value={formData.gender}
-                        onValueChange={(value) => handleChange('gender', value)}
+                        onValueChange={(value) => handleChange('gender', value as Gender)}
                     >
                         <SelectTrigger id="gender" className="rounded-xl border-slate-200">
                             <SelectValue placeholder="Select gender" />
                         </SelectTrigger>
                         <SelectContent>
-                            <SelectItem value="Male">Male</SelectItem>
-                            <SelectItem value="Female">Female</SelectItem>
-                            <SelectItem value="Non-binary">Non-binary</SelectItem>
-                            <SelectItem value="Prefer not to say">Prefer not to say</SelectItem>
+                            {GENDER_OPTIONS.map((gender) => (
+                                <SelectItem key={gender} value={gender}>
+                                    {gender}
+                                </SelectItem>
+                            ))}
                         </SelectContent>
                     </Select>
                     {errors.gender && (

@@ -1,12 +1,9 @@
 'use client'
 
-import { DashboardShell } from '@/components/layout/DashboardShell'
-import { DepartmentsTab } from '@/components/dashboard/organization/DepartmentsTab'
+import { DepartmentsTab } from '@/features/organization'
 
 export default function DepartmentsPage() {
     return (
-        <DashboardShell>
-            <DepartmentsTab />
-        </DashboardShell>
+        <DepartmentsTab />
     )
 }

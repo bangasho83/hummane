@@ -1,7 +1,6 @@
 'use client'
 
-import { LeavesTab } from '@/components/dashboard/organization/LeavesTab'
-import { OrgPageFrame } from '@/components/dashboard/organization/OrgPageFrame'
+import { LeavesTab, OrgPageFrame } from '@/features/organization'
 
 export default function OrganizationLeavesPage() {
     return (

@@ -1,3 +1,14 @@
+import type {
+    ApplicantStatus,
+    CompanySize,
+    DocumentKind,
+    EmploymentType,
+    FeedbackSubject,
+    Gender,
+    JobStatus,
+    LeaveUnit
+} from './enums'
+
 export interface User {
     id: string
     name: string
@@ -11,8 +22,17 @@ export interface Company {
     id: string
     name: string
     industry: string
-    size: string
+    size: CompanySize
     currency?: string
+    timezone?: string
+    workingHours?: Record<
+        'monday' | 'tuesday' | 'wednesday' | 'thursday' | 'friday' | 'saturday' | 'sunday',
+        {
+            open: boolean
+            start: string
+            end: string
+        }
+    >
     ownerId: string
     createdAt: string
 }
@@ -27,9 +47,9 @@ export interface Employee {
     department: string
     roleId: string
     startDate: string
-    employmentType: 'Contract' | 'Full-time' | 'Intern' | 'Part-time'
+    employmentType: EmploymentType
     reportingManager: string
-    gender: 'Male' | 'Female' | 'Non-binary' | 'Prefer not to say'
+    gender: Gender
     salary: number
     createdAt: string
     updatedAt?: string
@@ -40,6 +60,7 @@ export interface Department {
     companyId: string
     name: string
     description?: string
+    managerId?: string
     createdAt: string
 }
 
@@ -50,7 +71,7 @@ export interface LeaveRecord {
     date: string
     type: string
     leaveTypeId?: string
-    unit?: 'Day' | 'Hour'
+    unit?: LeaveUnit
     amount?: number
     note: string
     attachments?: {
@@ -66,9 +87,9 @@ export interface LeaveType {
     companyId: string
     name: string
     code: string
-    unit: 'Day' | 'Hour'
+    unit: LeaveUnit
     quota: number
-    employmentType: Employee['employmentType']
+    employmentType: EmploymentType
     createdAt: string
     updatedAt?: string
 }
@@ -87,7 +108,7 @@ export interface Job {
     title: string
     roleId?: string
     department?: string
-    employmentType?: Employee['employmentType']
+    employmentType?: EmploymentType
     location?: {
         city: string
         country: string
@@ -98,7 +119,7 @@ export interface Job {
         currency: string
     }
     experience: string
-    status: 'open' | 'closed'
+    status: JobStatus
     createdAt: string
     updatedAt?: string
 }
@@ -121,7 +142,7 @@ export interface Applicant {
         dataUrl: string
     }
     linkedinUrl?: string
-    status: 'new' | 'screening' | 'interview' | 'offer' | 'rejected' | 'hired'
+    status: ApplicantStatus
     appliedDate: string
     createdAt: string
     updatedAt?: string
@@ -146,7 +167,7 @@ export interface FeedbackCard {
     id: string
     companyId: string
     title: string
-    subject: 'Team Member' | 'Applicant'
+    subject: FeedbackSubject
     questions: FeedbackQuestion[]
     createdAt: string
     updatedAt?: string
@@ -161,7 +182,7 @@ export interface FeedbackEntryAnswer {
 export interface FeedbackEntry {
     id: string
     companyId: string
-    type: 'Team Member' | 'Applicant'
+    type: FeedbackSubject
     cardId: string
     subjectId?: string
     subjectName?: string
@@ -171,15 +192,6 @@ export interface FeedbackEntry {
     createdAt: string
     updatedAt?: string
 }
-
-export type DocumentKind =
-    | 'Government ID'
-    | 'CV (Curriculum Vitae)'
-    | 'Educational Documents'
-    | 'Experience Letter'
-    | 'Salary Slip'
-    | 'Personality Test Report'
-    | 'Contract'
 
 export interface EmployeeDocument {
     id: string
@@ -206,3 +218,5 @@ export interface DataStoreSchema {
     applicants: Applicant[]
     currentUser: string | null
 }
+
+export * from './enums'

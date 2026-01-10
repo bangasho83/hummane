@@ -1,6 +1,6 @@
 'use client'
 
-import { useState } from 'react'
+import { useEffect, useState } from 'react'
 import { useRouter } from 'next/navigation'
 import Link from 'next/link'
 import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from '@/components/ui/card'
@@ -9,21 +9,22 @@ import { Button } from '@/components/ui/button'
 import { Label } from '@/components/ui/label'
 import { useApp } from '@/lib/context/AppContext'
 import { toast } from '@/components/ui/toast'
+import { Chrome } from 'lucide-react'
 
 export default function LoginPage() {
     const router = useRouter()
-    const { login, currentUser, currentCompany } = useApp()
+    const { login, loginWithGoogle, currentUser, currentCompany } = useApp()
     const [email, setEmail] = useState('')
     const [password, setPassword] = useState('')
     const [loading, setLoading] = useState(false)
+    const [googleLoading, setGoogleLoading] = useState(false)
 
-    // Redirect if already logged in
+    useEffect(() => {
+        if (!currentUser) return
+        router.push(currentCompany ? '/dashboard' : '/company-setup')
+    }, [currentCompany, currentUser, router])
+
     if (currentUser) {
-        if (currentCompany) {
-            router.push('/dashboard')
-        } else {
-            router.push('/company-setup')
-        }
         return null
     }
 
@@ -35,21 +36,21 @@ export default function LoginPage() {
 
         if (result.success) {
             toast(result.message, 'success')
-            // Navigation will happen via redirect above after context updates
-            setTimeout(() => {
-                const user = currentUser
-                if (user) {
-                    if (currentCompany) {
-                        router.push('/dashboard')
-                    } else {
-                        router.push('/company-setup')
-                    }
-                }
-            }, 100)
         } else {
             toast(result.message, 'error')
             setLoading(false)
         }
+    }
+
+    const handleGoogleLogin = async () => {
+        setGoogleLoading(true)
+        const result = await loginWithGoogle()
+        if (result.success) {
+            toast(result.message, 'success')
+        } else {
+            toast(result.message, 'error')
+        }
+        setGoogleLoading(false)
     }
 
     return (
@@ -69,6 +70,23 @@ export default function LoginPage() {
                     </CardHeader>
                     <form onSubmit={handleSubmit}>
                         <CardContent className="space-y-4">
+                            <Button
+                                type="button"
+                                variant="outline"
+                                className="w-full"
+                                onClick={handleGoogleLogin}
+                                disabled={loading || googleLoading}
+                            >
+                                <Chrome className="w-4 h-4 mr-2" />
+                                {googleLoading ? 'Connecting...' : 'Continue with Google'}
+                            </Button>
+                            <div className="flex items-center gap-3">
+                                <div className="h-px flex-1 bg-slate-200" />
+                                <span className="text-xs font-semibold text-slate-400 uppercase tracking-widest">
+                                    or
+                                </span>
+                                <div className="h-px flex-1 bg-slate-200" />
+                            </div>
                             <div className="space-y-2">
                                 <Label htmlFor="email">Email</Label>
                                 <Input

@@ -1,7 +1,6 @@
 'use client'
 
-import { RolesTab } from '@/components/dashboard/organization/RolesTab'
-import { OrgPageFrame } from '@/components/dashboard/organization/OrgPageFrame'
+import { OrgPageFrame, RolesTab } from '@/features/organization'
 
 export default function OrganizationRolesPage() {
     return (

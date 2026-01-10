@@ -1,10 +1,15 @@
 {
-  "schemaVersion": "1.0",
+  "schemaVersion": "1.1",
   "description": "Local storage data schema for the hummane HR system.",
   "storage": {
     "engine": "localStorage",
     "key": "hrSystemData",
-    "description": "Primary client-side data store persisted in the browser."
+    "auth": {
+      "provider": "firebase",
+      "mode": "client",
+      "description": "Firebase Authentication for email/password and Google sign-in; session mirrored into local users."
+    },
+    "description": "Primary client-side data store persisted in the browser; authentication handled via Firebase."
   },
   "dataStore": {
     "type": "object",

@@ -10,27 +10,31 @@ import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@
 import { Plus, Trash2, Leaf, Search, Pencil } from 'lucide-react'
 import { toast } from '@/components/ui/toast'
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from '@/components/ui/dialog'
-import type { LeaveType } from '@/types'
+import { EMPLOYMENT_TYPES, LEAVE_UNITS, type EmploymentType, type LeaveType, type LeaveUnit } from '@/types'
+
+type LeaveFormState = {
+    name: string
+    code: string
+    unit: LeaveUnit
+    quota: string
+    employmentType: EmploymentType
+}
+
+const getDefaultLeaveForm = (): LeaveFormState => ({
+    name: '',
+    code: '',
+    unit: LEAVE_UNITS[0],
+    quota: '0',
+    employmentType: EMPLOYMENT_TYPES[1]
+})
 
 export function LeavesTab() {
     const { leaveTypes, createLeaveType, updateLeaveType, deleteLeaveType } = useApp()
     const [isAddOpen, setIsAddOpen] = useState(false)
     const [isEditOpen, setIsEditOpen] = useState(false)
     const [searchTerm, setSearchTerm] = useState('')
-    const [form, setForm] = useState({
-        name: '',
-        code: '',
-        unit: 'Day',
-        quota: '0',
-        employmentType: 'Full-time'
-    })
-    const [editForm, setEditForm] = useState({
-        name: '',
-        code: '',
-        unit: 'Day',
-        quota: '0',
-        employmentType: 'Full-time'
-    })
+    const [form, setForm] = useState<LeaveFormState>(getDefaultLeaveForm)
+    const [editForm, setEditForm] = useState<LeaveFormState>(getDefaultLeaveForm)
     const [editing, setEditing] = useState<LeaveType | null>(null)
     const [loading, setLoading] = useState(false)
     const [editLoading, setEditLoading] = useState(false)
@@ -42,25 +46,19 @@ export function LeavesTab() {
         )
     }, [leaveTypes, searchTerm])
 
-    const handleSubmit = (e: React.FormEvent) => {
+    const handleSubmit = async (e: React.FormEvent) => {
         e.preventDefault()
         setLoading(true)
         try {
-            createLeaveType({
+            await createLeaveType({
                 name: form.name,
                 code: form.code,
-                unit: form.unit as 'Day' | 'Hour',
+                unit: form.unit,
                 quota: parseFloat(form.quota) || 0,
-                employmentType: form.employmentType as any
+                employmentType: form.employmentType
             })
             toast('Leave type added', 'success')
-            setForm({
-                name: '',
-                code: '',
-                unit: 'Day',
-                quota: '0',
-                employmentType: 'Full-time'
-            })
+            setForm(getDefaultLeaveForm())
             setIsAddOpen(false)
         } catch (error: any) {
             toast(error?.message || 'Failed to add leave type', 'error')
@@ -81,17 +79,17 @@ export function LeavesTab() {
         setIsEditOpen(true)
     }
 
-    const handleEdit = (e: React.FormEvent) => {
+    const handleEdit = async (e: React.FormEvent) => {
         e.preventDefault()
         if (!editing) return
         setEditLoading(true)
         try {
-            updateLeaveType(editing.id, {
+            await updateLeaveType(editing.id, {
                 name: editForm.name,
                 code: editForm.code,
-                unit: editForm.unit as 'Day' | 'Hour',
+                unit: editForm.unit,
                 quota: parseFloat(editForm.quota) || 0,
-                employmentType: editForm.employmentType as any
+                employmentType: editForm.employmentType
             })
             toast('Leave type updated', 'success')
             setIsEditOpen(false)
@@ -102,10 +100,14 @@ export function LeavesTab() {
         }
     }
 
-    const handleDelete = (id: string) => {
+    const handleDelete = async (id: string) => {
         if (confirm('Delete this leave type?')) {
-            deleteLeaveType(id)
-            toast('Leave type deleted', 'success')
+            try {
+                await deleteLeaveType(id)
+                toast('Leave type deleted', 'success')
+            } catch (error: any) {
+                toast(error?.message || 'Failed to delete leave type', 'error')
+            }
         }
     }
 
@@ -160,14 +162,17 @@ export function LeavesTab() {
                                     <Label className="text-sm font-bold text-slate-700 px-1">Units of Measure</Label>
                                     <Select
                                         value={form.unit}
-                                        onValueChange={(value) => setForm(prev => ({ ...prev, unit: value }))}
+                                        onValueChange={(value) => setForm(prev => ({ ...prev, unit: value as LeaveUnit }))}
                                     >
                                         <SelectTrigger className="rounded-xl border-slate-200 h-12">
                                             <SelectValue placeholder="Select unit" />
                                         </SelectTrigger>
                                         <SelectContent>
-                                            <SelectItem value="Day">Day</SelectItem>
-                                            <SelectItem value="Hour">Hour</SelectItem>
+                                            {LEAVE_UNITS.map((unit) => (
+                                                <SelectItem key={unit} value={unit}>
+                                                    {unit}
+                                                </SelectItem>
+                                            ))}
                                         </SelectContent>
                                     </Select>
                                 </div>
@@ -177,16 +182,17 @@ export function LeavesTab() {
                                     <Label className="text-sm font-bold text-slate-700 px-1">Employment Type</Label>
                                     <Select
                                         value={form.employmentType}
-                                        onValueChange={(value) => setForm(prev => ({ ...prev, employmentType: value }))}
+                                        onValueChange={(value) => setForm(prev => ({ ...prev, employmentType: value as EmploymentType }))}
                                     >
                                         <SelectTrigger className="rounded-xl border-slate-200 h-12">
                                             <SelectValue placeholder="Select employment type" />
                                         </SelectTrigger>
                                         <SelectContent>
-                                            <SelectItem value="Contract">Contract</SelectItem>
-                                            <SelectItem value="Full-time">Full-time</SelectItem>
-                                            <SelectItem value="Intern">Intern</SelectItem>
-                                            <SelectItem value="Part-time">Part-time</SelectItem>
+                                            {EMPLOYMENT_TYPES.map((type) => (
+                                                <SelectItem key={type} value={type}>
+                                                    {type}
+                                                </SelectItem>
+                                            ))}
                                         </SelectContent>
                                     </Select>
                                 </div>
@@ -254,14 +260,17 @@ export function LeavesTab() {
                                     <Label className="text-sm font-bold text-slate-700 px-1">Units of Measure</Label>
                                     <Select
                                         value={editForm.unit}
-                                        onValueChange={(value) => setEditForm(prev => ({ ...prev, unit: value }))}
+                                        onValueChange={(value) => setEditForm(prev => ({ ...prev, unit: value as LeaveUnit }))}
                                     >
                                         <SelectTrigger className="rounded-xl border-slate-200 h-12">
                                             <SelectValue placeholder="Select unit" />
                                         </SelectTrigger>
                                         <SelectContent>
-                                            <SelectItem value="Day">Day</SelectItem>
-                                            <SelectItem value="Hour">Hour</SelectItem>
+                                            {LEAVE_UNITS.map((unit) => (
+                                                <SelectItem key={unit} value={unit}>
+                                                    {unit}
+                                                </SelectItem>
+                                            ))}
                                         </SelectContent>
                                     </Select>
                                 </div>
@@ -271,16 +280,17 @@ export function LeavesTab() {
                                     <Label className="text-sm font-bold text-slate-700 px-1">Employment Type</Label>
                                     <Select
                                         value={editForm.employmentType}
-                                        onValueChange={(value) => setEditForm(prev => ({ ...prev, employmentType: value }))}
+                                        onValueChange={(value) => setEditForm(prev => ({ ...prev, employmentType: value as EmploymentType }))}
                                     >
                                         <SelectTrigger className="rounded-xl border-slate-200 h-12">
                                             <SelectValue placeholder="Select employment type" />
                                         </SelectTrigger>
                                         <SelectContent>
-                                            <SelectItem value="Contract">Contract</SelectItem>
-                                            <SelectItem value="Full-time">Full-time</SelectItem>
-                                            <SelectItem value="Intern">Intern</SelectItem>
-                                            <SelectItem value="Part-time">Part-time</SelectItem>
+                                            {EMPLOYMENT_TYPES.map((type) => (
+                                                <SelectItem key={type} value={type}>
+                                                    {type}
+                                                </SelectItem>
+                                            ))}
                                         </SelectContent>
                                     </Select>
                                 </div>

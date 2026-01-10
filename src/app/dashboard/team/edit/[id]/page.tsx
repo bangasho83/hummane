@@ -3,13 +3,11 @@
 import { useState, useEffect } from 'react'
 import { useRouter, useParams } from 'next/navigation'
 import { useApp } from '@/lib/context/AppContext'
-import { EmployeeForm } from '@/components/employee/EmployeeForm'
-import { JobDescriptionPreview } from '@/components/employee/JobDescriptionPreview'
+import { EmployeeForm, JobDescriptionPreview } from '@/features/employees'
 import { toast } from '@/components/ui/toast'
 import { ArrowLeft } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 import type { Employee } from '@/types'
-import { DashboardShell } from '@/components/layout/DashboardShell'
 import { Card, CardContent } from '@/components/ui/card'
 
 export default function EditEmployeePage() {
@@ -68,50 +66,48 @@ export default function EditEmployeePage() {
     }
 
     return (
-        <DashboardShell>
-            <div className="animate-in fade-in duration-500 slide-in-from-bottom-4">
-                <div className="flex items-center gap-4 mb-8">
-                    <Button
-                        variant="ghost"
-                        size="icon"
-                        onClick={handleCancel}
-                        className="rounded-xl hover:bg-white hover:shadow-sm border border-transparent hover:border-slate-100"
-                    >
-                        <ArrowLeft className="w-5 h-5" />
-                    </Button>
-                    <div>
-                        <h1 className="text-3xl font-extrabold text-slate-900 tracking-tight">
-                            Edit {employee?.name}
-                        </h1>
-                        <p className="text-slate-500 font-medium">
-                            Update profile and professional details for this employee.
-                        </p>
-                    </div>
-                </div>
-
-                <div className="grid grid-cols-1 xl:grid-cols-[minmax(0,1fr)_420px] gap-6">
-                    <Card className="border border-slate-100 shadow-premium rounded-3xl bg-white overflow-hidden">
-                        <CardContent className="p-8">
-                            {employee ? (
-                                <EmployeeForm
-                                    employee={employee}
-                                    onSubmit={handleSubmit}
-                                    onCancel={handleCancel}
-                                    submitLabel="Update Employee Info"
-                                    loading={loading}
-                                    onRoleChange={setSelectedRoleId}
-                                />
-                            ) : (
-                                <div className="py-12 text-center text-slate-400">Loading form...</div>
-                            )}
-                        </CardContent>
-                    </Card>
-                    <JobDescriptionPreview
-                        title={selectedRole?.title || 'Job Description'}
-                        description={selectedRole?.description}
-                    />
+        <div className="animate-in fade-in duration-500 slide-in-from-bottom-4">
+            <div className="flex items-center gap-4 mb-8">
+                <Button
+                    variant="ghost"
+                    size="icon"
+                    onClick={handleCancel}
+                    className="rounded-xl hover:bg-white hover:shadow-sm border border-transparent hover:border-slate-100"
+                >
+                    <ArrowLeft className="w-5 h-5" />
+                </Button>
+                <div>
+                    <h1 className="text-3xl font-extrabold text-slate-900 tracking-tight">
+                        Edit {employee?.name}
+                    </h1>
+                    <p className="text-slate-500 font-medium">
+                        Update profile and professional details for this employee.
+                    </p>
                 </div>
             </div>
-        </DashboardShell>
+
+            <div className="grid grid-cols-1 xl:grid-cols-[minmax(0,1fr)_420px] gap-6">
+                <Card className="border border-slate-100 shadow-premium rounded-3xl bg-white overflow-hidden">
+                    <CardContent className="p-8">
+                        {employee ? (
+                            <EmployeeForm
+                                employee={employee}
+                                onSubmit={handleSubmit}
+                                onCancel={handleCancel}
+                                submitLabel="Update Employee Info"
+                                loading={loading}
+                                onRoleChange={setSelectedRoleId}
+                            />
+                        ) : (
+                            <div className="py-12 text-center text-slate-400">Loading form...</div>
+                        )}
+                    </CardContent>
+                </Card>
+                <JobDescriptionPreview
+                    title={selectedRole?.title || 'Job Description'}
+                    description={selectedRole?.description}
+                />
+            </div>
+        </div>
     )
 }

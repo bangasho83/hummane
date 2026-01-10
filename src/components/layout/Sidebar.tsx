@@ -1,55 +1,19 @@
 'use client'
 
 import Link from 'next/link'
-import { usePathname } from 'next/navigation'
-import { cn } from '@/lib/utils'
-import {
-    LayoutDashboard,
-    Users,
-    Settings,
-    Building2,
-    Calendar,
-    Wallet,
-    HelpCircle,
-    LogOut,
-    Briefcase,
-    FileText,
-    ClipboardList
-} from 'lucide-react'
+import { usePathname, useRouter } from 'next/navigation'
+import { LogOut } from 'lucide-react'
 import { useApp } from '@/lib/context/AppContext'
-
-const dashboardItems = [
-    { name: 'Dashboard', href: '/dashboard', icon: LayoutDashboard, exact: true },
-]
-
-const teamItems = [
-    { name: 'Team', href: '/dashboard/team', icon: Users },
-    { name: 'Attendance', href: '/dashboard/attendance', icon: Calendar },
-    { name: 'Payroll', href: '/dashboard/payroll', icon: Wallet },
-    { name: 'Organization', href: '/dashboard/organization', icon: Building2 },
-]
-
-const hiringItems = [
-    { name: 'Jobs', href: '/dashboard/jobs', icon: FileText },
-    { name: 'Applicants', href: '/dashboard/applicants', icon: Users, exact: true },
-    { name: 'Progress', href: '/dashboard/applicants/progress', icon: ClipboardList, exact: true },
-]
-
-const performanceItems = [
-    { name: 'Feedback', href: '/dashboard/performance/feedback', icon: ClipboardList, exact: true },
-    { name: 'Cards', href: '/dashboard/performance/feedback-cards', icon: FileText, exact: true },
-]
-
-const secondaryItems = [
-    { name: 'Settings', href: '/dashboard/settings', icon: Settings },
-    { name: 'Support', href: '/dashboard/support', icon: HelpCircle },
-]
+import { cn } from '@/lib/utils'
+import { navigationSections, type NavItem } from '@/config/navigation'
+import { toast } from '@/components/ui/toast'
 
 export function Sidebar() {
     const pathname = usePathname()
+    const router = useRouter()
     const { logout, currentCompany } = useApp()
 
-    const NavLink = ({ item, isSecondary = false }: { item: any, isSecondary?: boolean }) => {
+    const NavLink = ({ item }: { item: NavItem }) => {
         const isActive = item.exact
             ? pathname === item.href
             : pathname.startsWith(item.href)
@@ -94,63 +58,33 @@ export function Sidebar() {
                 </div>
 
                 <div className="space-y-6">
-                    <div>
-                        <nav>
-                            {dashboardItems.map((item) => (
-                                <NavLink key={item.name} item={item} />
-                            ))}
-                        </nav>
-                    </div>
-
-                    <div>
-                        <p className="text-[10px] font-extrabold text-slate-400 uppercase tracking-widest mb-4 px-3">
-                            Team
-                        </p>
-                        <nav>
-                            {teamItems.map((item) => (
-                                <NavLink key={item.name} item={item} />
-                            ))}
-                        </nav>
-                    </div>
-
-                    <div>
-                        <p className="text-[10px] font-extrabold text-slate-400 uppercase tracking-widest mb-4 px-3">
-                            Performance
-                        </p>
-                        <nav>
-                            {performanceItems.map((item) => (
-                                <NavLink key={item.name} item={item} />
-                            ))}
-                        </nav>
-                    </div>
-
-                    <div>
-                        <p className="text-[10px] font-extrabold text-slate-400 uppercase tracking-widest mb-4 px-3">
-                            Hiring
-                        </p>
-                        <nav>
-                            {hiringItems.map((item) => (
-                                <NavLink key={item.name} item={item} />
-                            ))}
-                        </nav>
-                    </div>
-
-                    <div>
-                        <p className="text-[10px] font-extrabold text-slate-400 uppercase tracking-widest mb-4 px-3">
-                            Account & Support
-                        </p>
-                        <nav>
-                            {secondaryItems.map((item) => (
-                                <NavLink key={item.name} item={item} isSecondary />
-                            ))}
-                        </nav>
-                    </div>
+                    {navigationSections.map((section) => (
+                        <div key={section.label ?? 'primary'}>
+                            {section.label ? (
+                                <p className="text-[10px] font-extrabold text-slate-400 uppercase tracking-widest mb-4 px-3">
+                                    {section.label}
+                                </p>
+                            ) : null}
+                            <nav>
+                                {section.items.map((item) => (
+                                    <NavLink key={item.name} item={item} />
+                                ))}
+                            </nav>
+                        </div>
+                    ))}
                 </div>
             </div>
 
             <div className="p-6 border-t border-slate-100 bg-slate-50/50">
                 <button
-                    onClick={logout}
+                    onClick={async () => {
+                        try {
+                            await logout()
+                            router.push('/login')
+                        } catch (error) {
+                            toast('Failed to logout. Please try again.', 'error')
+                        }
+                    }}
                     className="flex items-center gap-3 px-3 py-3 w-full rounded-xl text-sm font-bold text-slate-500 hover:bg-red-50 hover:text-red-600 hover:border-red-100 border border-transparent transition-all group mb-4"
                 >
                     <LogOut className="w-5 h-5 text-slate-400 group-hover:text-red-500 transition-colors" />

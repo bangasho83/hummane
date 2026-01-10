@@ -1,13 +1,10 @@
 'use client'
 
-import { DashboardShell } from '@/components/layout/DashboardShell'
-import { RolesTab } from '@/components/dashboard/organization/RolesTab'
+import { RolesTab } from '@/features/organization'
 
 export default function RolesPage() {
     return (
-        <DashboardShell>
-            <RolesTab />
-        </DashboardShell>
+        <RolesTab />
     )
 }
 

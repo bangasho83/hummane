@@ -2,7 +2,6 @@
 
 import { useEffect, useMemo, useState } from 'react'
 import { useParams, useRouter } from 'next/navigation'
-import { DashboardShell } from '@/components/layout/DashboardShell'
 import { Card, CardContent } from '@/components/ui/card'
 import { Button } from '@/components/ui/button'
 import { Label } from '@/components/ui/label'
@@ -72,9 +71,7 @@ export default function EditFeedbackPage() {
 
     if (!entry) {
         return (
-            <DashboardShell>
-                <div className="p-8 text-slate-500">Feedback entry not found.</div>
-            </DashboardShell>
+            <div className="p-8 text-slate-500">Feedback entry not found.</div>
         )
     }
 
@@ -137,127 +134,126 @@ export default function EditFeedbackPage() {
     }
 
     return (
-        <DashboardShell>
-            <div className="animate-in fade-in duration-500 slide-in-from-bottom-4 space-y-6">
-                <div>
-                    <h1 className="text-3xl font-extrabold text-slate-900 tracking-tight">Edit Feedback</h1>
-                    <p className="text-slate-500 font-medium">
-                        Continue a draft or update submitted feedback.
-                    </p>
-                </div>
+        <div className="animate-in fade-in duration-500 slide-in-from-bottom-4 space-y-6">
+            <div>
+                <h1 className="text-3xl font-extrabold text-slate-900 tracking-tight">Edit Feedback</h1>
+                <p className="text-slate-500 font-medium">
+                    Continue a draft or update submitted feedback.
+                </p>
+            </div>
 
-                <Card className="border border-slate-100 shadow-premium rounded-3xl bg-white overflow-hidden">
-                    <CardContent className="p-8 space-y-5">
-                        <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-                            <div className="space-y-2">
-                                <Label className="text-sm font-bold text-slate-700 px-1">Type</Label>
-                                <Select
-                                    value={type}
-                                    onValueChange={(value: 'Team Member' | 'Applicant') => {
-                                        setType(value)
-                                        setCardId('')
-                                        setSubjectId('')
-                                        setAnswers([])
-                                    }}
-                                >
-                                    <SelectTrigger className="h-11 rounded-xl border-slate-200">
-                                        <SelectValue placeholder="Select type" />
-                                    </SelectTrigger>
-                                    <SelectContent>
-                                        <SelectItem value="Team Member">Team Member</SelectItem>
-                                        <SelectItem value="Applicant">Applicant</SelectItem>
-                                    </SelectContent>
-                                </Select>
-                            </div>
-                            <div className="space-y-2">
-                                <Label className="text-sm font-bold text-slate-700 px-1">
-                                    {type === 'Applicant' ? 'Applicant' : 'Team Member'}
-                                </Label>
-                                <Select
-                                    value={subjectId || 'none'}
-                                    onValueChange={(value) => {
-                                        setSubjectId(value === 'none' ? '' : value)
-                                        setCardId('')
-                                        setAnswers([])
-                                    }}
-                                >
-                                    <SelectTrigger className="h-11 rounded-xl border-slate-200">
-                                        <SelectValue placeholder="Select person" />
-                                    </SelectTrigger>
-                                    <SelectContent>
-                                        <SelectItem value="none">Select</SelectItem>
-                                        {subjects.map(subject => (
-                                            <SelectItem key={subject.id} value={subject.id}>
-                                                {subject.label}
-                                            </SelectItem>
-                                        ))}
-                                    </SelectContent>
-                                </Select>
-                            </div>
-                            <div className="space-y-2">
-                                <Label className="text-sm font-bold text-slate-700 px-1">Feedback Card</Label>
-                                <Select
-                                    value={cardId || 'none'}
-                                    onValueChange={(value) => handleSelectCard(value === 'none' ? '' : value)}
-                                    disabled={!subjectId}
-                                >
-                                    <SelectTrigger className="h-11 rounded-xl border-slate-200">
-                                        <SelectValue placeholder="Select card" />
-                                    </SelectTrigger>
-                                    <SelectContent>
-                                        <SelectItem value="none">Select</SelectItem>
-                                        {filteredCards.map(card => (
-                                            <SelectItem key={card.id} value={card.id}>
-                                                {card.title}
-                                            </SelectItem>
-                                        ))}
-                                    </SelectContent>
-                                </Select>
-                            </div>
+            <Card className="border border-slate-100 shadow-premium rounded-3xl bg-white overflow-hidden">
+                <CardContent className="p-8 space-y-5">
+                    <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+                        <div className="space-y-2">
+                            <Label className="text-sm font-bold text-slate-700 px-1">Type</Label>
+                            <Select
+                                value={type}
+                                onValueChange={(value: 'Team Member' | 'Applicant') => {
+                                    setType(value)
+                                    setCardId('')
+                                    setSubjectId('')
+                                    setAnswers([])
+                                }}
+                            >
+                                <SelectTrigger className="h-11 rounded-xl border-slate-200">
+                                    <SelectValue placeholder="Select type" />
+                                </SelectTrigger>
+                                <SelectContent>
+                                    <SelectItem value="Team Member">Team Member</SelectItem>
+                                    <SelectItem value="Applicant">Applicant</SelectItem>
+                                </SelectContent>
+                            </Select>
                         </div>
+                        <div className="space-y-2">
+                            <Label className="text-sm font-bold text-slate-700 px-1">
+                                {type === 'Applicant' ? 'Applicant' : 'Team Member'}
+                            </Label>
+                            <Select
+                                value={subjectId || 'none'}
+                                onValueChange={(value) => {
+                                    setSubjectId(value === 'none' ? '' : value)
+                                    setCardId('')
+                                    setAnswers([])
+                                }}
+                            >
+                                <SelectTrigger className="h-11 rounded-xl border-slate-200">
+                                    <SelectValue placeholder="Select person" />
+                                </SelectTrigger>
+                                <SelectContent>
+                                    <SelectItem value="none">Select</SelectItem>
+                                    {subjects.map(subject => (
+                                        <SelectItem key={subject.id} value={subject.id}>
+                                            {subject.label}
+                                        </SelectItem>
+                                    ))}
+                                </SelectContent>
+                            </Select>
+                        </div>
+                        <div className="space-y-2">
+                            <Label className="text-sm font-bold text-slate-700 px-1">Feedback Card</Label>
+                            <Select
+                                value={cardId || 'none'}
+                                onValueChange={(value) => handleSelectCard(value === 'none' ? '' : value)}
+                                disabled={!subjectId}
+                            >
+                                <SelectTrigger className="h-11 rounded-xl border-slate-200">
+                                    <SelectValue placeholder="Select card" />
+                                </SelectTrigger>
+                                <SelectContent>
+                                    <SelectItem value="none">Select</SelectItem>
+                                    {filteredCards.map(card => (
+                                        <SelectItem key={card.id} value={card.id}>
+                                            {card.title}
+                                        </SelectItem>
+                                    ))}
+                                </SelectContent>
+                            </Select>
+                        </div>
+                    </div>
 
-                        {selectedCard && subjectId && (
-                            <div className="space-y-4">
-                                <div>
-                                    <p className="text-xs font-bold text-slate-400 uppercase tracking-widest px-1">Questions</p>
-                                </div>
-                                <div className="space-y-3">
-                                    {selectedCard.questions.map((q, index) => {
-                                        const current = answers.find(a => a.questionId === q.id)?.score ?? 0
-                                        const commentValue = answers.find(a => a.questionId === q.id)?.comment ?? ''
-                                        const kind = q.kind ?? 'score'
-                                        return (
-                                            <div key={q.id} className="rounded-2xl border border-slate-200 p-4 space-y-3">
-                                                <div className="flex items-center justify-between">
-                                                    <p className="text-sm font-semibold text-slate-800">
-                                                        {index + 1}. {q.prompt}
-                                                    </p>
-                                                </div>
-                                                {kind === 'comment' ? (
-                                                    <textarea
-                                                        className="w-full min-h-[120px] rounded-xl border border-slate-200 p-3 text-sm text-slate-700"
-                                                        placeholder="Add your comments..."
-                                                        value={commentValue}
-                                                        onChange={(e) => handleCommentChange(q.id, e.target.value)}
-                                                    />
-                                                ) : (
-                                                    <div className="flex flex-wrap gap-3">
-                                                        {[1, 2, 3, 4, 5].map((score) => (
-                                                            <label key={score} className="flex items-center gap-2 text-sm text-slate-600 font-medium">
-                                                                <input
-                                                                    type="radio"
-                                                                    name={`score-${q.id}`}
-                                                                    value={score}
-                                                                    checked={current === score}
-                                                                    onChange={() => handleAnswerChange(q.id, score)}
-                                                                />
-                                                                {score}
-                                                            </label>
-                                                        ))}
-                                                    </div>
-                                                )}
+                    {selectedCard && subjectId && (
+                        <div className="space-y-4">
+                            <div>
+                                <p className="text-xs font-bold text-slate-400 uppercase tracking-widest px-1">Questions</p>
+                            </div>
+                            <div className="space-y-3">
+                                {selectedCard.questions.map((q, index) => {
+                                    const current = answers.find(a => a.questionId === q.id)?.score ?? 0
+                                    const commentValue = answers.find(a => a.questionId === q.id)?.comment ?? ''
+                                    const kind = q.kind ?? 'score'
+                                            return (
+                                        <div key={q.id} className="rounded-2xl border border-slate-200 p-4 space-y-3">
+                                            <div className="flex items-center justify-between">
+                                                <p className="text-sm font-semibold text-slate-800">
+                                                    {index + 1}. {q.prompt}
+                                                </p>
                                             </div>
-                                        )
+                                            {kind === 'comment' ? (
+                                                <textarea
+                                                    className="w-full min-h-[120px] rounded-xl border border-slate-200 p-3 text-sm text-slate-700"
+                                                    placeholder="Add your comments..."
+                                                    value={commentValue}
+                                                    onChange={(e) => handleCommentChange(q.id, e.target.value)}
+                                                />
+                                            ) : (
+                                                <div className="flex flex-wrap gap-3">
+                                                    {[1, 2, 3, 4, 5].map((score) => (
+                                                        <label key={score} className="flex items-center gap-2 text-sm text-slate-600 font-medium">
+                                                            <input
+                                                                type="radio"
+                                                                name={`score-${q.id}`}
+                                                                value={score}
+                                                                checked={current === score}
+                                                                onChange={() => handleAnswerChange(q.id, score)}
+                                                            />
+                                                            {score}
+                                                        </label>
+                                                    ))}
+                                                </div>
+                                            )}
+                                        </div>
+    )
                                     })}
                                 </div>
                             </div>
@@ -279,6 +275,5 @@ export default function EditFeedbackPage() {
                     </CardContent>
                 </Card>
             </div>
-        </DashboardShell>
-    )
+)
 }

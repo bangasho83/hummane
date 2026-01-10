@@ -1,0 +1,67 @@
+Hummane HR System - API Project Brief
+
+Overview
+- Hummane is an HR management system built with Next.js (App Router) and TypeScript.
+- Client-side data is currently stored in localStorage under the key "hrSystemData".
+- Authentication is now handled via Firebase Authentication (email/password and Google sign-in).
+- The API should replace localStorage persistence with a secure backend while keeping the same data model and behavior.
+
+Current Storage Model
+- Local storage schema documented in `schema.json`.
+- Root object contains:
+  users, companies, employees, departments, leaves, leaveTypes, holidays, documents,
+  roles, jobs, applicants, feedbackCards, feedbackEntries, currentUser.
+- IDs are generated locally (string) and timestamps are ISO-8601 strings.
+
+Auth Requirements
+- Firebase Authentication is the source of truth for user identity.
+- The app mirrors Firebase users into its local Users collection (name, email, hashed password for legacy/demo users).
+- The API should trust Firebase ID tokens for authentication and map them to application users/companies.
+
+Multi-tenant Model
+- A user can own a single Company (tenant).
+- Most entities are scoped by companyId.
+- API should ensure tenant isolation for all CRUD endpoints.
+
+Entities (from `schema.json`)
+- User: id, name, email, password (hashed), companyId?, createdAt
+- Company: id, name, industry, size, currency?, ownerId, createdAt
+- Employee: id, employeeId, companyId, name, email, position, department, roleId, startDate,
+  employmentType, reportingManager, gender, salary, createdAt, updatedAt?
+- Department: id, companyId, name, description?, createdAt
+- Role: id, companyId, title, description, createdAt
+- Job: id, companyId, title, roleId?, department?, employmentType?, location?, salary, experience, status, createdAt, updatedAt?
+- Applicant: id, companyId, jobId?, fullName, email, phone, positionApplied, yearsOfExperience,
+  currentSalary, expectedSalary, noticePeriod, resumeFile?, linkedinUrl?, status, appliedDate, createdAt, updatedAt?
+- LeaveType: id, companyId, name, code, unit, quota, employmentType, createdAt, updatedAt?
+- LeaveRecord: id, companyId, employeeId, date, type, leaveTypeId?, unit?, amount?, note, attachments?, createdAt
+- Holiday: id, companyId, date, name, createdAt
+- FeedbackCard: id, companyId, title, subject, questions[], createdAt, updatedAt?
+- FeedbackEntry: id, companyId, type, cardId, subjectId?, subjectName?, authorId?, authorName?, answers[], createdAt, updatedAt?
+- EmployeeDocument: id, employeeId, name, type, dataUrl, uploadedAt
+
+Enums
+- EmploymentType: Contract | Full-time | Intern | Part-time
+- Gender: Male | Female | Non-binary | Prefer not to say
+- LeaveUnit: Day | Hour
+- JobStatus: open | closed
+- ApplicantStatus: new | screening | interview | offer | rejected | hired
+- DocumentKind: Government ID | CV (Curriculum Vitae) | Educational Documents | Experience Letter |
+  Salary Slip | Personality Test Report | Contract
+- FeedbackSubject: Team Member | Applicant
+
+API Expectations
+- Provide CRUD endpoints for each entity (scoped by companyId where applicable).
+- Validate input using the enum constraints above.
+- Use Firebase ID token verification to identify the current user.
+- Enforce ownership: users can only access their company data.
+- Replace local ID generation with server-generated IDs (string or UUID).
+- Preserve timestamps (createdAt/updatedAt) in ISO-8601 format.
+
+Migration Considerations
+- Existing users may have local-only accounts; consider migration strategy or allow linking
+  local users to Firebase by email.
+
+Notes
+- UI expects similar behavior to localStorage (optimistic updates acceptable).
+- No backend currently exists; this API will become the source of truth.

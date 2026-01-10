@@ -16,10 +16,14 @@ interface EmployeeCardProps {
 export function EmployeeCard({ employee, onEdit }: EmployeeCardProps) {
     const { deleteEmployee, currentCompany } = useApp()
 
-    const handleDelete = () => {
+    const handleDelete = async () => {
         if (confirm('Are you sure you want to delete this employee? This action cannot be undone.')) {
-            deleteEmployee(employee.id)
-            toast('Employee deleted successfully', 'success')
+            try {
+                await deleteEmployee(employee.id)
+                toast('Employee deleted successfully', 'success')
+            } catch (error) {
+                toast('Failed to delete employee', 'error')
+            }
         }
     }
 

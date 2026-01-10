@@ -5,11 +5,9 @@ import { useRouter } from 'next/navigation'
 import { useApp } from '@/lib/context/AppContext'
 import { Button } from '@/components/ui/button'
 import { Plus, CalendarCheck, Briefcase, UserPlus, FileText } from 'lucide-react'
-import { StatsCards } from '@/components/dashboard/StatsCards'
-import { DashboardShell } from '@/components/layout/DashboardShell'
+import { StatsCards } from '@/features/dashboard'
 import { formatCurrency, formatDate } from '@/lib/utils'
-
-const EMPLOYMENT_TYPES = ['Contract', 'Full-time', 'Intern', 'Part-time'] as const
+import { EMPLOYMENT_TYPES } from '@/types'
 
 export default function DashboardPage() {
     const router = useRouter()
@@ -187,7 +185,7 @@ export default function DashboardPage() {
     }
 
     return (
-        <DashboardShell>
+        <>
             <section className="animate-in fade-in duration-500 slide-in-from-bottom-4">
                 <div className="flex flex-wrap items-end justify-between gap-4 mb-6">
                     <div>
@@ -236,7 +234,7 @@ export default function DashboardPage() {
                         <h3 className="text-xl font-bold text-slate-900">Organization Snapshot</h3>
                         <p className="text-sm text-slate-500">Headcount mix, departments, and core configuration.</p>
                     </div>
-
+    
                     <div className="grid grid-cols-2 lg:grid-cols-4 gap-4 mb-6">
                         <div className="rounded-2xl border border-slate-100 p-4">
                             <p className="text-[11px] uppercase tracking-widest text-slate-400 font-semibold">Departments</p>
@@ -257,7 +255,7 @@ export default function DashboardPage() {
                             </p>
                         </div>
                     </div>
-
+    
                     <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
                         <div>
                             <h4 className="text-sm font-bold text-slate-700 mb-4">Employment Type</h4>
@@ -295,7 +293,7 @@ export default function DashboardPage() {
                         </div>
                     </div>
                 </div>
-
+    
                 <div className="bg-white p-8 rounded-3xl shadow-premium border border-slate-100">
                     <div className="mb-6">
                         <h3 className="text-xl font-bold text-slate-900">Attendance & Leave</h3>
@@ -311,7 +309,7 @@ export default function DashboardPage() {
                             <p className="text-xl font-bold text-slate-900 mt-2">{leaveEntriesThisMonth}</p>
                         </div>
                     </div>
-
+    
                     <div className="space-y-4">
                         <div>
                             <h4 className="text-sm font-bold text-slate-700 mb-3">Upcoming Holidays</h4>
@@ -353,7 +351,7 @@ export default function DashboardPage() {
                         <h3 className="text-xl font-bold text-slate-900">Hiring Pipeline</h3>
                         <p className="text-sm text-slate-500">Track open roles and applicant movement.</p>
                     </div>
-
+    
                     <div className="grid grid-cols-1 md:grid-cols-3 gap-4 mb-6">
                         <div className="rounded-2xl border border-slate-100 p-4">
                             <p className="text-[11px] uppercase tracking-widest text-slate-400 font-semibold">Open Jobs</p>
@@ -368,7 +366,7 @@ export default function DashboardPage() {
                             <p className="text-xl font-bold text-slate-900 mt-2">{activeApplicants}</p>
                         </div>
                     </div>
-
+    
                     <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
                         <div>
                             <h4 className="text-sm font-bold text-slate-700 mb-4">Stage Breakdown</h4>
@@ -412,7 +410,7 @@ export default function DashboardPage() {
                         </div>
                     </div>
                 </div>
-
+    
                 <div className="bg-white p-8 rounded-3xl shadow-premium border border-slate-100">
                     <div className="mb-6">
                         <h3 className="text-xl font-bold text-slate-900">Recent Activity</h3>
@@ -437,6 +435,6 @@ export default function DashboardPage() {
                     )}
                 </div>
             </section>
-        </DashboardShell>
+        </>
     )
 }

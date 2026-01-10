@@ -1,6 +1,6 @@
 'use client'
 
-import { useState } from 'react'
+import { useEffect, useState } from 'react'
 import { useRouter } from 'next/navigation'
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
 import { Input } from '@/components/ui/input'
@@ -9,26 +9,39 @@ import { Label } from '@/components/ui/label'
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select'
 import { useApp } from '@/lib/context/AppContext'
 import { toast } from '@/components/ui/toast'
+import { COMPANY_SIZES, type CompanySize } from '@/types'
 
 export default function CompanySetupPage() {
     const router = useRouter()
-    const { currentUser, createCompany } = useApp()
+    const { currentUser, currentCompany, createCompany } = useApp()
     const [companyName, setCompanyName] = useState('')
     const [industry, setIndustry] = useState('')
-    const [size, setSize] = useState('')
+    const [size, setSize] = useState<CompanySize | ''>('')
     const [loading, setLoading] = useState(false)
+    useEffect(() => {
+        if (!currentUser) {
+            router.push('/login')
+            return
+        }
+        if (currentCompany) {
+            router.push('/dashboard')
+        }
+    }, [currentCompany, currentUser, router])
 
-    // Redirect if not logged in
-    if (!currentUser) {
-        router.push('/login')
+    if (!currentUser || currentCompany) {
         return null
     }
+
 
     const handleSubmit = async (e: React.FormEvent) => {
         e.preventDefault()
         setLoading(true)
 
         try {
+            if (!size) {
+                setLoading(false)
+                return
+            }
             await createCompany(companyName, industry, size)
             toast('Company created successfully!', 'success')
             setTimeout(() => {
@@ -87,16 +100,16 @@ export default function CompanySetupPage() {
 
                                 <div className="space-y-2">
                                     <Label htmlFor="size">Company Size</Label>
-                                    <Select value={size} onValueChange={setSize} required>
+                                    <Select value={size} onValueChange={(value) => setSize(value as CompanySize)} required>
                                         <SelectTrigger id="size">
                                             <SelectValue placeholder="Select size" />
                                         </SelectTrigger>
                                         <SelectContent>
-                                            <SelectItem value="1-10">1-10 employees</SelectItem>
-                                            <SelectItem value="11-50">11-50 employees</SelectItem>
-                                            <SelectItem value="51-200">51-200 employees</SelectItem>
-                                            <SelectItem value="201-500">201-500 employees</SelectItem>
-                                            <SelectItem value="500+">500+ employees</SelectItem>
+                                            {COMPANY_SIZES.map((range) => (
+                                                <SelectItem key={range} value={range}>
+                                                    {range} employees
+                                                </SelectItem>
+                                            ))}
                                         </SelectContent>
                                     </Select>
                                 </div>
@@ -108,6 +121,7 @@ export default function CompanySetupPage() {
                         </CardContent>
                     </form>
                 </Card>
+
             </div>
         </div>
     )

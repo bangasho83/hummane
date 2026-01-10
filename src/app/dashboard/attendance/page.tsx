@@ -1,7 +1,6 @@
 'use client'
 
 import { useEffect, useState } from 'react'
-import { DashboardShell } from '@/components/layout/DashboardShell'
 import { Calendar as CalendarIcon, Plus, Check } from 'lucide-react'
 import { useApp } from '@/lib/context/AppContext'
 import type { LeaveRecord } from '@/types'
@@ -13,10 +12,10 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@
 import { Input } from '@/components/ui/input'
 import { toast } from '@/components/ui/toast'
 import { cn } from '@/lib/utils'
-import { AttendanceTabs } from '@/components/attendance/AttendanceTabs'
+import { AttendanceTabs } from '@/features/attendance'
 
 export default function AttendancePage() {
-    const { employees, leaves, addLeave, leaveTypes } = useApp()
+    const { employees, leaves, addLeave, leaveTypes, refreshLeaveTypes } = useApp()
     const [isDialogOpen, setIsDialogOpen] = useState(false)
     const [selectedEmployee, setSelectedEmployee] = useState('')
     const [selectedType, setSelectedType] = useState<string>('')
@@ -57,6 +56,11 @@ export default function AttendancePage() {
             setSelectedType('')
         }
     }, [leaveTypes, selectedEmployee, employees])
+
+    useEffect(() => {
+        if (!isDialogOpen) return
+        void refreshLeaveTypes()
+    }, [isDialogOpen, refreshLeaveTypes])
 
     const formatDate = (date: Date) => {
         return date.toISOString().split('T')[0]
@@ -182,15 +186,13 @@ export default function AttendancePage() {
 
     if (!today || dates.length === 0) {
         return (
-            <DashboardShell>
-                <div className="animate-in fade-in duration-500 slide-in-from-bottom-4">
-                    <Card className="border-none shadow-premium bg-white rounded-3xl">
-                        <CardContent className="p-12 text-center text-slate-500 font-medium">
-                            Loading attendance view...
-                        </CardContent>
-                    </Card>
-                </div>
-            </DashboardShell>
+            <div className="animate-in fade-in duration-500 slide-in-from-bottom-4">
+                <Card className="border-none shadow-premium bg-white rounded-3xl">
+                    <CardContent className="p-12 text-center text-slate-500 font-medium">
+                        Loading attendance view...
+                    </CardContent>
+                </Card>
+            </div>
         )
     }
 
@@ -202,115 +204,114 @@ export default function AttendancePage() {
     const filteredLeaveTypes = leaveTypesForEmployee(selectedEmployee)
 
     return (
-        <DashboardShell>
-            <div className="animate-in fade-in duration-500 slide-in-from-bottom-4">
-                <div className="flex justify-between items-end mb-4">
-                    <div>
-                        <h1 className="text-3xl font-extrabold text-slate-900 tracking-tight">
-                            Attendance
-                        </h1>
-                        <p className="text-slate-500 font-medium">
-                            Track daily presence and manage employee leaves.
-                        </p>
-                    </div>
+        <div className="animate-in fade-in duration-500 slide-in-from-bottom-4">
+            <div className="flex justify-between items-end mb-4">
+                <div>
+                    <h1 className="text-3xl font-extrabold text-slate-900 tracking-tight">
+                        Attendance
+                    </h1>
+                    <p className="text-slate-500 font-medium">
+                        Track daily presence and manage employee leaves.
+                    </p>
                 </div>
+            </div>
 
-                <AttendanceTabs />
+            <AttendanceTabs />
 
-                <div className="flex justify-between items-end mb-6">
-                    <div />
+            <div className="flex justify-between items-end mb-6">
+                <div />
 
-                    <Dialog open={isDialogOpen} onOpenChange={setIsDialogOpen}>
-                        <DialogTrigger asChild>
-                            <Button className="bg-blue-600 hover:bg-blue-700 text-white rounded-2xl font-bold shadow-lg shadow-blue-500/20 px-6 py-6 h-auto">
-                                <Plus className="w-5 h-5 mr-2" />
-                                Register Leave
-                            </Button>
-                        </DialogTrigger>
-                        <DialogContent className="sm:max-w-md rounded-3xl bg-white border-slate-200">
-                            <DialogHeader>
-                                <DialogTitle className="text-2xl font-bold text-slate-900">Register Leave</DialogTitle>
-                            </DialogHeader>
-                            <form onSubmit={(e) => { e.preventDefault(); handleAddLeave(); }} className="space-y-4 py-4">
-                                <div className="space-y-2">
-                                    <label className="text-sm font-bold text-slate-700 px-1">Employee</label>
-                                    <Select value={selectedEmployee} onValueChange={setSelectedEmployee}>
-                                        <SelectTrigger className="h-12 rounded-xl border-slate-200">
-                                            <SelectValue placeholder="Select Employee" />
-                                        </SelectTrigger>
-                                        <SelectContent>
-                                            {employees.map(emp => (
-                                                <SelectItem key={emp.id} value={emp.id}>{emp.name}</SelectItem>
-                                            ))}
-                                        </SelectContent>
-                                    </Select>
-                                </div>
-                                <div className="space-y-2">
-                                    <label className="text-sm font-bold text-slate-700 px-1">Leave Type</label>
-                                    <Select value={selectedType} onValueChange={setSelectedType} disabled={!selectedEmployee}>
-                                        <SelectTrigger className="h-12 rounded-xl border-slate-200">
-                                            <SelectValue placeholder="Select Type" />
-                                        </SelectTrigger>
-                                        <SelectContent>
-                                            {filteredLeaveTypes.length === 0 ? (
-                                                <SelectItem value="none" disabled>
-                                                    No leave type defined for this employment type
+                <Dialog open={isDialogOpen} onOpenChange={setIsDialogOpen}>
+                    <DialogTrigger asChild>
+                        <Button className="bg-blue-600 hover:bg-blue-700 text-white rounded-2xl font-bold shadow-lg shadow-blue-500/20 px-6 py-6 h-auto">
+                            <Plus className="w-5 h-5 mr-2" />
+                            Register Leave
+                        </Button>
+                    </DialogTrigger>
+                    <DialogContent className="sm:max-w-md rounded-3xl bg-white border-slate-200">
+                        <DialogHeader>
+                            <DialogTitle className="text-2xl font-bold text-slate-900">Register Leave</DialogTitle>
+                        </DialogHeader>
+                        <form onSubmit={(e) => { e.preventDefault(); handleAddLeave(); }} className="space-y-4 py-4">
+                            <div className="space-y-2">
+                                <label className="text-sm font-bold text-slate-700 px-1">Employee</label>
+                                <Select value={selectedEmployee} onValueChange={setSelectedEmployee}>
+                                    <SelectTrigger className="h-12 rounded-xl border-slate-200">
+                                        <SelectValue placeholder="Select Employee" />
+                                    </SelectTrigger>
+                                    <SelectContent>
+                                        {employees.map(emp => (
+                                            <SelectItem key={emp.id} value={emp.id}>{emp.name}</SelectItem>
+                                        ))}
+                                    </SelectContent>
+                                </Select>
+                            </div>
+                            <div className="space-y-2">
+                                <label className="text-sm font-bold text-slate-700 px-1">Leave Type</label>
+                                <Select value={selectedType} onValueChange={setSelectedType} disabled={!selectedEmployee}>
+                                    <SelectTrigger className="h-12 rounded-xl border-slate-200">
+                                        <SelectValue placeholder="Select Type" />
+                                    </SelectTrigger>
+                                    <SelectContent>
+                                        {filteredLeaveTypes.length === 0 ? (
+                                            <SelectItem value="none" disabled>
+                                                No leave type defined for this employment type
+                                            </SelectItem>
+                                        ) : (
+                                            filteredLeaveTypes.map((lt) => (
+                                                <SelectItem key={lt.id} value={lt.id}>
+                                                    {lt.name} ({lt.code}) — {lt.unit} • {lt.employmentType}
                                                 </SelectItem>
-                                            ) : (
-                                                filteredLeaveTypes.map((lt) => (
-                                                    <SelectItem key={lt.id} value={lt.id}>
-                                                        {lt.name} ({lt.code}) — {lt.unit} • {lt.employmentType}
-                                                    </SelectItem>
-                                                ))
-                                            )}
-                                        </SelectContent>
-                                    </Select>
-                                    {selectedType && leaveTypes.find(lt => lt.id === selectedType) && (
-                                        <p className="text-xs text-slate-500 px-1">
-                                            Unit: {leaveTypes.find(lt => lt.id === selectedType)?.unit} • Quota: {leaveTypes.find(lt => lt.id === selectedType)?.quota}
-                                        </p>
-                                    )}
-                                </div>
-                                {(() => {
-                                    const lt = leaveTypes.find(lt => lt.id === selectedType)
-                                    const unit = lt?.unit || 'Day'
-                                    if (unit === 'Hour') {
-                                        return (
-                                            <div className="space-y-3">
+                                            ))
+                                        )}
+                                    </SelectContent>
+                                </Select>
+                                {selectedType && leaveTypes.find(lt => lt.id === selectedType) && (
+                                    <p className="text-xs text-slate-500 px-1">
+                                        Unit: {leaveTypes.find(lt => lt.id === selectedType)?.unit} • Quota: {leaveTypes.find(lt => lt.id === selectedType)?.quota}
+                                    </p>
+                                )}
+                            </div>
+                            {(() => {
+                                const lt = leaveTypes.find(lt => lt.id === selectedType)
+                                const unit = lt?.unit || 'Day'
+                                if (unit === 'Hour') {
+                                            return (
+                                        <div className="space-y-3">
+                                            <div className="space-y-2">
+                                                <label className="text-sm font-bold text-slate-700 px-1">Date</label>
+                                                <Input
+                                                    type="date"
+                                                    className="h-12 rounded-xl border-slate-200"
+                                                    value={startDate}
+                                                    onChange={(e) => { setStartDate(e.target.value); setEndDate(e.target.value) }}
+                                                    required
+                                                />
+                                            </div>
+                                            <div className="grid grid-cols-2 gap-4">
                                                 <div className="space-y-2">
-                                                    <label className="text-sm font-bold text-slate-700 px-1">Date</label>
+                                                    <label className="text-sm font-bold text-slate-700 px-1">From Time</label>
                                                     <Input
-                                                        type="date"
+                                                        type="time"
                                                         className="h-12 rounded-xl border-slate-200"
-                                                        value={startDate}
-                                                        onChange={(e) => { setStartDate(e.target.value); setEndDate(e.target.value) }}
+                                                        value={startTime}
+                                                        onChange={(e) => setStartTime(e.target.value)}
                                                         required
                                                     />
                                                 </div>
-                                                <div className="grid grid-cols-2 gap-4">
-                                                    <div className="space-y-2">
-                                                        <label className="text-sm font-bold text-slate-700 px-1">From Time</label>
-                                                        <Input
-                                                            type="time"
-                                                            className="h-12 rounded-xl border-slate-200"
-                                                            value={startTime}
-                                                            onChange={(e) => setStartTime(e.target.value)}
-                                                            required
-                                                        />
-                                                    </div>
-                                                    <div className="space-y-2">
-                                                        <label className="text-sm font-bold text-slate-700 px-1">To Time</label>
-                                                        <Input
-                                                            type="time"
-                                                            className="h-12 rounded-xl border-slate-200"
-                                                            value={endTime}
-                                                            onChange={(e) => setEndTime(e.target.value)}
-                                                            required
-                                                        />
-                                                    </div>
+                                                <div className="space-y-2">
+                                                    <label className="text-sm font-bold text-slate-700 px-1">To Time</label>
+                                                    <Input
+                                                        type="time"
+                                                        className="h-12 rounded-xl border-slate-200"
+                                                        value={endTime}
+                                                        onChange={(e) => setEndTime(e.target.value)}
+                                                        required
+                                                    />
                                                 </div>
                                             </div>
-                                        )
+                                        </div>
+    )
                                     }
                                     return (
                                         <div className="grid grid-cols-2 gap-4">
@@ -450,6 +451,5 @@ export default function AttendancePage() {
                     </div>
                 </div>
             </div>
-        </DashboardShell>
-    )
+)
 }

@@ -1,7 +1,6 @@
 'use client'
 
-import { OrgPageFrame } from '@/components/dashboard/organization/OrgPageFrame'
-import { RoleForm } from '@/components/dashboard/organization/RoleForm'
+import { OrgPageFrame, RoleForm } from '@/features/organization'
 
 export default function NewRolePage() {
     return (
