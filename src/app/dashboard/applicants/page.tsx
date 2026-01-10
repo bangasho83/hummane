@@ -12,6 +12,7 @@ import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@
 import { Label } from '@/components/ui/label'
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select'
 import { APPLICANT_STATUSES, type Applicant, type ApplicantStatus } from '@/types'
+import { uploadFileToStorage } from '@/lib/firebase/storage'
 
 const applicantStatusOptions: ApplicantStatus[] = [...APPLICANT_STATUSES]
 
@@ -43,6 +44,7 @@ export default function ApplicantsPage() {
     const [newApplicant, setNewApplicant] = useState(() => createEmptyApplicant(''))
     const [departmentFilter, setDepartmentFilter] = useState('all')
     const [roleFilter, setRoleFilter] = useState('all')
+    const [resumeFile, setResumeFile] = useState<File | null>(null)
     const resumeInputRef = useRef<HTMLInputElement | null>(null)
 
     useEffect(() => {
@@ -123,9 +125,22 @@ export default function ApplicantsPage() {
 
         setLoading(true)
         try {
-            await createApplicant(newApplicant)
+            let resumePayload: Applicant['resumeFile'] | undefined
+            if (resumeFile) {
+                const url = await uploadFileToStorage(resumeFile, 'applicants')
+                resumePayload = {
+                    name: resumeFile.name,
+                    type: resumeFile.type,
+                    dataUrl: url
+                }
+            }
+            await createApplicant({
+                ...newApplicant,
+                resumeFile: resumePayload
+            })
             const appliedDate = todayDate || new Date().toISOString().split('T')[0]
             setNewApplicant(createEmptyApplicant(appliedDate))
+            setResumeFile(null)
             setIsAddOpen(false)
             toast('Applicant added successfully', 'success')
         } catch (error) {
@@ -378,31 +393,20 @@ export default function ApplicantsPage() {
                                             onChange={(e) => {
                                                 const file = e.target.files?.[0]
                                                 if (!file) {
-                                                    setNewApplicant({ ...newApplicant, resumeFile: undefined })
+                                                    setResumeFile(null)
                                                     return
                                                 }
-                                                const reader = new FileReader()
-                                                reader.onload = () => {
-                                                    setNewApplicant({
-                                                        ...newApplicant,
-                                                        resumeFile: {
-                                                            name: file.name,
-                                                            type: file.type,
-                                                            dataUrl: reader.result as string
-                                                        }
-                                                    })
-                                                }
-                                                reader.readAsDataURL(file)
+                                                setResumeFile(file)
                                             }}
                                         />
-                                        {newApplicant.resumeFile && (
+                                        {resumeFile && (
                                             <div className="flex items-center justify-between text-xs text-slate-500 px-1">
-                                                <span>Selected: {newApplicant.resumeFile.name}</span>
+                                                <span>Selected: {resumeFile.name}</span>
                                                 <button
                                                     type="button"
                                                     className="font-semibold text-red-500 hover:text-red-600"
                                                     onClick={() => {
-                                                        setNewApplicant({ ...newApplicant, resumeFile: undefined })
+                                                        setResumeFile(null)
                                                         if (resumeInputRef.current) {
                                                             resumeInputRef.current.value = ''
                                                         }

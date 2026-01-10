@@ -13,6 +13,7 @@ import { Input } from '@/components/ui/input'
 import { toast } from '@/components/ui/toast'
 import { cn } from '@/lib/utils'
 import { AttendanceTabs } from '@/features/attendance'
+import { uploadFileToStorage } from '@/lib/firebase/storage'
 
 export default function AttendancePage() {
     const { employees, leaves, addLeave, leaveTypes, refreshLeaveTypes } = useApp()
@@ -136,20 +137,14 @@ export default function AttendancePage() {
 
         const buildPayload = async () => {
             if (!attachment) return undefined
-            return await new Promise<LeaveRecord['attachments']>((resolve, reject) => {
-                const reader = new FileReader()
-                reader.onload = () => {
-                    resolve([
-                        {
-                            name: attachment.name,
-                            type: attachment.type,
-                            dataUrl: reader.result as string
-                        }
-                    ])
+            const url = await uploadFileToStorage(attachment, 'leaves', selectedEmployee || 'leave')
+            return [
+                {
+                    name: attachment.name,
+                    type: attachment.type,
+                    dataUrl: url
                 }
-                reader.onerror = () => reject(reader.error)
-                reader.readAsDataURL(attachment)
-            })
+            ] as LeaveRecord['attachments']
         }
 
         setLoading(true)

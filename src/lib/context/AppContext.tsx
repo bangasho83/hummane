@@ -1570,7 +1570,10 @@ export function AppProvider({ children }: { children: ReactNode }) {
                         type: leaveData.type,
                         unit: leaveData.unit,
                         amount: leaveData.amount,
-                        companyId: currentCompany.id
+                        companyId: currentCompany.id,
+                        note: leaveData.note,
+                        leaveTypeId: leaveData.leaveTypeId,
+                        attachments: leaveData.attachments
                     },
                     apiAccessToken
                 )
@@ -1848,16 +1851,40 @@ export function AppProvider({ children }: { children: ReactNode }) {
             }
             if (apiAccessToken) {
                 const appliedDate = applicantData.appliedDate || new Date().toISOString().split('T')[0]
-                const apiApplicant = await createApplicantApi(
-                    {
-                        fullName: applicantData.fullName,
-                        email: applicantData.email,
-                        status: applicantData.status || 'new',
-                        appliedDate,
-                        companyId: currentCompany.id
-                    },
-                    apiAccessToken
-                )
+                const payload: {
+                    fullName: string
+                    email: string
+                    status: string
+                    appliedDate: string
+                    companyId: string
+                    resumeFile?: Applicant['resumeFile']
+                    linkedinUrl?: string
+                    phone?: string
+                    positionApplied?: string
+                    yearsOfExperience?: number
+                    currentSalary?: number
+                    expectedSalary?: number
+                    noticePeriod?: string
+                    jobId?: string
+                } = {
+                    fullName: applicantData.fullName,
+                    email: applicantData.email,
+                    status: applicantData.status || 'new',
+                    appliedDate,
+                    companyId: currentCompany.id
+                }
+
+                if (applicantData.resumeFile) payload.resumeFile = applicantData.resumeFile
+                if (applicantData.linkedinUrl) payload.linkedinUrl = applicantData.linkedinUrl
+                if (applicantData.phone) payload.phone = applicantData.phone
+                if (applicantData.positionApplied) payload.positionApplied = applicantData.positionApplied
+                if (applicantData.yearsOfExperience !== undefined) payload.yearsOfExperience = applicantData.yearsOfExperience
+                if (applicantData.currentSalary !== undefined) payload.currentSalary = applicantData.currentSalary
+                if (applicantData.expectedSalary !== undefined) payload.expectedSalary = applicantData.expectedSalary
+                if (applicantData.noticePeriod) payload.noticePeriod = applicantData.noticePeriod
+                if (applicantData.jobId) payload.jobId = applicantData.jobId
+
+                const apiApplicant = await createApplicantApi(payload, apiAccessToken)
                 const normalized = normalizeApplicant(apiApplicant, currentCompany.id, {
                     ...applicantData,
                     appliedDate

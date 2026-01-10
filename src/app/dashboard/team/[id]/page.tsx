@@ -16,6 +16,7 @@ import { Input } from '@/components/ui/input'
 import { toast } from '@/components/ui/toast'
 import { ArrowLeft } from 'lucide-react'
 import Link from 'next/link'
+import { uploadFileToStorage } from '@/lib/firebase/storage'
 
 export default function EmployeeProfilePage() {
     const params = useParams()
@@ -44,30 +45,26 @@ export default function EmployeeProfilePage() {
         }
     }, [employeeId])
 
-    const handleDocUpload = () => {
+    const handleDocUpload = async () => {
         if (!docFile) {
             toast('Please select a file', 'error')
             return
         }
-        const reader = new FileReader()
-        reader.onload = () => {
-            const dataUrl = reader.result as string
-            try {
-                const saved = addDocument({
-                    employeeId,
-                    name: docFile.name,
-                    type: docType,
-                    dataUrl
-                })
-                setDocs(prev => [...prev, saved])
-                setIsDocDialogOpen(false)
-                setDocFile(null)
-                toast('Document uploaded', 'success')
-            } catch (error: any) {
-                toast(error?.message || 'Failed to upload', 'error')
-            }
+        try {
+            const url = await uploadFileToStorage(docFile, 'team', employeeId)
+            const saved = addDocument({
+                employeeId,
+                name: docFile.name,
+                type: docType,
+                dataUrl: url
+            })
+            setDocs(prev => [...prev, saved])
+            setIsDocDialogOpen(false)
+            setDocFile(null)
+            toast('Document uploaded', 'success')
+        } catch (error: any) {
+            toast(error?.message || 'Failed to upload', 'error')
         }
-        reader.readAsDataURL(docFile)
     }
 
     const handleDeleteDoc = (id: string) => {

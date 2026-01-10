@@ -754,6 +754,9 @@ export const createLeaveApi = async (
     unit?: string
     amount?: number
     companyId: string
+    note?: string
+    leaveTypeId?: string
+    attachments?: LeaveRecord['attachments']
   },
   accessToken: string
 ): Promise<LeaveRecord> => {
@@ -1312,7 +1315,22 @@ export const deleteJobApi = async (jobId: string, accessToken: string): Promise<
 }
 
 export const createApplicantApi = async (
-  payload: { fullName: string; email: string; status: string; appliedDate: string; companyId: string },
+  payload: {
+    fullName: string
+    email: string
+    status: string
+    appliedDate: string
+    companyId: string
+    resumeFile?: Applicant['resumeFile']
+    linkedinUrl?: string
+    phone?: string
+    positionApplied?: string
+    yearsOfExperience?: number
+    currentSalary?: number
+    expectedSalary?: number
+    noticePeriod?: string
+    jobId?: string
+  },
   accessToken: string
 ): Promise<Applicant> => {
   let response: Response
