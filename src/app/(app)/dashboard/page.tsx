@@ -1,6 +1,6 @@
 'use client'
 
-import { useMemo } from 'react'
+import { useEffect, useMemo } from 'react'
 import { useRouter } from 'next/navigation'
 import { useApp } from '@/lib/context/AppContext'
 import { Button } from '@/components/ui/button'
@@ -169,14 +169,17 @@ export default function DashboardPage() {
         return items
     }, [employeeById, latestApplicant, latestEmployee, latestLeave, leaveTypeNameById])
 
-    // Redirect if not logged in or no company
-    if (!currentUser) {
-        router.push('/login')
-        return null
-    }
+    useEffect(() => {
+        if (!currentUser) {
+            router.push('/login')
+            return
+        }
+        if (!currentCompany) {
+            router.push('/company-setup')
+        }
+    }, [currentCompany, currentUser, router])
 
-    if (!currentCompany) {
-        router.push('/company-setup')
+    if (!currentUser || !currentCompany) {
         return null
     }
 
