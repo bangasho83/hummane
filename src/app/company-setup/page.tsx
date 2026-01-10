@@ -48,7 +48,8 @@ export default function CompanySetupPage() {
                 router.push('/dashboard')
             }, 100)
         } catch (error) {
-            toast('Failed to create company', 'error')
+            const message = error instanceof Error ? error.message : 'Failed to create company'
+            toast(message, 'error')
             setLoading(false)
         }
     }

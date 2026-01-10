@@ -760,6 +760,20 @@ export function AppProvider({ children }: { children: ReactNode }) {
                     },
                     apiAccessToken
                 )
+                const firebaseUser = firebaseAuth.currentUser
+                if (!firebaseUser) {
+                    throw new Error('Company created. Please sign in again to finish setup.')
+                }
+                let refreshedSession: Awaited<ReturnType<typeof syncApiSession>>
+                try {
+                    refreshedSession = await syncApiSession(firebaseUser)
+                } catch (error) {
+                    console.error('Refresh auth session error:', error)
+                    throw new Error('Company created. Please sign in again to finish setup.')
+                }
+                if (!refreshedSession.companyId) {
+                    throw new Error('Company created. Please sign in again to finish setup.')
+                }
                 const normalizedCompany = normalizeCompany(apiCompany, currentUser.id, {
                     name,
                     industry,
@@ -769,8 +783,8 @@ export function AppProvider({ children }: { children: ReactNode }) {
                     throw new Error('Invalid company response')
                 }
                 dataStore.upsertCompany(normalizedCompany)
-                setApiCompanyId(normalizedCompany.id)
-                persistCompanyId(normalizedCompany.id)
+                setApiCompanyId(refreshedSession.companyId)
+                persistCompanyId(refreshedSession.companyId)
                 loadCompanyData(normalizedCompany)
                 return normalizedCompany
             }
