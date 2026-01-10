@@ -45,7 +45,7 @@ export function RoleForm({ mode, role }: RoleFormProps) {
                 await updateRole(role.id, { title: title.trim(), description })
                 toast('Role updated successfully', 'success')
             }
-            router.push('/dashboard/organization/roles')
+            router.push('/organization/roles')
         } catch (error: any) {
             toast(error?.message || 'Failed to save role', 'error')
         } finally {
@@ -84,7 +84,7 @@ export function RoleForm({ mode, role }: RoleFormProps) {
                     type="button"
                     variant="outline"
                     className="rounded-xl border-slate-200"
-                    onClick={() => router.push('/dashboard/organization/roles')}
+                    onClick={() => router.push('/organization/roles')}
                     disabled={loading}
                 >
                     Cancel

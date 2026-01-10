@@ -178,7 +178,7 @@ export function EmployeeTable({ employees }: EmployeeTableProps) {
                             filteredEmployees.map((employee) => (
                                 <TableRow key={employee.id} className="hover:bg-slate-50/50 group border-slate-50">
                                     <TableCell className="pl-8 py-5">
-                                        <Link href={`/dashboard/team/${employee.id}`} className="flex items-center gap-3 group">
+                                        <Link href={`/team/${employee.id}`} className="flex items-center gap-3 group">
                                             <div className="w-10 h-10 rounded-2xl bg-blue-50 text-blue-600 flex items-center justify-center font-bold text-sm">
                                                 {employee.name?.[0].toUpperCase()}
                                             </div>
@@ -217,7 +217,7 @@ export function EmployeeTable({ employees }: EmployeeTableProps) {
                                                 variant="ghost"
                                                 size="icon"
                                                 className="h-10 w-10 text-slate-300 hover:text-blue-600 hover:bg-blue-50 rounded-xl transition-all"
-                                                onClick={() => router.push(`/dashboard/team/edit/${employee.id}`)}
+                                                onClick={() => router.push(`/team/edit/${employee.id}`)}
                                             >
                                                 <Pencil className="w-5 h-5" />
                                             </Button>

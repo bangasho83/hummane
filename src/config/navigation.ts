@@ -23,26 +23,26 @@ const dashboardItems: NavItem[] = [
 ]
 
 const teamItems: NavItem[] = [
-  { name: 'Team', href: '/dashboard/team', icon: Users },
-  { name: 'Attendance', href: '/dashboard/attendance', icon: Calendar },
-  { name: 'Payroll', href: '/dashboard/payroll', icon: Wallet },
-  { name: 'Organization', href: '/dashboard/organization', icon: Building2 },
+  { name: 'Team', href: '/team', icon: Users },
+  { name: 'Attendance', href: '/attendance', icon: Calendar },
+  { name: 'Payroll', href: '/payroll', icon: Wallet },
+  { name: 'Organization', href: '/organization', icon: Building2 },
 ]
 
 const hiringItems: NavItem[] = [
-  { name: 'Jobs', href: '/dashboard/jobs', icon: FileText },
-  { name: 'Applicants', href: '/dashboard/applicants', icon: Users, exact: true },
-  { name: 'Progress', href: '/dashboard/applicants/progress', icon: ClipboardList, exact: true },
+  { name: 'Jobs', href: '/jobs', icon: FileText },
+  { name: 'Applicants', href: '/applicants', icon: Users, exact: true },
+  { name: 'Progress', href: '/applicants/progress', icon: ClipboardList, exact: true },
 ]
 
 const performanceItems: NavItem[] = [
-  { name: 'Feedback', href: '/dashboard/performance/feedback', icon: ClipboardList, exact: true },
-  { name: 'Cards', href: '/dashboard/performance/feedback-cards', icon: FileText, exact: true },
+  { name: 'Feedback', href: '/performance/feedback', icon: ClipboardList, exact: true },
+  { name: 'Cards', href: '/performance/feedback-cards', icon: FileText, exact: true },
 ]
 
 const secondaryItems: NavItem[] = [
-  { name: 'Settings', href: '/dashboard/settings', icon: Settings },
-  { name: 'Support', href: '/dashboard/support', icon: HelpCircle },
+  { name: 'Settings', href: '/settings', icon: Settings },
+  { name: 'Support', href: '/support', icon: HelpCircle },
 ]
 
 export const navigationSections: Array<{ label?: string; items: NavItem[] }> = [

@@ -86,7 +86,7 @@ export function JobForm({ mode, job }: JobFormProps) {
                 await updateJob(job.id, form)
                 toast('Job updated successfully', 'success')
             }
-            router.push('/dashboard/jobs')
+            router.push('/jobs')
         } catch (error) {
             toast('Failed to save job', 'error')
         } finally {
@@ -260,7 +260,7 @@ export function JobForm({ mode, job }: JobFormProps) {
                     type="button"
                     variant="outline"
                     className="rounded-xl border-slate-200"
-                    onClick={() => router.push('/dashboard/jobs')}
+                    onClick={() => router.push('/jobs')}
                     disabled={loading}
                 >
                     Cancel

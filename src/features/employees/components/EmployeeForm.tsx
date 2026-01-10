@@ -241,7 +241,7 @@ export function EmployeeForm({
                 ) : (
                     <>
                         <div className="text-sm p-3 bg-slate-50 border border-dashed border-slate-200 rounded-xl text-slate-500">
-                            No departments found. <Link href="/dashboard/departments" className="text-blue-600 font-bold hover:underline">Create one</Link> first.
+                            No departments found. <Link href="/departments" className="text-blue-600 font-bold hover:underline">Create one</Link> first.
                         </div>
                         {errors.department && (
                             <p className="text-xs text-red-600 mt-1">{errors.department}</p>
@@ -276,7 +276,7 @@ export function EmployeeForm({
                 ) : (
                     <>
                         <div className="text-sm p-3 bg-slate-50 border border-dashed border-slate-200 rounded-xl text-slate-500">
-                            No roles defined. <Link href="/dashboard/roles" className="text-blue-600 font-bold hover:underline">Create one</Link> to assign job descriptions.
+                            No roles defined. <Link href="/roles" className="text-blue-600 font-bold hover:underline">Create one</Link> to assign job descriptions.
                         </div>
                         {errors.roleId && (
                             <p className="text-xs text-red-600 mt-1">{errors.roleId}</p>

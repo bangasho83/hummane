@@ -5,8 +5,8 @@ import { usePathname } from 'next/navigation'
 import { cn } from '@/lib/utils'
 
 const tabs = [
-    { href: '/dashboard/attendance', label: 'Daily Attendance', description: 'View daily presence' },
-    { href: '/dashboard/attendance/team', label: 'Team', description: 'Leave totals by member' }
+    { href: '/attendance', label: 'Daily Attendance', description: 'View daily presence' },
+    { href: '/attendance/team', label: 'Team', description: 'Leave totals by member' }
 ]
 
 export function AttendanceTabs() {
