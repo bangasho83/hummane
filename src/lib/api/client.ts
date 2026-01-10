@@ -1281,7 +1281,7 @@ export const updateJobApi = async (
       id: jobId,
       companyId: payload.companyId,
       title: payload.title || 'Job',
-      employmentType: payload.employmentType,
+      employmentType: payload.employmentType as Job['employmentType'],
       salary: { min: 0, max: 0, currency: 'USD' },
       experience: '',
       status: (payload.status as Job['status']) || 'open',
