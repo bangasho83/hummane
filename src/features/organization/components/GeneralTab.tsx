@@ -23,6 +23,9 @@ const dayKeys = [
     { label: 'Sunday', key: 'sunday' }
 ] as const
 
+type DayLabel = typeof dayKeys[number]['label']
+type ScheduleRow = { day: DayLabel; open: boolean; start: string; end: string }
+
 const to12Hour = (time: string) => {
     const trimmed = time.trim()
     if (/[AP]M$/i.test(trimmed)) return trimmed
@@ -46,7 +49,7 @@ const to24Hour = (time: string) => {
     return `${String(normalized).padStart(2, '0')}:${minute}`
 }
 
-const defaultSchedule = [
+const defaultSchedule: ScheduleRow[] = [
     { day: 'Monday', open: true, start: '09:00', end: '17:00' },
     { day: 'Tuesday', open: true, start: '09:00', end: '17:00' },
     { day: 'Wednesday', open: true, start: '09:00', end: '17:00' },
@@ -54,7 +57,7 @@ const defaultSchedule = [
     { day: 'Friday', open: true, start: '09:00', end: '17:00' },
     { day: 'Saturday', open: false, start: '09:00', end: '17:00' },
     { day: 'Sunday', open: false, start: '09:00', end: '17:00' },
-] as const
+]
 
 export function GeneralTab() {
     const { currentCompany, updateCompany, holidays, createHoliday, deleteHoliday } = useApp()
@@ -64,7 +67,7 @@ export function GeneralTab() {
     const [currency, setCurrency] = useState('')
     const [isEditingSettings, setIsEditingSettings] = useState(false)
     const [settingsLoading, setSettingsLoading] = useState(false)
-    const [schedule, setSchedule] = useState(() => [...defaultSchedule])
+    const [schedule, setSchedule] = useState<ScheduleRow[]>(() => [...defaultSchedule])
     const [holidayRows, setHolidayRows] = useState([{ date: '', name: '' }])
     const [isHolidayDialogOpen, setIsHolidayDialogOpen] = useState(false)
     const [isEditingHours, setIsEditingHours] = useState(false)
