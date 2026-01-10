@@ -1,7 +1,7 @@
 'use client'
 
 import { useEffect, useState } from 'react'
-import { Calendar as CalendarIcon, Plus, Check } from 'lucide-react'
+import { Calendar as CalendarIcon, Plus, Check, FileText } from 'lucide-react'
 import { useApp } from '@/lib/context/AppContext'
 import type { LeaveRecord } from '@/types'
 import { Button } from '@/components/ui/button'
@@ -76,7 +76,10 @@ export default function AttendancePage() {
         const dateStr = formatDate(date)
         const leave = leaves.find(l => l.employeeId === employeeId && l.date.split('T')[0] === dateStr)
 
-        if (leave) return { type: 'leave', label: 'L', color: 'bg-red-100 text-red-600' }
+        if (leave) {
+            const hasDocument = Boolean(leave.documents?.files?.length)
+            return { type: 'leave', label: 'L', color: 'bg-red-100 text-red-600', hasDocument }
+        }
         if (isWeekend(date)) return { type: 'weekend', label: '-', color: 'bg-slate-50 text-slate-300' }
         return { type: 'present', label: 'P', color: 'text-green-600 bg-green-50' }
     }
@@ -136,20 +139,27 @@ export default function AttendancePage() {
         // Allow leave registration even if quota is exceeded or zero.
 
         const buildPayload = async () => {
-            if (!attachment) return undefined
+            if (!attachment) {
+                return { attachments: undefined, documents: undefined }
+            }
             const url = await uploadFileToStorage(attachment, 'leaves', selectedEmployee || 'leave')
-            return [
-                {
-                    name: attachment.name,
-                    type: attachment.type,
-                    dataUrl: url
+            return {
+                attachments: [
+                    {
+                        name: attachment.name,
+                        type: attachment.type,
+                        dataUrl: url
+                    }
+                ] as LeaveRecord['attachments'],
+                documents: {
+                    files: [url]
                 }
-            ] as LeaveRecord['attachments']
+            }
         }
 
         setLoading(true)
         try {
-            const attachments = await buildPayload()
+            const { attachments, documents } = await buildPayload()
             for (const entry of leaveEntries) {
                 await addLeave({
                     employeeId: selectedEmployee,
@@ -159,7 +169,8 @@ export default function AttendancePage() {
                     unit,
                     amount: entry.amount,
                     note: trimmedNote,
-                    attachments
+                    attachments,
+                    documents
                 } as any)
             }
             toast('Leave registered successfully', 'success')
@@ -197,7 +208,6 @@ export default function AttendancePage() {
     }
 
     const filteredLeaveTypes = leaveTypesForEmployee(selectedEmployee)
-
     return (
         <div className="animate-in fade-in duration-500 slide-in-from-bottom-4">
             <div className="flex justify-between items-end mb-4">
@@ -426,7 +436,14 @@ export default function AttendancePage() {
                                                             "w-full h-12 flex items-center justify-center font-bold text-xs transition-colors",
                                                             status.color
                                                         )}>
-                                                            {status.type === 'leave' && 'L'}
+                                                            {status.type === 'leave' && (
+                                                                <div className="flex flex-col items-center leading-none">
+                                                                    <span>L</span>
+                                                                    {status.hasDocument && (
+                                                                        <FileText className="w-3 h-3 mt-0.5 text-red-500" />
+                                                                    )}
+                                                                </div>
+                                                            )}
                                                             {status.type === 'present' && <Check className="w-3.5 h-3.5 opacity-50" />}
                                                             {status.type === 'weekend' && '-'}
                                                         </div>
@@ -445,6 +462,7 @@ export default function AttendancePage() {
                         </p>
                     </div>
                 </div>
+
             </div>
 )
 }

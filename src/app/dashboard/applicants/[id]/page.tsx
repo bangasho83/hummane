@@ -85,8 +85,15 @@ export default function ApplicantDetailPage() {
         return job?.title || 'Unknown job'
     }
 
+    const documentFiles = applicant.documents?.files && applicant.documents.files.length > 0
+        ? applicant.documents.files
+        : applicant.resumeFile?.dataUrl
+            ? [applicant.resumeFile.dataUrl]
+            : []
+
     return (
-        <div className="animate-in fade-in duration-500 slide-in-from-bottom-4">
+        <>
+            <div className="animate-in fade-in duration-500 slide-in-from-bottom-4">
             <div className="flex items-center gap-4 mb-8">
                 <Button
                     variant="ghost"
@@ -360,6 +367,7 @@ export default function ApplicantDetailPage() {
                                     </div>
                                 </div>
                             </div>
+
                         </div>
 
                         <div className="bg-white rounded-3xl shadow-sm border border-slate-200 p-6">
@@ -407,28 +415,35 @@ export default function ApplicantDetailPage() {
                         <div className="bg-white rounded-3xl shadow-sm border border-slate-200 p-6">
                             <h2 className="text-sm font-extrabold text-slate-700 uppercase tracking-widest mb-6">Documents & Links</h2>
                             <div className="space-y-3">
-                                {applicant.resumeFile ? (
-                                    <a
-                                        href={applicant.resumeFile.dataUrl}
-                                        download={applicant.resumeFile.name}
-                                        className="flex items-center gap-3 p-4 rounded-xl border border-slate-200 hover:border-blue-300 hover:bg-blue-50/50 transition-colors"
-                                    >
-                                        <div className="w-10 h-10 rounded-xl bg-blue-50 flex items-center justify-center">
-                                            <FileText className="w-5 h-5 text-blue-600" />
-                                        </div>
-                                        <div className="flex-1">
-                                            <p className="text-sm font-bold text-slate-900">Resume</p>
-                                            <p className="text-xs text-slate-500">View document</p>
-                                        </div>
-                                        <ExternalLink className="w-4 h-4 text-slate-400" />
-                                    </a>
+                                {documentFiles.length > 0 ? (
+                                    documentFiles.map((url) => {
+                                        const name = 'Resume'
+                                        return (
+                                            <a
+                                                key={url}
+                                                href={url}
+                                                target="_blank"
+                                                rel="noopener noreferrer"
+                                                className="flex items-center gap-3 p-4 rounded-xl border border-slate-200 hover:border-blue-300 hover:bg-blue-50/50 transition-colors"
+                                            >
+                                                <div className="w-10 h-10 rounded-xl bg-blue-50 flex items-center justify-center">
+                                                    <FileText className="w-5 h-5 text-blue-600" />
+                                                </div>
+                                                <div className="flex-1">
+                                                    <p className="text-sm font-bold text-slate-900">{name}</p>
+                                                    <p className="text-xs text-slate-500">View document</p>
+                                                </div>
+                                                <ExternalLink className="w-4 h-4 text-slate-400" />
+                                            </a>
+                                        )
+                                    })
                                 ) : (
                                     <div className="flex items-center gap-3 p-4 rounded-xl border border-slate-200 bg-slate-50">
                                         <div className="w-10 h-10 rounded-xl bg-slate-100 flex items-center justify-center">
                                             <FileText className="w-5 h-5 text-slate-400" />
                                         </div>
                                         <div className="flex-1">
-                                            <p className="text-sm font-bold text-slate-500">Resume</p>
+                                            <p className="text-sm font-bold text-slate-500">Documents</p>
                                             <p className="text-xs text-slate-400">Not provided</p>
                                         </div>
                                     </div>
@@ -501,7 +516,7 @@ export default function ApplicantDetailPage() {
                         const totalScore = scoreAnswers.reduce((sum, a) => sum + a.score, 0)
                         const maxScore = scoreAnswers.length * 5
                         const percentScore = maxScore > 0 ? Math.round((totalScore / maxScore) * 100) : 0
-                                return (
+                        return (
                             <div key={entry.id} className="bg-white rounded-3xl shadow-sm border border-slate-200 p-6 space-y-4">
                                 <div className="flex items-center justify-between">
                                     <div>
@@ -521,7 +536,7 @@ export default function ApplicantDetailPage() {
                                 <div className="space-y-3">
                                     {entry.answers.map((answer) => {
                                         const question = questionById.get(answer.questionId)
-                                                return (
+                                        return (
                                             <div key={answer.questionId} className="rounded-2xl border border-slate-200 p-4">
                                                 <p className="text-sm font-semibold text-slate-800">{question?.prompt || 'Question'}</p>
                                                 {question?.kind === 'comment' ? (
@@ -539,7 +554,7 @@ export default function ApplicantDetailPage() {
                                                     </div>
                                                 )}
                                             </div>
-    )
+                                        )
                                         })}
                                     </div>
                                 </div>
@@ -548,5 +563,7 @@ export default function ApplicantDetailPage() {
                     </div>
                 )}
             </div>
-)
+
+        </>
+    )
 }

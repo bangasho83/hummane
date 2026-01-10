@@ -51,6 +51,12 @@ export interface Employee {
     reportingManager: string
     gender: Gender
     salary: number
+    documents?: {
+        files: {
+            name: string
+            url: string
+        }[]
+    }
     createdAt: string
     updatedAt?: string
 }
@@ -74,6 +80,9 @@ export interface LeaveRecord {
     unit?: LeaveUnit
     amount?: number
     note: string
+    documents?: {
+        files: string[]
+    }
     attachments?: {
         name: string
         type: string
@@ -140,6 +149,9 @@ export interface Applicant {
         name: string
         type: string
         dataUrl: string
+    }
+    documents?: {
+        files: string[]
     }
     linkedinUrl?: string
     status: ApplicantStatus

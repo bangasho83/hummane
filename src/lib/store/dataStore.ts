@@ -354,6 +354,7 @@ export class DataStore {
                 reportingManager: sanitizedManager,
                 gender: employeeData.gender,
                 salary: employeeData.salary,
+                documents: employeeData.documents,
                 createdAt: new Date().toISOString()
             }
             data.employees.push(employee)
@@ -419,6 +420,7 @@ export class DataStore {
                 }
                 sanitizedData.salary = employeeData.salary
             }
+            if (employeeData.documents !== undefined) sanitizedData.documents = employeeData.documents
 
             data.employees[index] = {
                 ...data.employees[index],
@@ -469,6 +471,7 @@ export class DataStore {
                 reportingManager: sanitizeInput(employee.reportingManager || 'Unassigned'),
                 gender: employee.gender || 'Prefer not to say',
                 salary: Number.isFinite(employee.salary) ? employee.salary : 0,
+                documents: employee.documents,
                 createdAt: employee.createdAt || new Date().toISOString(),
                 updatedAt: employee.updatedAt || employee.createdAt || new Date().toISOString()
             }
@@ -507,6 +510,7 @@ export class DataStore {
                     reportingManager: sanitizeInput(employee.reportingManager || 'Unassigned'),
                     gender: employee.gender || 'Prefer not to say',
                     salary: Number.isFinite(employee.salary) ? employee.salary : 0,
+                    documents: employee.documents,
                     createdAt: employee.createdAt || new Date().toISOString(),
                     updatedAt: employee.updatedAt || employee.createdAt || new Date().toISOString()
                 }
@@ -924,6 +928,7 @@ export class DataStore {
                 unit: leaveData.unit,
                 amount: leaveData.amount,
                 note: leaveData.note,
+                documents: leaveData.documents,
                 attachments: leaveData.attachments,
                 createdAt: new Date().toISOString()
             }
@@ -951,6 +956,7 @@ export class DataStore {
                 unit: leave.unit,
                 amount: leave.amount,
                 note: sanitizeInput(leave.note || ''),
+                documents: leave.documents,
                 attachments: leave.attachments,
                 createdAt: leave.createdAt || new Date().toISOString()
             }
@@ -983,6 +989,7 @@ export class DataStore {
                 unit: leave.unit,
                 amount: leave.amount,
                 note: sanitizeInput(leave.note || ''),
+                documents: leave.documents,
                 attachments: leave.attachments,
                 createdAt: leave.createdAt || new Date().toISOString()
             }))

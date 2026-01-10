@@ -339,6 +339,7 @@ export function AppProvider({ children }: { children: ReactNode }) {
             unit: leave.unit ?? fallback.unit,
             amount: leave.amount ?? fallback.amount,
             note: leave.note || fallback.note || '',
+            documents: leave.documents ?? fallback.documents,
             attachments: leave.attachments ?? fallback.attachments,
             createdAt: leave.createdAt || fallback.createdAt || now
         }
@@ -489,6 +490,7 @@ export function AppProvider({ children }: { children: ReactNode }) {
             reportingManager: employee.reportingManager || fallback.reportingManager || 'Unassigned',
             gender: (employee.gender || fallback.gender || 'Prefer not to say') as Employee['gender'],
             salary,
+            documents: employee.documents ?? fallback.documents,
             createdAt: employee.createdAt || fallback.createdAt || now,
             updatedAt: employee.updatedAt || fallback.updatedAt
         }
@@ -505,6 +507,21 @@ export function AppProvider({ children }: { children: ReactNode }) {
             fallback.id ||
             (typeof crypto !== 'undefined' && 'randomUUID' in crypto ? crypto.randomUUID() : `app_${Date.now()}`)
 
+        const fallbackResume = fallback.resumeFile
+        const documentFiles = (applicant as { documents?: { files?: string[] } }).documents?.files
+            || (fallback as { documents?: { files?: string[] } }).documents?.files
+            || (applicant.resumeFile?.dataUrl ? [applicant.resumeFile.dataUrl] : fallbackResume?.dataUrl ? [fallbackResume.dataUrl] : [])
+        const resumeFromDocuments = documentFiles?.[0]
+            ? {
+                name: documentFiles[0].split('/').pop() || 'document',
+                type: '',
+                dataUrl: documentFiles[0]
+            }
+            : undefined
+        const documents = documentFiles && documentFiles.length > 0
+            ? { files: [...documentFiles] }
+            : undefined
+
         return {
             id,
             companyId: applicant.companyId || fallback.companyId || companyId,
@@ -517,7 +534,8 @@ export function AppProvider({ children }: { children: ReactNode }) {
             currentSalary: applicant.currentSalary ?? fallback.currentSalary ?? 0,
             expectedSalary: applicant.expectedSalary ?? fallback.expectedSalary ?? 0,
             noticePeriod: applicant.noticePeriod ?? fallback.noticePeriod ?? '',
-            resumeFile: applicant.resumeFile ?? fallback.resumeFile,
+            resumeFile: applicant.resumeFile ?? resumeFromDocuments ?? fallbackResume,
+            documents,
             linkedinUrl: applicant.linkedinUrl ?? fallback.linkedinUrl,
             status: (applicant.status || fallback.status || 'new') as Applicant['status'],
             appliedDate: applicant.appliedDate || fallback.appliedDate || new Date().toISOString().split('T')[0],
@@ -811,7 +829,8 @@ export function AppProvider({ children }: { children: ReactNode }) {
                     email: employeeData.email,
                     startDate: employeeData.startDate,
                     employmentType: employeeData.employmentType,
-                    gender: employeeData.gender
+                    gender: employeeData.gender,
+                    documents: employeeData.documents
                 }
                 const apiEmployee = await createEmployeeApi(payload, apiAccessToken)
                 const normalized = normalizeEmployee(apiEmployee, currentCompany.id, employeeData)
@@ -847,6 +866,7 @@ export function AppProvider({ children }: { children: ReactNode }) {
                     reportingManager?: string
                     gender?: Employee['gender']
                     salary?: number
+                    documents?: Employee['documents']
                 } = {
                     companyId: currentCompany.id
                 }
@@ -861,6 +881,7 @@ export function AppProvider({ children }: { children: ReactNode }) {
                 if (employeeData.reportingManager !== undefined) payload.reportingManager = employeeData.reportingManager
                 if (employeeData.gender !== undefined) payload.gender = employeeData.gender
                 if (employeeData.salary !== undefined) payload.salary = employeeData.salary
+                if (employeeData.documents !== undefined) payload.documents = employeeData.documents
 
                 const apiEmployee = await updateEmployeeApi(id, payload, apiAccessToken)
                 const normalized = normalizeEmployee(apiEmployee, currentCompany.id, {
@@ -1563,6 +1584,10 @@ export function AppProvider({ children }: { children: ReactNode }) {
             if (!currentCompany) throw new Error('No company set up')
 
             if (apiAccessToken) {
+                const documents = leaveData.documents
+                    || (leaveData.attachments?.length
+                        ? { files: leaveData.attachments.map(file => file.dataUrl) }
+                        : undefined)
                 const apiLeave = await createLeaveApi(
                     {
                         employeeId: leaveData.employeeId,
@@ -1573,7 +1598,7 @@ export function AppProvider({ children }: { children: ReactNode }) {
                         companyId: currentCompany.id,
                         note: leaveData.note,
                         leaveTypeId: leaveData.leaveTypeId,
-                        attachments: leaveData.attachments
+                        documents
                     },
                     apiAccessToken
                 )
@@ -1857,7 +1882,7 @@ export function AppProvider({ children }: { children: ReactNode }) {
                     status: string
                     appliedDate: string
                     companyId: string
-                    resumeFile?: Applicant['resumeFile']
+                    documents?: { files: string[] }
                     linkedinUrl?: string
                     phone?: string
                     positionApplied?: string
@@ -1874,7 +1899,9 @@ export function AppProvider({ children }: { children: ReactNode }) {
                     companyId: currentCompany.id
                 }
 
-                if (applicantData.resumeFile) payload.resumeFile = applicantData.resumeFile
+                if (applicantData.resumeFile) {
+                    payload.documents = { files: [applicantData.resumeFile.dataUrl] }
+                }
                 if (applicantData.linkedinUrl) payload.linkedinUrl = applicantData.linkedinUrl
                 if (applicantData.phone) payload.phone = applicantData.phone
                 if (applicantData.positionApplied) payload.positionApplied = applicantData.positionApplied

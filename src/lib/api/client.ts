@@ -209,6 +209,7 @@ export const createEmployeeApi = async (
     startDate: string
     employmentType: string
     gender: string
+    documents?: { files: { name: string; url: string }[] }
   },
   accessToken: string
 ): Promise<Employee> => {
@@ -298,6 +299,7 @@ export const updateEmployeeApi = async (
     reportingManager?: string
     gender?: string
     salary?: number
+    documents?: { files: { name: string; url: string }[] }
   },
   accessToken: string
 ): Promise<Employee> => {
@@ -338,6 +340,7 @@ export const updateEmployeeApi = async (
       reportingManager: 'Unassigned',
       gender: 'Prefer not to say',
       salary: 0,
+      documents: payload.documents,
       createdAt: new Date().toISOString()
     }
   }
@@ -756,7 +759,7 @@ export const createLeaveApi = async (
     companyId: string
     note?: string
     leaveTypeId?: string
-    attachments?: LeaveRecord['attachments']
+    documents?: { files: string[] }
   },
   accessToken: string
 ): Promise<LeaveRecord> => {
@@ -806,6 +809,38 @@ export const fetchLeavesApi = async (accessToken: string): Promise<LeaveRecord[]
   const data = await response.json().catch(() => null)
   const list = data?.data || data?.leaves || data
   return Array.isArray(list) ? (list as LeaveRecord[]) : []
+}
+
+export const fetchLeavesApiResponse = async (accessToken: string): Promise<unknown> => {
+  let response: Response
+  try {
+    response = await fetch(LEAVES_PATH, {
+      method: 'GET',
+      headers: {
+        Authorization: `Bearer ${accessToken}`,
+      },
+    })
+  } catch (error) {
+    console.error('API /leaves GET network error:', error)
+    throw new Error('Network error while contacting the API')
+  }
+
+  const text = await response.text()
+  let data: unknown = null
+  if (text) {
+    try {
+      data = JSON.parse(text)
+    } catch {
+      data = text
+    }
+  }
+
+  if (!response.ok) {
+    const message = typeof data === 'object' && data && 'message' in data ? String((data as { message?: string }).message) : text
+    throw new Error(message || 'Failed to fetch leaves')
+  }
+
+  return data
 }
 
 export const createFeedbackCardApi = async (
@@ -1321,7 +1356,7 @@ export const createApplicantApi = async (
     status: string
     appliedDate: string
     companyId: string
-    resumeFile?: Applicant['resumeFile']
+    documents?: { files: string[] }
     linkedinUrl?: string
     phone?: string
     positionApplied?: string
@@ -1403,6 +1438,38 @@ export const fetchApplicantApi = async (applicantId: string, accessToken: string
   const data = await response.json().catch(() => null)
   const applicant = (data?.data || data?.applicant || data) as Applicant | null
   return applicant && typeof applicant === 'object' ? applicant : null
+}
+
+export const fetchApplicantApiResponse = async (applicantId: string, accessToken: string): Promise<unknown> => {
+  let response: Response
+  try {
+    response = await fetch(`${APPLICANTS_PATH}/${encodeURIComponent(applicantId)}`, {
+      method: 'GET',
+      headers: {
+        Authorization: `Bearer ${accessToken}`,
+      },
+    })
+  } catch (error) {
+    console.error('API /applicants/:id GET network error:', error)
+    throw new Error('Network error while contacting the API')
+  }
+
+  const text = await response.text()
+  let data: unknown = null
+  if (text) {
+    try {
+      data = JSON.parse(text)
+    } catch {
+      data = text
+    }
+  }
+
+  if (!response.ok) {
+    const message = typeof data === 'object' && data && 'message' in data ? String((data as { message?: string }).message) : text
+    throw new Error(message || 'Failed to fetch applicant')
+  }
+
+  return data
 }
 
 export const updateApplicantApi = async (

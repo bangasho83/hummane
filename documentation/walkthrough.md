@@ -367,7 +367,7 @@ Create an applicant
 curl -X POST "$API_URL/applicants" \
   -H "Authorization: Bearer $TOKEN" \
   -H "Content-Type: application/json" \
-  -d '{ "fullName": "Sam Applicant", "email": "sam@example.com", "status": "new", "appliedDate": "2024-01-02", "companyId": "YOUR_COMPANY_ID" }'
+  -d '{ "fullName": "Sam Applicant", "email": "sam@example.com", "status": "new", "appliedDate": "2024-01-02", "companyId": "YOUR_COMPANY_ID", "documents": { "files": ["https://example.com/sam-resume.pdf"] } }'
 ```
 
 List applicants

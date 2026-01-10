@@ -144,7 +144,8 @@ export default function ApplicantsPage() {
             setIsAddOpen(false)
             toast('Applicant added successfully', 'success')
         } catch (error) {
-            toast('Failed to add applicant', 'error')
+            const message = error instanceof Error ? error.message : 'Failed to add applicant'
+            toast(message, 'error')
         } finally {
             setLoading(false)
         }

@@ -11,7 +11,7 @@ import { formatDate } from '@/lib/utils'
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table'
 import { Button } from '@/components/ui/button'
 import { toast } from '@/components/ui/toast'
-import { ArrowLeft } from 'lucide-react'
+import { ArrowLeft, FileText } from 'lucide-react'
 
 export default function EmployeeAttendancePage() {
     const params = useParams()
@@ -94,26 +94,44 @@ export default function EmployeeAttendancePage() {
                                 <TableHead className="py-4 text-[10px] font-extrabold uppercase tracking-widest text-slate-400">Type</TableHead>
                                 <TableHead className="py-4 text-[10px] font-extrabold uppercase tracking-widest text-slate-400">Unit</TableHead>
                                 <TableHead className="py-4 text-[10px] font-extrabold uppercase tracking-widest text-slate-400">Amount</TableHead>
+                                <TableHead className="py-4 text-[10px] font-extrabold uppercase tracking-widest text-slate-400">Document</TableHead>
                             </TableRow>
                         </TableHeader>
                         <TableBody>
                             {employeeLeaves.length === 0 ? (
                                 <TableRow>
-                                    <TableCell colSpan={4} className="p-10 text-center text-slate-500">
+                                    <TableCell colSpan={5} className="p-10 text-center text-slate-500">
                                         No leaves recorded.
                                     </TableCell>
                                 </TableRow>
                             ) : (
                                 employeeLeaves.map((leave) => {
                                     const lt = leaveTypes.find(t => t.id === leave.leaveTypeId)
-                                            return (
+                                    const files = leave.documents?.files || []
+                                    const firstFile = files[0]
+                                    return (
                                         <TableRow key={leave.id} className="border-slate-50">
                                             <TableCell className="pl-6 py-4 text-sm font-medium text-slate-700">{formatDate(leave.date)}</TableCell>
                                             <TableCell className="text-sm font-medium text-slate-700">{leave.type}</TableCell>
                                             <TableCell className="text-sm text-slate-500">{leave.unit || lt?.unit || 'Day'}</TableCell>
                                             <TableCell className="text-sm text-slate-500">{leave.amount ?? 1}</TableCell>
+                                            <TableCell className="text-sm text-slate-500">
+                                                {firstFile ? (
+                                                    <a
+                                                        href={firstFile}
+                                                        target="_blank"
+                                                        rel="noopener noreferrer"
+                                                        className="inline-flex items-center gap-2 text-blue-600 hover:text-blue-700 font-semibold"
+                                                    >
+                                                        <FileText className="w-4 h-4" />
+                                                        {files.length > 1 ? `View file (${files.length})` : 'View file'}
+                                                    </a>
+                                                ) : (
+                                                    '—'
+                                                )}
+                                            </TableCell>
                                         </TableRow>
-    )
+                                    )
                                     })
                                 )}
                             </TableBody>
