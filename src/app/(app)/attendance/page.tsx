@@ -41,7 +41,7 @@ export default function AttendancePage() {
         }
         setToday(current)
         setDates(range)
-        const todayStr = current.toISOString().split('T')[0]
+        const todayStr = formatDate(current)
         setStartDate(todayStr)
         setEndDate(todayStr)
     }, [])
@@ -64,8 +64,13 @@ export default function AttendancePage() {
     }, [isDialogOpen, refreshLeaveTypes])
 
     const formatDate = (date: Date) => {
-        return date.toISOString().split('T')[0]
+        const year = date.getFullYear()
+        const month = String(date.getMonth() + 1).padStart(2, '0')
+        const day = String(date.getDate()).padStart(2, '0')
+        return `${year}-${month}-${day}`
     }
+
+    const normalizeDate = (value: string) => value.split('T')[0]
 
     const isWeekend = (date: Date) => {
         const day = date.getDay()
@@ -74,7 +79,13 @@ export default function AttendancePage() {
 
     const getAttendanceStatus = (employeeId: string, date: Date) => {
         const dateStr = formatDate(date)
-        const leave = leaves.find(l => l.employeeId === employeeId && l.date.split('T')[0] === dateStr)
+        const leave = leaves.find((l) => {
+            if (l.employeeId !== employeeId) return false
+            if (l.leaveDays && l.leaveDays.length > 0) {
+                return l.leaveDays.some(day => normalizeDate(day.date) === dateStr)
+            }
+            return normalizeDate(l.date) === dateStr
+        })
 
         if (leave) {
             const hasDocument = Boolean(leave.documents?.files?.length)
@@ -99,7 +110,8 @@ export default function AttendancePage() {
         const unit = leaveType?.unit || 'Day'
 
         let requestedUnits = 1
-        const leaveEntries: { date: string; amount: number }[] = []
+        let payloadStartDate = startDate
+        let payloadEndDate = endDate
 
         if (unit === 'Day') {
             if (!startDate || !endDate) {
@@ -112,14 +124,8 @@ export default function AttendancePage() {
                 toast('Invalid date range', 'error')
                 return
             }
-            const days: string[] = []
-            const cursor = new Date(start)
-            while (cursor <= end) {
-                days.push(cursor.toISOString().split('T')[0])
-                cursor.setDate(cursor.getDate() + 1)
-            }
-            requestedUnits = days.length
-            days.forEach(d => leaveEntries.push({ date: d, amount: 1 }))
+            payloadStartDate = startDate
+            payloadEndDate = endDate
         } else {
             if (!startDate || !startTime || !endTime) {
                 toast('Please select date and time range', 'error')
@@ -133,7 +139,8 @@ export default function AttendancePage() {
             }
             const diffHours = (end.getTime() - start.getTime()) / (1000 * 60 * 60)
             requestedUnits = diffHours
-            leaveEntries.push({ date: startDate, amount: diffHours })
+            payloadStartDate = startDate
+            payloadEndDate = startDate
         }
 
         // Allow leave registration even if quota is exceeded or zero.
@@ -160,19 +167,19 @@ export default function AttendancePage() {
         setLoading(true)
         try {
             const { attachments, documents } = await buildPayload()
-            for (const entry of leaveEntries) {
-                await addLeave({
-                    employeeId: selectedEmployee,
-                    date: entry.date,
-                    type: leaveType ? leaveType.name : selectedType || 'Personal',
-                    leaveTypeId: leaveType?.id,
-                    unit,
-                    amount: entry.amount,
-                    note: trimmedNote,
-                    attachments,
-                    documents
-                } as any)
-            }
+            await addLeave({
+                employeeId: selectedEmployee,
+                date: payloadStartDate,
+                startDate: payloadStartDate,
+                endDate: payloadEndDate,
+                type: leaveType ? leaveType.name : selectedType || 'Personal',
+                leaveTypeId: leaveType?.id,
+                unit,
+                amount: unit === 'Hour' ? requestedUnits : 1,
+                note: trimmedNote,
+                attachments,
+                documents
+            })
             toast('Leave registered successfully', 'success')
             setIsDialogOpen(false)
             setSelectedEmployee('')
@@ -429,7 +436,7 @@ export default function AttendancePage() {
                                                 <div className="text-[10px] text-slate-400 font-bold uppercase truncate max-w-[150px]">{emp.department}</div>
                                             </TableCell>
                                             {dates.map((date, i) => {
-                                                const status = getAttendanceStatus(emp.id, date)
+                                        const status = getAttendanceStatus(emp.id, date)
                                                 return (
                                                     <TableCell key={i} className="p-0 border-l border-slate-50 text-center">
                                                         <div className={cn(

@@ -1,4 +1,4 @@
-import type { Company, Department, Role, LeaveType, LeaveRecord, Holiday, Job, Applicant, Employee, EmployeeDocument, FeedbackCard, FeedbackEntry } from '@/types'
+import type { Company, Department, Role, LeaveType, LeaveRecord, Holiday, Job, Applicant, Employee, EmployeeApi, EmployeeDocument, FeedbackCard, FeedbackEntry } from '@/types'
 
 export type ApiUser = {
   id: string
@@ -91,7 +91,7 @@ export const exchangeFirebaseToken = async (firebaseToken: string) => {
     })
   } catch (error) {
     console.error('API /auth/login network error:', error)
-    throw new Error('Network error while contacting the API')
+    throw new Error('Network error while contacting /auth/login')
   }
 
   if (!response.ok) {
@@ -102,7 +102,8 @@ export const exchangeFirebaseToken = async (firebaseToken: string) => {
       const data = JSON.parse(text) as { message?: string; error?: string }
       message = data.message || data.error || text
     } catch {}
-    throw new Error(message || 'Failed to exchange Firebase token')
+    const baseMessage = message || 'Failed to exchange Firebase token'
+    throw new Error(`Auth service failed (${response.status}) at /auth/login: ${baseMessage}`)
   }
 
   const data = (await response.json()) as AuthLoginResponse
@@ -207,6 +208,7 @@ export const createEmployeeApi = async (
     userId?: string
     departmentId?: string
     reportingManagerId?: string
+    roleId?: string
     name: string
     email: string
     startDate: string
@@ -215,6 +217,13 @@ export const createEmployeeApi = async (
   },
   accessToken: string
 ): Promise<Employee> => {
+  console.info(
+    `Employee create curl:\n` +
+      `curl -X POST "${EMPLOYEES_PATH}" \\\n` +
+      `  -H "Authorization: Bearer ${accessToken}" \\\n` +
+      `  -H "Content-Type: application/json" \\\n` +
+      `  -d '${JSON.stringify(payload)}'`
+  )
   let response: Response
   try {
     response = await fetch(EMPLOYEES_PATH, {
@@ -263,7 +272,7 @@ export const fetchEmployeesApi = async (accessToken: string): Promise<Employee[]
   return Array.isArray(list) ? (list as Employee[]) : []
 }
 
-export const fetchEmployeeApi = async (employeeId: string, accessToken: string): Promise<Employee | null> => {
+export const fetchEmployeeApi = async (employeeId: string, accessToken: string): Promise<EmployeeApi | null> => {
   let response: Response
   try {
     response = await fetch(`${EMPLOYEES_PATH}/${encodeURIComponent(employeeId)}`, {
@@ -283,7 +292,7 @@ export const fetchEmployeeApi = async (employeeId: string, accessToken: string):
   }
 
   const data = await response.json().catch(() => null)
-  const employee = (data?.data || data?.employee || data) as Employee | null
+  const employee = (data?.data || data?.employee || data) as EmployeeApi | null
   return employee && typeof employee === 'object' ? employee : null
 }
 
@@ -757,7 +766,6 @@ export const createLeaveApi = async (
     employeeId: string
     startDate: string
     endDate: string
-    type: string
     unit?: string
     amount?: number
     companyId: string
@@ -766,7 +774,7 @@ export const createLeaveApi = async (
     documents?: { files: string[] }
   },
   accessToken: string
-): Promise<LeaveRecord> => {
+): Promise<LeaveRecord | LeaveRecord[]> => {
   let response: Response
   try {
     response = await fetch(LEAVES_PATH, {
@@ -788,7 +796,7 @@ export const createLeaveApi = async (
   }
 
   const data = await response.json().catch(() => null)
-  return (data?.data || data?.leave || data) as LeaveRecord
+  return (data?.data || data?.leave || data) as LeaveRecord | LeaveRecord[]
 }
 
 export const fetchLeavesApi = async (accessToken: string): Promise<LeaveRecord[]> => {
@@ -996,6 +1004,7 @@ export const deleteFeedbackCardApi = async (cardId: string, accessToken: string)
 export const createFeedbackEntryApi = async (
   payload: {
     cardId: string
+    subjectType: string
     subjectId?: string
     subjectName?: string
     answers: { questionId: string; answer: string }[]
@@ -1003,6 +1012,13 @@ export const createFeedbackEntryApi = async (
   },
   accessToken: string
 ): Promise<FeedbackEntry> => {
+  console.info(
+    `Feedback entry create curl:\n` +
+      `curl -X POST "${FEEDBACK_ENTRIES_PATH}" \\\n` +
+      `  -H "Authorization: Bearer ${accessToken}" \\\n` +
+      `  -H "Content-Type: application/json" \\\n` +
+      `  -d '${JSON.stringify(payload)}'`
+  )
   let response: Response
   try {
     response = await fetch(FEEDBACK_ENTRIES_PATH, {

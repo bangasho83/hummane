@@ -43,7 +43,9 @@ export interface Employee {
     companyId: string
     userId?: string
     departmentId?: string
+    departmentName?: string | null
     reportingManagerId?: string
+    roleName?: string | null
     name: string
     email: string
     position: string
@@ -55,6 +57,29 @@ export interface Employee {
     gender: Gender
     salary: number
     createdAt: string
+    updatedAt?: string
+}
+
+export interface EmployeeApi {
+    id?: string
+    employeeId?: string | null
+    companyId?: string
+    userId?: string | null
+    departmentId?: string | null
+    departmentName?: string | null
+    roleId?: string | null
+    roleName?: string | null
+    reportingManagerId?: string | null
+    reportingManager?: string | null
+    name?: string | null
+    email?: string | null
+    position?: string | null
+    department?: string | null
+    startDate?: string | null
+    employmentType?: EmploymentType
+    gender?: Gender
+    salary?: number | null
+    createdAt?: string
     updatedAt?: string
 }
 
@@ -71,6 +96,8 @@ export interface LeaveRecord {
     id: string
     companyId: string
     employeeId: string
+    startDate?: string
+    endDate?: string
     date: string
     type: string
     leaveTypeId?: string
@@ -85,7 +112,26 @@ export interface LeaveRecord {
         type: string
         dataUrl: string
     }[]
+    leaveDays?: LeaveDay[]
     createdAt: string
+}
+
+export interface WorkingHours {
+    open: boolean
+    start: string
+    end: string
+}
+
+export interface LeaveDay {
+    id: string
+    date: string
+    dayOfWeek: string
+    amount: number
+    isWorkingDay: boolean
+    isHoliday: boolean
+    isClosed: boolean
+    countsTowardQuota: boolean
+    workingHours: WorkingHours
 }
 
 export interface LeaveType {

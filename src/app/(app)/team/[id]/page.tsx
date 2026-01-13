@@ -111,7 +111,7 @@ export default function EmployeeProfilePage() {
                     </Button>
                     <div>
                         <h1 className="text-3xl font-extrabold text-slate-900 tracking-tight">{employee.name}</h1>
-                        <p className="text-slate-500 font-medium">{employee.position} • {employee.department}</p>
+                        <p className="text-slate-500 font-medium">{employee.roleName || employee.position || '—'} • {employee.departmentName || employee.department || '—'}</p>
                     </div>
                 </div>
                 <Badge className="bg-blue-50 text-blue-700 border-blue-100">{employee.employmentType}</Badge>
@@ -148,13 +148,13 @@ export default function EmployeeProfilePage() {
                         <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
                             <InfoRow label="Employee ID" value={employee.employeeId} />
                             <InfoRow label="Email" value={employee.email} />
-                            <InfoRow label="Department" value={employee.department} />
-                            <InfoRow label="Position" value={employee.position} />
+                            <InfoRow label="Department" value={employee.departmentName || employee.department || '—'} />
+                            <InfoRow label="Position" value={employee.roleName || employee.position || '—'} />
                             <InfoRow label="Manager" value={employee.reportingManager} />
                             <InfoRow label="Employment Type" value={employee.employmentType} />
                             <InfoRow label="Joining Date" value={formatDate(employee.startDate)} />
                             <InfoRow label="Gender" value={employee.gender} />
-                            <InfoRow label="Monthly Salary" value={formatCurrency(employee.salary, currentCompany?.currency)} />
+                            <InfoRow label="Monthly Salary" value={formatCurrency(employee.salary ?? 0, currentCompany?.currency)} />
                         </div>
                     </CardContent>
                 </Card>

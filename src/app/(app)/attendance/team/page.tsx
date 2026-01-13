@@ -21,26 +21,32 @@ export default function AttendanceTeamPage() {
     )
 
     const departments = useMemo(() => {
-        const unique = [...new Set(employees.map(emp => emp.department))]
+        const unique = [
+            ...new Set(employees.map(emp => emp.departmentName || emp.department || '').filter(Boolean))
+        ]
         return unique.sort()
     }, [employees])
 
     const positions = useMemo(() => {
-        const unique = [...new Set(employees.map(emp => emp.position))]
+        const unique = [
+            ...new Set(employees.map(emp => emp.roleName || emp.position || '').filter(Boolean))
+        ]
         return unique.sort()
     }, [employees])
 
     const filteredEmployees = useMemo(() => {
         return employees.filter(emp => {
+            const departmentName = emp.departmentName || emp.department || ''
+            const roleName = emp.roleName || emp.position || ''
             const matchesSearch =
                 emp.name.toLowerCase().includes(searchTerm.toLowerCase()) ||
                 emp.email.toLowerCase().includes(searchTerm.toLowerCase()) ||
-                emp.position.toLowerCase().includes(searchTerm.toLowerCase()) ||
+                roleName.toLowerCase().includes(searchTerm.toLowerCase()) ||
                 emp.employeeId.toLowerCase().includes(searchTerm.toLowerCase()) ||
-                emp.department.toLowerCase().includes(searchTerm.toLowerCase())
+                departmentName.toLowerCase().includes(searchTerm.toLowerCase())
 
-            const matchesDepartment = departmentFilter === 'all' || emp.department === departmentFilter
-            const matchesPosition = positionFilter === 'all' || emp.position === positionFilter
+            const matchesDepartment = departmentFilter === 'all' || departmentName === departmentFilter
+            const matchesPosition = positionFilter === 'all' || roleName === positionFilter
 
             return matchesSearch && matchesDepartment && matchesPosition
         })
@@ -52,10 +58,62 @@ export default function AttendanceTeamPage() {
         setPositionFilter('all')
     }
 
-    const getCount = (employeeId: string, leaveTypeId: string, leaveTypeName: string) => {
+    const normalizeCount = (value: number) => {
+        const rounded = Math.round(value * 100) / 100
+        const nearestInt = Math.round(rounded)
+        if (Math.abs(rounded - nearestInt) <= 0.01) {
+            return nearestInt
+        }
+        return rounded
+    }
+
+    const formatCount = (value: number) => {
+        const normalized = normalizeCount(value)
+        if (Number.isInteger(normalized)) return `${normalized}`
+        return normalized.toFixed(2)
+    }
+
+    const getLeaveAmount = (leave: { amount?: number | string; leaveDays?: { amount: number | string; countsTowardQuota?: boolean | string }[] }) => {
+        if (leave.leaveDays && leave.leaveDays.length > 0) {
+            const total = leave.leaveDays.reduce((sum, day) => {
+                const countsTowardQuota = day.countsTowardQuota
+                if (countsTowardQuota === false || countsTowardQuota === 'false') {
+                    return sum
+                }
+                const amount = Number(day.amount)
+                if (!Number.isFinite(amount)) {
+                    return sum
+                }
+                return sum + amount
+            }, 0)
+            const normalized = normalizeCount(total)
+            const fallbackAmount = Number(leave.amount)
+            if (normalized <= 0 && Number.isFinite(fallbackAmount) && fallbackAmount > 0) {
+                return normalizeCount(fallbackAmount)
+            }
+            return normalized
+        }
+        const amount = Number(leave.amount)
+        return normalizeCount(Number.isFinite(amount) ? amount : 1)
+    }
+
+    const normalizeId = (value: string | undefined) => (value || '').trim().toLowerCase()
+
+    const getCount = (employeeId: string, employeeCode: string, leaveTypeId: string, leaveTypeName: string) => {
+        const employeeKey = normalizeId(employeeId)
+        const employeeCodeKey = normalizeId(employeeCode)
+        const leaveTypeKey = normalizeId(leaveTypeId)
         return leaves
-            .filter(l => l.employeeId === employeeId && (l.leaveTypeId === leaveTypeId || l.type === leaveTypeName))
-            .reduce((sum, l) => sum + (l.amount ?? 1), 0)
+            .filter(l => {
+                const leaveEmployeeId = normalizeId(l.employeeId)
+                if (leaveEmployeeId !== employeeKey && leaveEmployeeId !== employeeCodeKey) return false
+                const leaveType = normalizeId(l.leaveTypeId)
+                if (leaveType) {
+                    return leaveType === leaveTypeKey
+                }
+                return normalizeId(l.type) === normalizeId(leaveTypeName)
+            })
+            .reduce((sum, l) => sum + getLeaveAmount(l), 0)
     }
 
     return (
@@ -134,12 +192,12 @@ export default function AttendanceTeamPage() {
                                     </TableHead>
                                     {leaveTypesOrdered.map((lt) => (
                                         <TableHead key={lt.id} className="py-4 text-[10px] font-extrabold uppercase tracking-widest text-slate-400 text-center">
-                                            <div className="flex flex-col items-center gap-1">
-                                                <span>{lt.code}</span>
-                                                <span className="text-[9px] font-semibold tracking-normal text-slate-300">
-                                                    Quota {lt.quota ?? 0}
-                                                </span>
-                                            </div>
+                                                <div className="flex flex-col items-center gap-1">
+                                                    <span>{lt.code}</span>
+                                                    <span className="text-[9px] font-semibold tracking-normal text-slate-300">
+                                                        Quota {lt.quota ?? 0}
+                                                    </span>
+                                                </div>
                                         </TableHead>
                                     ))}
                                     <TableHead className="py-4 text-[10px] font-extrabold uppercase tracking-widest text-slate-400 text-center pr-8">
@@ -158,8 +216,8 @@ export default function AttendanceTeamPage() {
                                     filteredEmployees.map((emp) => {
                                         const total = leaveTypesOrdered.reduce((sum, lt) => {
                                             if (lt.employmentType !== emp.employmentType) return sum
-                                            const count = getCount(emp.id, lt.id, lt.name)
-                                            if (!Number.isInteger(count) || count <= 0) return sum
+                                            const count = getCount(emp.id, emp.employeeId, lt.id, lt.name)
+                                            if (count <= 0) return sum
                                             return sum + count
                                         }, 0)
                                                 return (
@@ -171,7 +229,7 @@ export default function AttendanceTeamPage() {
                                                     </div>
                                                 </TableCell>
                                                 {leaveTypesOrdered.map((lt) => {
-                                                    const count = getCount(emp.id, lt.id, lt.name)
+                                                    const count = getCount(emp.id, emp.employeeId, lt.id, lt.name)
                                                     const matchesEmployment = lt.employmentType === emp.employmentType
                                                     const quotaLimit = lt.quota ?? 0
                                                     const isOverQuota = matchesEmployment && count > quotaLimit
@@ -184,13 +242,13 @@ export default function AttendanceTeamPage() {
                                                                 isOverQuota ? "text-red-600" : ""
                                                             )}
                                                         >
-                                                            {matchesEmployment ? (count || 0) : '—'}
+                                                            {matchesEmployment ? formatCount(count || 0) : '—'}
                                                         </TableCell>
     )
                                                     })}
                                                     <TableCell className="text-center pr-8">
                                                         <span className={cn("text-sm font-bold", total > 0 ? "text-slate-900" : "text-slate-400")}>
-                                                            {total}
+                                                            {formatCount(total)}
                                                         </span>
                                                     </TableCell>
                                                 </TableRow>
@@ -199,9 +257,10 @@ export default function AttendanceTeamPage() {
                                     )}
                                 </TableBody>
                             </Table>
-                        </div>
-                    </CardContent>
-                </Card>
-            </div>
-)
+                    </div>
+                </CardContent>
+            </Card>
+
+        </div>
+    )
 }

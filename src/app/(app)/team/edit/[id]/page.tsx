@@ -7,15 +7,18 @@ import { EmployeeForm, JobDescriptionPreview } from '@/features/employees'
 import { toast } from '@/components/ui/toast'
 import { ArrowLeft } from 'lucide-react'
 import { Button } from '@/components/ui/button'
-import type { Employee } from '@/types'
+import type { EmployeeApi } from '@/types'
 import { Card, CardContent } from '@/components/ui/card'
+import { fetchEmployeeApi } from '@/lib/api/client'
 
 export default function EditEmployeePage() {
     const router = useRouter()
     const params = useParams()
-    const { employees, updateEmployee, roles } = useApp()
-    const [employee, setEmployee] = useState<Employee | null>(null)
+    const { employees, updateEmployee, roles, apiAccessToken, departments, refreshDepartments, refreshRoles } = useApp()
+    const [employee, setEmployee] = useState<EmployeeApi | null>(null)
     const [loading, setLoading] = useState(false)
+    const [loadingEmployee, setLoadingEmployee] = useState(true)
+    const [loadingLists, setLoadingLists] = useState(true)
     const [selectedRoleId, setSelectedRoleId] = useState('')
     const employeeId = params.id as string
 
@@ -31,15 +34,70 @@ export default function EditEmployeePage() {
     // }
 
     useEffect(() => {
-        const emp = employees.find(e => e.id === employeeId)
-        if (emp) {
-            setEmployee(emp)
-            setSelectedRoleId(emp.roleId || '')
-        } else if (employees.length > 0) {
-            toast('Employee not found', 'error')
-            router.push('/team')
+        let isActive = true
+
+        const loadEmployee = async () => {
+            if (!apiAccessToken) {
+                const emp = employees.find(e => e.id === employeeId)
+                if (!isActive) return
+                setEmployee(emp || null)
+                setSelectedRoleId(emp?.roleId || '')
+                setLoadingEmployee(false)
+                if (!emp && employees.length > 0) {
+                    toast('Employee not found', 'error')
+                    router.push('/team')
+                }
+                return
+            }
+
+            try {
+                setLoadingEmployee(true)
+                const apiEmployee = await fetchEmployeeApi(employeeId, apiAccessToken)
+                if (!isActive) return
+                setEmployee(apiEmployee)
+                setSelectedRoleId(apiEmployee?.roleId || '')
+                if (!apiEmployee) {
+                    toast('Employee not found', 'error')
+                    router.push('/team')
+                }
+            } catch (error) {
+                if (!isActive) return
+                toast('Failed to load employee', 'error')
+            } finally {
+                if (isActive) {
+                    setLoadingEmployee(false)
+                }
+            }
         }
-    }, [employeeId, employees, router])
+
+        void loadEmployee()
+        return () => {
+            isActive = false
+        }
+    }, [apiAccessToken, employeeId, employees, router])
+
+    useEffect(() => {
+        let isActive = true
+        const loadLists = async () => {
+            try {
+                if (departments.length === 0) {
+                    await refreshDepartments()
+                }
+                if (roles.length === 0) {
+                    await refreshRoles()
+                }
+            } finally {
+                if (isActive) {
+                    setLoadingLists(false)
+                }
+            }
+        }
+
+        void loadLists()
+        return () => {
+            isActive = false
+        }
+    }, [departments.length, roles.length, refreshDepartments, refreshRoles])
 
     const selectedRole = roles.find(role => role.id === selectedRoleId)
 
@@ -61,7 +119,7 @@ export default function EditEmployeePage() {
         router.push('/team')
     }
 
-    if (!employee && employees.length === 0) {
+    if ((loadingEmployee && !employee) || loadingLists) {
         return <div className="p-8 text-center text-slate-500">Loading employee data...</div>
     }
 

@@ -117,7 +117,7 @@ interface AppContextType {
     updateLeaveType: (id: string, leaveTypeData: Partial<Omit<LeaveType, 'id' | 'companyId' | 'createdAt' | 'updatedAt'>>) => Promise<LeaveType | null>
     deleteLeaveType: (id: string) => Promise<void>
     refreshLeaveTypes: () => Promise<void>
-    addLeave: (leaveData: Omit<LeaveRecord, 'id' | 'companyId' | 'createdAt'>) => Promise<LeaveRecord>
+    addLeave: (leaveData: Omit<LeaveRecord, 'id' | 'companyId' | 'createdAt'> & { startDate?: string; endDate?: string }) => Promise<LeaveRecord>
     createRole: (roleData: Omit<Role, 'id' | 'companyId' | 'createdAt'>) => Promise<Role>
     updateRole: (id: string, roleData: Partial<Omit<Role, 'id' | 'companyId' | 'createdAt'>>) => Promise<Role | null>
     deleteRole: (id: string) => Promise<void>
@@ -258,9 +258,13 @@ export function AppProvider({ children }: { children: ReactNode }) {
         fallback: Partial<LeaveType> = {}
     ): LeaveType => {
         const now = new Date().toISOString()
+        const fallbackId = (fallback as { leaveTypeId?: string }).leaveTypeId
+        const apiId = (leaveType as { leaveTypeId?: string }).leaveTypeId
         const id =
             leaveType.id ||
+            apiId ||
             fallback.id ||
+            fallbackId ||
             (typeof crypto !== 'undefined' && 'randomUUID' in crypto ? crypto.randomUUID() : `lt_${Date.now()}`)
 
         return {
@@ -337,7 +341,9 @@ export function AppProvider({ children }: { children: ReactNode }) {
             id,
             companyId: leave.companyId || fallback.companyId || companyId,
             employeeId: leave.employeeId || fallback.employeeId || '',
-            date: leave.date || fallback.date || new Date().toISOString().split('T')[0],
+            startDate: leave.startDate || fallback.startDate,
+            endDate: leave.endDate || fallback.endDate,
+            date: leave.date || leave.startDate || fallback.date || new Date().toISOString().split('T')[0],
             type: leave.type || fallback.type || 'Leave',
             leaveTypeId: leave.leaveTypeId ?? fallback.leaveTypeId,
             unit: leave.unit ?? fallback.unit,
@@ -345,6 +351,7 @@ export function AppProvider({ children }: { children: ReactNode }) {
             note: leave.note || fallback.note || '',
             documents: leave.documents ?? fallback.documents,
             attachments: leave.attachments ?? fallback.attachments,
+            leaveDays: leave.leaveDays ?? fallback.leaveDays,
             createdAt: leave.createdAt || fallback.createdAt || now
         }
     }
@@ -486,7 +493,11 @@ export function AppProvider({ children }: { children: ReactNode }) {
             employeeId: employee.employeeId || fallback.employeeId || `LEGACY-${id}`,
             userId: employee.userId ?? fallback.userId,
             departmentId: employee.departmentId ?? fallback.departmentId,
+            departmentName: (employee as { departmentName?: string | null }).departmentName
+                ?? (fallback as { departmentName?: string | null }).departmentName,
             reportingManagerId: employee.reportingManagerId ?? fallback.reportingManagerId,
+            roleName: (employee as { roleName?: string | null }).roleName
+                ?? (fallback as { roleName?: string | null }).roleName,
             name: employee.name || fallback.name || 'Employee',
             email: employee.email || fallback.email || '',
             position: employee.position || fallback.position || '',
@@ -727,7 +738,8 @@ export function AppProvider({ children }: { children: ReactNode }) {
             return { success: true, message: 'Account created successfully!' }
         } catch (error) {
             console.error('Signup error:', error)
-            return { success: false, message: 'An error occurred during signup. Please try again.' }
+            const message = error instanceof Error ? error.message : 'An error occurred during signup. Please try again.'
+            return { success: false, message }
         }
     }
 
@@ -842,18 +854,22 @@ export function AppProvider({ children }: { children: ReactNode }) {
             if (!currentCompany) throw new Error('No company set up')
 
             if (apiAccessToken) {
-                const departmentId = employeeData.department
-                    ? departments.find(dept => dept.name === employeeData.department)?.id
-                    : undefined
-                const reportingManagerId = employeeData.reportingManager
-                    ? employees.find(emp => emp.name === employeeData.reportingManager)?.id
-                    : undefined
+                const departmentId = employeeData.departmentId
+                    || (employeeData.department
+                        ? departments.find(dept => dept.id === employeeData.department)?.id
+                            || departments.find(dept => dept.name === employeeData.department)?.id
+                        : undefined)
+                const reportingManagerId = employeeData.reportingManagerId
+                    ?? (employeeData.reportingManager
+                        ? employees.find(emp => emp.name === employeeData.reportingManager)?.id
+                        : undefined)
                 const payload = {
                     employeeId: employeeData.employeeId,
                     companyId: currentCompany.id,
                     userId: employeeData.userId,
                     departmentId,
                     reportingManagerId,
+                    roleId: employeeData.roleId,
                     name: employeeData.name,
                     email: employeeData.email,
                     startDate: employeeData.startDate,
@@ -882,12 +898,15 @@ export function AppProvider({ children }: { children: ReactNode }) {
 
             if (apiAccessToken) {
                 const existing = dataStore.getEmployeesByCompanyId(currentCompany.id).find(emp => emp.id === id)
-                const departmentId = employeeData.department
-                    ? departments.find(dept => dept.name === employeeData.department)?.id
-                    : undefined
-                const reportingManagerId = employeeData.reportingManager
-                    ? employees.find(emp => emp.name === employeeData.reportingManager)?.id
-                    : undefined
+                const departmentId = employeeData.departmentId
+                    || (employeeData.department
+                        ? departments.find(dept => dept.id === employeeData.department)?.id
+                            || departments.find(dept => dept.name === employeeData.department)?.id
+                        : undefined)
+                const reportingManagerId = employeeData.reportingManagerId
+                    ?? (employeeData.reportingManager
+                        ? employees.find(emp => emp.name === employeeData.reportingManager)?.id
+                        : undefined)
                 const payload: {
                     companyId: string
                     employeeId?: string
@@ -910,7 +929,9 @@ export function AppProvider({ children }: { children: ReactNode }) {
                 if (employeeData.employeeId !== undefined) payload.employeeId = employeeData.employeeId
                 if (employeeData.userId !== undefined) payload.userId = employeeData.userId
                 if (employeeData.department !== undefined) payload.departmentId = departmentId
-                if (employeeData.reportingManager !== undefined) payload.reportingManagerId = reportingManagerId
+                if (employeeData.reportingManagerId !== undefined || employeeData.reportingManager !== undefined) {
+                    payload.reportingManagerId = reportingManagerId
+                }
                 if (employeeData.name !== undefined) payload.name = employeeData.name
                 if (employeeData.email !== undefined) payload.email = employeeData.email
                 if (employeeData.department !== undefined) payload.department = employeeData.department
@@ -1348,9 +1369,11 @@ export function AppProvider({ children }: { children: ReactNode }) {
                         answer: value
                     }
                 })
+                const subjectType = entry.type === 'Applicant' ? 'Applicant' : 'Employee'
                 const apiEntry = await createFeedbackEntryApi(
                     {
                         cardId: entry.cardId,
+                        subjectType,
                         subjectId: entry.subjectId,
                         subjectName: entry.subjectName,
                         answers: apiAnswers,
@@ -1528,35 +1551,32 @@ export function AppProvider({ children }: { children: ReactNode }) {
     const createLeaveType = async (leaveTypeData: Omit<LeaveType, 'id' | 'companyId' | 'createdAt' | 'updatedAt'>) => {
         try {
             if (!currentCompany) throw new Error('No company set up')
-
-            if (apiAccessToken) {
-                const payload: {
-                    name: string
-                    unit: string
-                    quota: number
-                    companyId: string
-                    code?: string
-                    employmentType?: string
-                } = {
-                    name: leaveTypeData.name,
-                    unit: leaveTypeData.unit,
-                    quota: leaveTypeData.quota,
-                    companyId: currentCompany.id
-                }
-
-                if (leaveTypeData.code) payload.code = leaveTypeData.code
-                if (leaveTypeData.employmentType) payload.employmentType = leaveTypeData.employmentType
-
-                const apiLeaveType = await createLeaveTypeApi(payload, apiAccessToken)
-                const normalized = normalizeLeaveType(apiLeaveType, currentCompany.id, leaveTypeData)
-                dataStore.upsertLeaveType(normalized)
-                setLeaveTypes(dataStore.getLeaveTypesByCompanyId(currentCompany.id))
-                return normalized
+            if (!apiAccessToken) {
+                throw new Error('API session required to create leave types')
             }
 
-            const leaveType = dataStore.createLeaveType(leaveTypeData, currentCompany.id)
+            const payload: {
+                name: string
+                unit: string
+                quota: number
+                companyId: string
+                code?: string
+                employmentType?: string
+            } = {
+                name: leaveTypeData.name,
+                unit: leaveTypeData.unit,
+                quota: leaveTypeData.quota,
+                companyId: currentCompany.id
+            }
+
+            if (leaveTypeData.code) payload.code = leaveTypeData.code
+            if (leaveTypeData.employmentType) payload.employmentType = leaveTypeData.employmentType
+
+            const apiLeaveType = await createLeaveTypeApi(payload, apiAccessToken)
+            const normalized = normalizeLeaveType(apiLeaveType, currentCompany.id, leaveTypeData)
+            dataStore.upsertLeaveType(normalized)
             setLeaveTypes(dataStore.getLeaveTypesByCompanyId(currentCompany.id))
-            return leaveType
+            return normalized
         } catch (error) {
             console.error('Create leave type error:', error)
             throw error
@@ -1566,9 +1586,10 @@ export function AppProvider({ children }: { children: ReactNode }) {
     const deleteLeaveType = async (id: string) => {
         try {
             if (!currentCompany) return
-            if (apiAccessToken) {
-                await deleteLeaveTypeApi(id, apiAccessToken)
+            if (!apiAccessToken) {
+                throw new Error('API session required to delete leave types')
             }
+            await deleteLeaveTypeApi(id, apiAccessToken)
             dataStore.deleteLeaveType(id)
             setLeaveTypes(dataStore.getLeaveTypesByCompanyId(currentCompany.id))
         } catch (error) {
@@ -1583,56 +1604,52 @@ export function AppProvider({ children }: { children: ReactNode }) {
     ) => {
         try {
             if (!currentCompany) throw new Error('No company set up')
-
-            if (apiAccessToken) {
-                const payload: {
-                    quota?: number
-                    companyId: string
-                    name?: string
-                    unit?: string
-                    code?: string
-                    employmentType?: string
-                } = {
-                    companyId: currentCompany.id
-                }
-
-                if (leaveTypeData.quota !== undefined) payload.quota = leaveTypeData.quota
-                if (leaveTypeData.name) payload.name = leaveTypeData.name
-                if (leaveTypeData.unit) payload.unit = leaveTypeData.unit
-                if (leaveTypeData.code) payload.code = leaveTypeData.code
-                if (leaveTypeData.employmentType) payload.employmentType = leaveTypeData.employmentType
-
-                const apiLeaveType = await updateLeaveTypeApi(id, payload, apiAccessToken)
-                const existing = dataStore.getLeaveTypesByCompanyId(currentCompany.id).find(lt => lt.id === id)
-                const normalized = normalizeLeaveType(apiLeaveType, currentCompany.id, {
-                    ...(existing || {}),
-                    ...leaveTypeData,
-                    id,
-                    companyId: currentCompany.id
-                })
-
-                if (existing) {
-                    const updated = dataStore.updateLeaveType(id, {
-                        name: normalized.name,
-                        code: normalized.code,
-                        unit: normalized.unit,
-                        quota: normalized.quota,
-                        employmentType: normalized.employmentType
-                    })
-                    setLeaveTypes(dataStore.getLeaveTypesByCompanyId(currentCompany.id))
-                    setLeaves(dataStore.getLeavesByCompanyId(currentCompany.id))
-                    return updated
-                }
-
-                dataStore.upsertLeaveType(normalized)
-                setLeaveTypes(dataStore.getLeaveTypesByCompanyId(currentCompany.id))
-                return normalized
+            if (!apiAccessToken) {
+                throw new Error('API session required to update leave types')
             }
 
-            const updated = dataStore.updateLeaveType(id, leaveTypeData)
+            const payload: {
+                quota?: number
+                companyId: string
+                name?: string
+                unit?: string
+                code?: string
+                employmentType?: string
+            } = {
+                companyId: currentCompany.id
+            }
+
+            if (leaveTypeData.quota !== undefined) payload.quota = leaveTypeData.quota
+            if (leaveTypeData.name) payload.name = leaveTypeData.name
+            if (leaveTypeData.unit) payload.unit = leaveTypeData.unit
+            if (leaveTypeData.code) payload.code = leaveTypeData.code
+            if (leaveTypeData.employmentType) payload.employmentType = leaveTypeData.employmentType
+
+            const apiLeaveType = await updateLeaveTypeApi(id, payload, apiAccessToken)
+            const existing = dataStore.getLeaveTypesByCompanyId(currentCompany.id).find(lt => lt.id === id)
+            const normalized = normalizeLeaveType(apiLeaveType, currentCompany.id, {
+                ...(existing || {}),
+                ...leaveTypeData,
+                id,
+                companyId: currentCompany.id
+            })
+
+            if (existing) {
+                const updated = dataStore.updateLeaveType(id, {
+                    name: normalized.name,
+                    code: normalized.code,
+                    unit: normalized.unit,
+                    quota: normalized.quota,
+                    employmentType: normalized.employmentType
+                })
+                setLeaveTypes(dataStore.getLeaveTypesByCompanyId(currentCompany.id))
+                setLeaves(dataStore.getLeavesByCompanyId(currentCompany.id))
+                return updated
+            }
+
+            dataStore.upsertLeaveType(normalized)
             setLeaveTypes(dataStore.getLeaveTypesByCompanyId(currentCompany.id))
-            setLeaves(dataStore.getLeavesByCompanyId(currentCompany.id))
-            return updated
+            return normalized
         } catch (error) {
             console.error('Update leave type error:', error)
             throw error
@@ -1642,18 +1659,22 @@ export function AppProvider({ children }: { children: ReactNode }) {
     const refreshLeaveTypes = async () => {
         try {
             if (!currentCompany) return
-            if (apiAccessToken) {
-                const apiLeaveTypes = await fetchLeaveTypesApi(apiAccessToken)
-                const normalized = apiLeaveTypes.map(lt => normalizeLeaveType(lt, currentCompany.id))
-                dataStore.setLeaveTypesForCompany(currentCompany.id, normalized)
+            if (!apiAccessToken) {
+                setLeaveTypes([])
+                return
             }
+            const apiLeaveTypes = await fetchLeaveTypesApi(apiAccessToken)
+            const normalized = apiLeaveTypes.map(lt => normalizeLeaveType(lt, currentCompany.id))
+            dataStore.setLeaveTypesForCompany(currentCompany.id, normalized)
             setLeaveTypes(dataStore.getLeaveTypesByCompanyId(currentCompany.id))
         } catch (error) {
             console.error('Refresh leave types error:', error)
         }
     }
 
-    const addLeave = async (leaveData: Omit<LeaveRecord, 'id' | 'companyId' | 'createdAt'>): Promise<LeaveRecord> => {
+    const addLeave = async (
+        leaveData: Omit<LeaveRecord, 'id' | 'companyId' | 'createdAt'> & { startDate?: string; endDate?: string }
+    ): Promise<LeaveRecord> => {
         try {
             if (!currentCompany) throw new Error('No company set up')
 
@@ -1662,12 +1683,13 @@ export function AppProvider({ children }: { children: ReactNode }) {
                     || (leaveData.attachments?.length
                         ? { files: leaveData.attachments.map(file => file.dataUrl) }
                         : undefined)
+                const startDate = leaveData.startDate || leaveData.date
+                const endDate = leaveData.endDate || leaveData.date
                 const apiLeave = await createLeaveApi(
                     {
                         employeeId: leaveData.employeeId,
-                        startDate: leaveData.date,
-                        endDate: leaveData.date,
-                        type: leaveData.type,
+                        startDate,
+                        endDate,
                         unit: leaveData.unit,
                         amount: leaveData.amount,
                         companyId: currentCompany.id,
@@ -1677,10 +1699,20 @@ export function AppProvider({ children }: { children: ReactNode }) {
                     },
                     apiAccessToken
                 )
-                const normalized = normalizeLeave(apiLeave, currentCompany.id, leaveData)
-                dataStore.upsertLeave(normalized)
+                const responseLeaves = Array.isArray(apiLeave) ? apiLeave : [apiLeave]
+                const normalizedLeaves = responseLeaves.map((leave) => normalizeLeave(leave, currentCompany.id, leaveData))
+                normalizedLeaves.forEach((leave) => dataStore.upsertLeave(leave))
                 setLeaves(dataStore.getLeavesByCompanyId(currentCompany.id))
-                return normalized
+
+                await refreshLeaves()
+
+                const refreshed = dataStore.getLeavesByCompanyId(currentCompany.id)
+                const primaryId = responseLeaves[0]?.id
+                if (primaryId) {
+                    const matched = refreshed.find((leave) => leave.id === primaryId)
+                    if (matched) return matched
+                }
+                return normalizedLeaves[0]
             }
 
             const leave = dataStore.addLeave(leaveData, currentCompany.id)

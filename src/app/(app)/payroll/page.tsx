@@ -22,24 +22,30 @@ export default function PayrollPage() {
     })
 
     const departments = useMemo(() => {
-        const unique = [...new Set(employees.map(emp => emp.department))]
+        const unique = [
+            ...new Set(employees.map(emp => emp.departmentName || emp.department || '').filter(Boolean))
+        ]
         return unique.sort()
     }, [employees])
 
     const positions = useMemo(() => {
-        const unique = [...new Set(employees.map(emp => emp.position))]
+        const unique = [
+            ...new Set(employees.map(emp => emp.roleName || emp.position || '').filter(Boolean))
+        ]
         return unique.sort()
     }, [employees])
 
     const filteredEmployees = useMemo(() => {
         return employees.filter(emp => {
+            const departmentName = emp.departmentName || emp.department || ''
+            const roleName = emp.roleName || emp.position || ''
             const matchesSearch =
                 emp.name.toLowerCase().includes(searchTerm.toLowerCase()) ||
-                emp.department.toLowerCase().includes(searchTerm.toLowerCase()) ||
-                emp.position.toLowerCase().includes(searchTerm.toLowerCase())
+                departmentName.toLowerCase().includes(searchTerm.toLowerCase()) ||
+                roleName.toLowerCase().includes(searchTerm.toLowerCase())
 
-            const matchesDepartment = departmentFilter === 'all' || emp.department === departmentFilter
-            const matchesPosition = positionFilter === 'all' || emp.position === positionFilter
+            const matchesDepartment = departmentFilter === 'all' || departmentName === departmentFilter
+            const matchesPosition = positionFilter === 'all' || roleName === positionFilter
 
             return matchesSearch && matchesDepartment && matchesPosition
         })
@@ -205,7 +211,7 @@ export default function PayrollPage() {
                             </TableRow>
                         ) : (
                             filteredEmployees.map((emp) => {
-                                const salary = calculateSalary(emp.salary)
+                                const salary = calculateSalary(emp.salary ?? 0)
                                         return (
                                     <TableRow key={emp.id} className="hover:bg-slate-50/50 group border-slate-50">
                                         <TableCell className="pl-8 py-5">
@@ -215,7 +221,7 @@ export default function PayrollPage() {
                                                 </div>
                                                 <div>
                                                     <p className="font-bold text-slate-900 text-base">{emp.name}</p>
-                                                    <p className="text-xs text-slate-400 font-medium">{emp.position}</p>
+                                                    <p className="text-xs text-slate-400 font-medium">{emp.roleName || emp.position || '—'}</p>
                                                 </div>
                                             </div>
                                         </TableCell>
@@ -255,8 +261,15 @@ export default function PayrollPage() {
                         <p className="text-xs font-bold text-slate-400 uppercase tracking-widest">
                             {filteredEmployees.length} {filteredEmployees.length === 1 ? 'Employee' : 'Employees'} • Payroll Calculated
                         </p>
-                    </div>
                 </div>
             </div>
-)
+
+            <div className="mt-6 rounded-2xl border border-slate-200 bg-slate-50 p-4">
+                <p className="text-xs font-bold uppercase tracking-widest text-slate-500 mb-2">API Response</p>
+                <pre className="text-xs text-slate-600 whitespace-pre-wrap">
+                    {JSON.stringify(employees, null, 2)}
+                </pre>
+            </div>
+        </div>
+    )
 }

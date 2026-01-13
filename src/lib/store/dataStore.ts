@@ -8,14 +8,30 @@ import { hashPassword, verifyPassword, sanitizeInput, sanitizeEmail, sanitizeRic
  */
 export class DataStore {
     private STORAGE_KEY = 'hrSystemData'
+    private persistenceEnabled: boolean
+    private memoryData: DataStoreSchema
 
-    constructor() {
+    constructor(options?: { persist?: boolean }) {
+        this.persistenceEnabled = options?.persist ?? true
+        this.memoryData = this.getInitialData()
+        if (this.persistenceEnabled && typeof window !== 'undefined') {
+            this.initializeStorage()
+        }
+    }
+
+    disablePersistence(): void {
+        this.persistenceEnabled = false
+    }
+
+    enablePersistence(): void {
+        this.persistenceEnabled = true
         if (typeof window !== 'undefined') {
             this.initializeStorage()
         }
     }
 
     private initializeStorage(): void {
+        if (!this.persistenceEnabled) return
         try {
             if (!localStorage.getItem(this.STORAGE_KEY)) {
                 const initialData: DataStoreSchema = {
@@ -43,8 +59,8 @@ export class DataStore {
     }
 
     private getData(): DataStoreSchema {
-        if (typeof window === 'undefined') {
-            return this.getInitialData()
+        if (!this.persistenceEnabled || typeof window === 'undefined') {
+            return this.memoryData
         }
 
         try {
@@ -96,7 +112,7 @@ export class DataStore {
     }
 
     private getInitialData(): DataStoreSchema {
-            return {
+            const initialData: DataStoreSchema = {
                 users: [],
                 companies: [],
                 employees: [],
@@ -112,10 +128,15 @@ export class DataStore {
                 applicants: [],
                 currentUser: null
             }
+            this.memoryData = initialData
+            return initialData
     }
 
     private saveData(data: DataStoreSchema): void {
-        if (typeof window === 'undefined') return
+        if (!this.persistenceEnabled || typeof window === 'undefined') {
+            this.memoryData = data
+            return
+        }
 
         try {
             localStorage.setItem(this.STORAGE_KEY, JSON.stringify(data))
@@ -945,6 +966,8 @@ export class DataStore {
                 id: this.generateId(),
                 companyId,
                 employeeId: leaveData.employeeId,
+                startDate: leaveData.startDate,
+                endDate: leaveData.endDate,
                 date: leaveData.date,
                 type: leaveData.type,
                 leaveTypeId: leaveData.leaveTypeId,
@@ -953,6 +976,7 @@ export class DataStore {
                 note: leaveData.note,
                 documents: leaveData.documents,
                 attachments: leaveData.attachments,
+                leaveDays: leaveData.leaveDays,
                 createdAt: new Date().toISOString()
             }
 
@@ -974,6 +998,8 @@ export class DataStore {
             const normalized: LeaveRecord = {
                 ...leave,
                 employeeId: sanitizeInput(leave.employeeId),
+                startDate: leave.startDate,
+                endDate: leave.endDate,
                 date: leave.date,
                 type: sanitizeInput(leave.type || 'Leave'),
                 unit: leave.unit,
@@ -981,6 +1007,7 @@ export class DataStore {
                 note: sanitizeInput(leave.note || ''),
                 documents: leave.documents,
                 attachments: leave.attachments,
+                leaveDays: leave.leaveDays,
                 createdAt: leave.createdAt || new Date().toISOString()
             }
 
@@ -1007,6 +1034,8 @@ export class DataStore {
                 ...leave,
                 companyId: leave.companyId || companyId,
                 employeeId: sanitizeInput(leave.employeeId),
+                startDate: leave.startDate,
+                endDate: leave.endDate,
                 date: leave.date,
                 type: sanitizeInput(leave.type || 'Leave'),
                 unit: leave.unit,
@@ -1014,6 +1043,7 @@ export class DataStore {
                 note: sanitizeInput(leave.note || ''),
                 documents: leave.documents,
                 attachments: leave.attachments,
+                leaveDays: leave.leaveDays,
                 createdAt: leave.createdAt || new Date().toISOString()
             }))
             data.leaves = [...preserved, ...normalized]
@@ -2038,4 +2068,4 @@ export class DataStore {
 }
 
 // Singleton instance
-export const dataStore = new DataStore()
+export const dataStore = new DataStore({ persist: false })

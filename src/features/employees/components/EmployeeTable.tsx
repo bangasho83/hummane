@@ -28,27 +28,33 @@ export function EmployeeTable({ employees }: EmployeeTableProps) {
 
     // Get unique departments and positions
     const departments = useMemo(() => {
-        const unique = [...new Set(employees.map(emp => emp.department))]
+        const unique = [
+            ...new Set(employees.map(emp => emp.departmentName || emp.department || '').filter(Boolean))
+        ]
         return unique.sort()
     }, [employees])
 
     const positions = useMemo(() => {
-        const unique = [...new Set(employees.map(emp => emp.position))]
+        const unique = [
+            ...new Set(employees.map(emp => emp.roleName || emp.position || '').filter(Boolean))
+        ]
         return unique.sort()
     }, [employees])
 
     // Filter employees
     const filteredEmployees = useMemo(() => {
         return employees.filter(emp => {
+            const departmentName = emp.departmentName || emp.department || ''
+            const roleName = emp.roleName || emp.position || ''
             const matchesSearch =
                 emp.name.toLowerCase().includes(searchTerm.toLowerCase()) ||
                 emp.email.toLowerCase().includes(searchTerm.toLowerCase()) ||
-                emp.position.toLowerCase().includes(searchTerm.toLowerCase()) ||
+                roleName.toLowerCase().includes(searchTerm.toLowerCase()) ||
                 emp.employeeId.toLowerCase().includes(searchTerm.toLowerCase()) ||
-                emp.department.toLowerCase().includes(searchTerm.toLowerCase())
+                departmentName.toLowerCase().includes(searchTerm.toLowerCase())
 
-            const matchesDepartment = departmentFilter === 'all' || emp.department === departmentFilter
-            const matchesPosition = positionFilter === 'all' || emp.position === positionFilter
+            const matchesDepartment = departmentFilter === 'all' || departmentName === departmentFilter
+            const matchesPosition = positionFilter === 'all' || roleName === positionFilter
 
             return matchesSearch && matchesDepartment && matchesPosition
         })
@@ -192,11 +198,11 @@ export function EmployeeTable({ employees }: EmployeeTableProps) {
                                         <span className="text-xs font-bold text-slate-500 uppercase tracking-wide">{employee.employeeId}</span>
                                     </TableCell>
                                     <TableCell>
-                                        <span className="text-sm font-medium text-slate-500">{employee.position}</span>
+                                        <span className="text-sm font-medium text-slate-500">{employee.roleName || employee.position || '—'}</span>
                                     </TableCell>
                                     <TableCell>
                                         <Badge className="bg-blue-50 text-blue-600 hover:bg-blue-100 border-none px-4 py-1.5 rounded-full font-bold">
-                                            {employee.department}
+                                            {employee.departmentName || employee.department || '—'}
                                         </Badge>
                                     </TableCell>
                                     <TableCell>

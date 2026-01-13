@@ -55,7 +55,7 @@ export default function EmployeeAttendancePage() {
                     </Button>
                     <div>
                         <h1 className="text-3xl font-extrabold text-slate-900 tracking-tight">{employee.name}</h1>
-                        <p className="text-slate-500 font-medium">{employee.position} • {employee.department}</p>
+                        <p className="text-slate-500 font-medium">{employee.roleName || employee.position || '—'} • {employee.departmentName || employee.department || '—'}</p>
                     </div>
                 </div>
                 <Badge className="bg-blue-50 text-blue-700 border-blue-100">{employee.employmentType}</Badge>

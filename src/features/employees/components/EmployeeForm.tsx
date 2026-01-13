@@ -4,7 +4,7 @@ import { useState, useEffect } from 'react'
 import { Input } from '@/components/ui/input'
 import { Button } from '@/components/ui/button'
 import { Label } from '@/components/ui/label'
-import { EMPLOYMENT_TYPES, GENDER_OPTIONS, type Employee, type EmploymentType, type Gender } from '@/types'
+import { EMPLOYMENT_TYPES, GENDER_OPTIONS, type Employee, type EmployeeApi, type EmploymentType, type Gender } from '@/types'
 import { useApp } from '@/lib/context/AppContext'
 import {
     Select,
@@ -18,7 +18,7 @@ import { employeeSchema } from '@/lib/validation/schemas'
 import { z } from 'zod'
 
 interface EmployeeFormProps {
-    employee?: Employee | null
+    employee?: EmployeeApi | null
     onSubmit: (data: Omit<Employee, 'id' | 'companyId' | 'createdAt' | 'updatedAt'>) => Promise<void>
     onCancel: () => void
     submitLabel?: string
@@ -30,7 +30,7 @@ type EmployeeFormState = {
     employeeId: string
     name: string
     email: string
-    department: string
+    departmentId: string
     roleId: string
     startDate: string
     employmentType: EmploymentType
@@ -43,7 +43,7 @@ const getDefaultFormData = (): EmployeeFormState => ({
     employeeId: '',
     name: '',
     email: '',
-    department: '',
+    departmentId: '',
     roleId: '',
     startDate: '',
     employmentType: EMPLOYMENT_TYPES[1],
@@ -51,6 +51,11 @@ const getDefaultFormData = (): EmployeeFormState => ({
     gender: GENDER_OPTIONS[0],
     salary: ''
 })
+
+const toDateInputValue = (value?: string | null) => {
+    if (!value) return ''
+    return value.split('T')[0] || ''
+}
 
 export function EmployeeForm({
     employee,
@@ -63,26 +68,34 @@ export function EmployeeForm({
     const { departments, roles, employees } = useApp()
     const [formData, setFormData] = useState<EmployeeFormState>(getDefaultFormData)
     const [errors, setErrors] = useState<Record<string, string>>({})
-
     useEffect(() => {
         if (employee) {
+            const departmentIdFromName = employee.departmentName || employee.department
+                ? departments.find(dept => dept.name === (employee.departmentName || employee.department))?.id
+                : undefined
+            const roleFromName = employee.roleName
+                ? roles.find(role => role.title === employee.roleName)?.id
+                : undefined
+
             setFormData({
-                employeeId: employee.employeeId,
-                name: employee.name,
-                email: employee.email,
-                department: employee.department,
-                roleId: employee.roleId || '',
-                startDate: employee.startDate,
-                employmentType: employee.employmentType,
-                reportingManager: employees.find(e => e.name === employee.reportingManager)?.id || 'self',
-                gender: employee.gender,
-                salary: employee.salary.toString()
+                employeeId: employee.employeeId || '',
+                name: employee.name || '',
+                email: employee.email || '',
+                departmentId: employee.departmentId?.trim() || departmentIdFromName?.trim() || '',
+                roleId: employee.roleId?.trim() || roleFromName?.trim() || '',
+                startDate: toDateInputValue(employee.startDate),
+                employmentType: employee.employmentType || EMPLOYMENT_TYPES[1],
+                reportingManager: employee.reportingManagerId
+                    || employees.find(e => e.name === employee.reportingManager)?.id
+                    || 'self',
+                gender: employee.gender || GENDER_OPTIONS[0],
+                salary: employee.salary != null ? employee.salary.toString() : ''
             })
         } else {
             setFormData(getDefaultFormData())
         }
         setErrors({})
-    }, [employee, employees])
+    }, [employee, employees, departments, roles])
 
     useEffect(() => {
         if (onRoleChange) {
@@ -98,12 +111,17 @@ export function EmployeeForm({
             const managerName = formData.reportingManager === 'self'
                 ? formData.name
                 : employees.find(emp => emp.id === formData.reportingManager)?.name || formData.name
+            const departmentName = departments.find(dept => dept.id === formData.departmentId)?.name
+                || employee?.departmentName
+                || employee?.department
+                || ''
             const employeeData = {
                 employeeId: formData.employeeId,
                 name: formData.name,
                 email: formData.email,
                 position: employee?.position || '',
-                department: formData.department,
+                department: departmentName,
+                departmentId: formData.departmentId || undefined,
                 roleId: formData.roleId,
                 startDate: formData.startDate,
                 employmentType: formData.employmentType,
@@ -111,12 +129,14 @@ export function EmployeeForm({
                 gender: formData.gender,
                 salary: parseFloat(formData.salary)
             }
+            const reportingManagerId = formData.reportingManager === 'self' ? undefined : formData.reportingManager
 
             // Validate with Zod schema
             const validated = employeeSchema.parse(employeeData)
             await onSubmit({
                 ...validated,
-                position: validated.position || ''
+                position: validated.position || '',
+                reportingManagerId
             })
         } catch (error) {
             if (error instanceof z.ZodError) {
@@ -139,6 +159,13 @@ export function EmployeeForm({
             setErrors(prev => {
                 const newErrors = { ...prev }
                 delete newErrors[field]
+                return newErrors
+            })
+        }
+        if (field === 'departmentId' && errors.department) {
+            setErrors(prev => {
+                const newErrors = { ...prev }
+                delete newErrors.department
                 return newErrors
             })
         }
@@ -220,15 +247,16 @@ export function EmployeeForm({
                 {departments.length > 0 ? (
                     <>
                         <Select
-                            value={formData.department}
-                            onValueChange={(value) => handleChange('department', value)}
+                            key={`${formData.departmentId}-${departments.length}`}
+                            value={formData.departmentId}
+                            onValueChange={(value) => handleChange('departmentId', value)}
                         >
                             <SelectTrigger id="department" className={`rounded-xl border-slate-200 ${errors.department ? 'border-red-500' : ''}`}>
                                 <SelectValue placeholder="Select Department" />
                             </SelectTrigger>
                             <SelectContent>
                                 {departments.map((dept) => (
-                                    <SelectItem key={dept.id} value={dept.name}>
+                                    <SelectItem key={dept.id} value={dept.id}>
                                         {dept.name}
                                     </SelectItem>
                                 ))}
@@ -255,6 +283,7 @@ export function EmployeeForm({
                 {roles.length > 0 ? (
                     <>
                         <Select
+                            key={`${formData.roleId}-${roles.length}`}
                             value={formData.roleId}
                             onValueChange={(value) => handleChange('roleId', value)}
                         >
