@@ -1,4 +1,4 @@
-import type { Company, Department, Role, LeaveType, LeaveRecord, Holiday, Job, Applicant, Employee, FeedbackCard, FeedbackEntry } from '@/types'
+import type { Company, Department, Role, LeaveType, LeaveRecord, Holiday, Job, Applicant, Employee, EmployeeDocument, FeedbackCard, FeedbackEntry } from '@/types'
 
 export type ApiUser = {
   id: string
@@ -31,6 +31,7 @@ const FEEDBACK_ENTRIES_PATH = `${API_BASE_URL}/feedback-entries`
 const HOLIDAYS_PATH = `${API_BASE_URL}/holidays`
 const JOBS_PATH = `${API_BASE_URL}/jobs`
 const APPLICANTS_PATH = `${API_BASE_URL}/applicants`
+const DOCUMENTS_PATH = `${API_BASE_URL}/documents`
 const ACCESS_TOKEN_KEY = 'hummaneApiAccessToken'
 const API_USER_KEY = 'hummaneApiUser'
 const COMPANY_ID_KEY = 'hummaneCompanyId'
@@ -203,12 +204,14 @@ export const createEmployeeApi = async (
   payload: {
     employeeId: string
     companyId: string
+    userId?: string
+    departmentId?: string
+    reportingManagerId?: string
     name: string
     email: string
     startDate: string
     employmentType: string
     gender: string
-    documents?: { files: { name: string; url: string }[] }
   },
   accessToken: string
 ): Promise<Employee> => {
@@ -289,6 +292,9 @@ export const updateEmployeeApi = async (
   payload: {
     companyId: string
     employeeId?: string
+    userId?: string
+    departmentId?: string
+    reportingManagerId?: string
     name?: string
     email?: string
     department?: string
@@ -298,7 +304,6 @@ export const updateEmployeeApi = async (
     reportingManager?: string
     gender?: string
     salary?: number
-    documents?: { files: { name: string; url: string }[] }
   },
   accessToken: string
 ): Promise<Employee> => {
@@ -339,7 +344,6 @@ export const updateEmployeeApi = async (
       reportingManager: 'Unassigned',
       gender: 'Prefer not to say',
       salary: 0,
-      documents: payload.documents,
       createdAt: new Date().toISOString()
     }
   }
@@ -367,7 +371,7 @@ export const deleteEmployeeApi = async (employeeId: string, accessToken: string)
 }
 
 export const createDepartmentApi = async (
-  payload: { companyId: string; name: string; desc?: string; managerId?: string },
+  payload: { companyId: string; name: string; description?: string; managerId?: string },
   accessToken: string
 ): Promise<Department> => {
   const response = await fetch(DEPARTMENTS_PATH, {
@@ -431,7 +435,7 @@ export const deleteDepartmentApi = async (departmentId: string, accessToken: str
 
 export const updateDepartmentApi = async (
   departmentId: string,
-  payload: { companyId: string; name?: string; desc?: string },
+  payload: { companyId: string; name?: string; description?: string },
   accessToken: string
 ): Promise<Department> => {
   let response: Response
@@ -751,7 +755,8 @@ export const deleteLeaveTypeApi = async (leaveTypeId: string, accessToken: strin
 export const createLeaveApi = async (
   payload: {
     employeeId: string
-    date: string
+    startDate: string
+    endDate: string
     type: string
     unit?: string
     amount?: number
@@ -1211,7 +1216,15 @@ export const deleteHolidayApi = async (holidayId: string, accessToken: string): 
 }
 
 export const createJobApi = async (
-  payload: { title: string; status: string; employmentType?: string; companyId: string },
+  payload: {
+    title: string
+    status: string
+    employmentType?: string
+    departmentId?: string
+    salaryFrom?: number
+    salaryTo?: number
+    companyId: string
+  },
   accessToken: string
 ): Promise<Job> => {
   let response: Response
@@ -1288,7 +1301,15 @@ export const fetchJobApi = async (jobId: string, accessToken: string): Promise<J
 
 export const updateJobApi = async (
   jobId: string,
-  payload: { status?: string; companyId: string; title?: string; employmentType?: string },
+  payload: {
+    status?: string
+    companyId: string
+    title?: string
+    employmentType?: string
+    departmentId?: string
+    salaryFrom?: number
+    salaryTo?: number
+  },
   accessToken: string
 ): Promise<Job> => {
   let response: Response
@@ -1535,5 +1556,84 @@ export const deleteApplicantApi = async (applicantId: string, accessToken: strin
   if (!response.ok) {
     const message = await response.text()
     throw new Error(message || 'Failed to delete applicant')
+  }
+}
+
+export const createDocumentApi = async (
+  payload: {
+    employeeId: string
+    name: string
+    type: string
+    dataUrl: string
+    companyId: string
+  },
+  accessToken: string
+): Promise<EmployeeDocument> => {
+  let response: Response
+  try {
+    response = await fetch(DOCUMENTS_PATH, {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        Authorization: `Bearer ${accessToken}`,
+      },
+      body: JSON.stringify(payload),
+    })
+  } catch (error) {
+    console.error('API /documents POST network error:', error)
+    throw new Error('Network error while contacting the API')
+  }
+
+  if (!response.ok) {
+    const message = await response.text()
+    throw new Error(message || 'Failed to create document')
+  }
+
+  const data = await response.json().catch(() => null)
+  return (data?.data || data?.document || data) as EmployeeDocument
+}
+
+export const fetchDocumentsApi = async (accessToken: string, employeeId?: string): Promise<EmployeeDocument[]> => {
+  let response: Response
+  const url = employeeId ? `${DOCUMENTS_PATH}?employeeId=${encodeURIComponent(employeeId)}` : DOCUMENTS_PATH
+  try {
+    response = await fetch(url, {
+      method: 'GET',
+      headers: {
+        Authorization: `Bearer ${accessToken}`,
+      },
+    })
+  } catch (error) {
+    console.error('API /documents GET network error:', error)
+    throw new Error('Network error while contacting the API')
+  }
+
+  if (!response.ok) {
+    const message = await response.text()
+    throw new Error(message || 'Failed to fetch documents')
+  }
+
+  const data = await response.json().catch(() => null)
+  const list = data?.data || data?.documents || data
+  return Array.isArray(list) ? (list as EmployeeDocument[]) : []
+}
+
+export const deleteDocumentApi = async (documentId: string, accessToken: string): Promise<void> => {
+  let response: Response
+  try {
+    response = await fetch(`${DOCUMENTS_PATH}/${encodeURIComponent(documentId)}`, {
+      method: 'DELETE',
+      headers: {
+        Authorization: `Bearer ${accessToken}`,
+      },
+    })
+  } catch (error) {
+    console.error('API /documents DELETE network error:', error)
+    throw new Error('Network error while contacting the API')
+  }
+
+  if (!response.ok) {
+    const message = await response.text()
+    throw new Error(message || 'Failed to delete document')
   }
 }

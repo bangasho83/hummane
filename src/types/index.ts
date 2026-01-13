@@ -41,6 +41,9 @@ export interface Employee {
     id: string
     employeeId: string
     companyId: string
+    userId?: string
+    departmentId?: string
+    reportingManagerId?: string
     name: string
     email: string
     position: string
@@ -51,12 +54,6 @@ export interface Employee {
     reportingManager: string
     gender: Gender
     salary: number
-    documents?: {
-        files: {
-            name: string
-            url: string
-        }[]
-    }
     createdAt: string
     updatedAt?: string
 }
@@ -116,6 +113,7 @@ export interface Job {
     companyId: string
     title: string
     roleId?: string
+    departmentId?: string
     department?: string
     employmentType?: EmploymentType
     location?: {

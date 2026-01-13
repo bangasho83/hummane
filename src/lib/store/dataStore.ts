@@ -58,10 +58,21 @@ export class DataStore {
                 return this.getInitialData()
             }
 
-            return {
+            const rawEmployees = Array.isArray(parsed.employees) ? parsed.employees : []
+            let strippedEmployeeDocs = false
+            const employees = rawEmployees.map((employee) => {
+                if (employee && typeof employee === 'object' && 'documents' in employee) {
+                    const { documents, ...rest } = employee as Employee & { documents?: unknown }
+                    strippedEmployeeDocs = true
+                    return rest as Employee
+                }
+                return employee as Employee
+            })
+
+            const normalizedData: DataStoreSchema = {
                 users: Array.isArray(parsed.users) ? parsed.users : [],
                 companies: Array.isArray(parsed.companies) ? parsed.companies : [],
-                employees: Array.isArray(parsed.employees) ? parsed.employees : [],
+                employees,
                 departments: Array.isArray(parsed.departments) ? parsed.departments : [],
                 leaves: Array.isArray(parsed.leaves) ? parsed.leaves : [],
                 leaveTypes: Array.isArray(parsed.leaveTypes) ? parsed.leaveTypes : [],
@@ -74,6 +85,10 @@ export class DataStore {
                 applicants: Array.isArray(parsed.applicants) ? parsed.applicants : [],
                 currentUser: parsed.currentUser || null
             }
+            if (strippedEmployeeDocs) {
+                this.saveData(normalizedData)
+            }
+            return normalizedData
         } catch (error) {
             console.error('Failed to parse storage data:', error)
             return this.getInitialData()
@@ -344,6 +359,9 @@ export class DataStore {
                 id: this.generateId(),
                 companyId,
                 employeeId: sanitizedEmployeeId,
+                userId: employeeData.userId,
+                departmentId: employeeData.departmentId,
+                reportingManagerId: employeeData.reportingManagerId,
                 name: sanitizedName,
                 email: sanitizedEmail,
                 position: sanitizedPosition,
@@ -354,7 +372,6 @@ export class DataStore {
                 reportingManager: sanitizedManager,
                 gender: employeeData.gender,
                 salary: employeeData.salary,
-                documents: employeeData.documents,
                 createdAt: new Date().toISOString()
             }
             data.employees.push(employee)
@@ -420,7 +437,9 @@ export class DataStore {
                 }
                 sanitizedData.salary = employeeData.salary
             }
-            if (employeeData.documents !== undefined) sanitizedData.documents = employeeData.documents
+            if (employeeData.userId !== undefined) sanitizedData.userId = employeeData.userId
+            if (employeeData.departmentId !== undefined) sanitizedData.departmentId = employeeData.departmentId
+            if (employeeData.reportingManagerId !== undefined) sanitizedData.reportingManagerId = employeeData.reportingManagerId
 
             data.employees[index] = {
                 ...data.employees[index],
@@ -461,6 +480,9 @@ export class DataStore {
                 ...employee,
                 employeeId: sanitizeInput(employeeId),
                 companyId: employee.companyId,
+                userId: employee.userId,
+                departmentId: employee.departmentId,
+                reportingManagerId: employee.reportingManagerId,
                 name: sanitizeInput(employee.name || 'Employee'),
                 email: sanitizeEmail(employee.email || ''),
                 position: sanitizeInput(employee.position || ''),
@@ -471,7 +493,6 @@ export class DataStore {
                 reportingManager: sanitizeInput(employee.reportingManager || 'Unassigned'),
                 gender: employee.gender || 'Prefer not to say',
                 salary: Number.isFinite(employee.salary) ? employee.salary : 0,
-                documents: employee.documents,
                 createdAt: employee.createdAt || new Date().toISOString(),
                 updatedAt: employee.updatedAt || employee.createdAt || new Date().toISOString()
             }
@@ -500,6 +521,9 @@ export class DataStore {
                     ...employee,
                     companyId: employee.companyId || companyId,
                     employeeId: sanitizeInput(employeeId),
+                    userId: employee.userId,
+                    departmentId: employee.departmentId,
+                    reportingManagerId: employee.reportingManagerId,
                     name: sanitizeInput(employee.name || 'Employee'),
                     email: sanitizeEmail(employee.email || ''),
                     position: sanitizeInput(employee.position || ''),
@@ -510,7 +534,6 @@ export class DataStore {
                     reportingManager: sanitizeInput(employee.reportingManager || 'Unassigned'),
                     gender: employee.gender || 'Prefer not to say',
                     salary: Number.isFinite(employee.salary) ? employee.salary : 0,
-                    documents: employee.documents,
                     createdAt: employee.createdAt || new Date().toISOString(),
                     updatedAt: employee.updatedAt || employee.createdAt || new Date().toISOString()
                 }
@@ -1466,6 +1489,27 @@ export class DataStore {
         }
     }
 
+    setDocumentsForEmployee(employeeId: string, documents: EmployeeDocument[]): EmployeeDocument[] {
+        try {
+            const data = this.getData()
+            const preserved = data.documents.filter(doc => doc.employeeId !== employeeId)
+            const normalized = documents.map((doc) => ({
+                ...doc,
+                employeeId: doc.employeeId || employeeId,
+                name: sanitizeInput(doc.name),
+                type: (doc.type || 'Government ID') as DocumentKind,
+                dataUrl: doc.dataUrl,
+                uploadedAt: doc.uploadedAt || new Date().toISOString()
+            }))
+            data.documents = [...preserved, ...normalized]
+            this.saveData(data)
+            return normalized
+        } catch (error) {
+            console.error('Error setting documents:', error)
+            return []
+        }
+    }
+
     deleteDocument(id: string): void {
         try {
             const data = this.getData()
@@ -1654,6 +1698,7 @@ export class DataStore {
                 companyId,
                 title: sanitizeInput(jobData.title),
                 roleId: jobData.roleId,
+                departmentId: jobData.departmentId,
                 department: jobData.department ? sanitizeInput(jobData.department) : undefined,
                 employmentType: jobData.employmentType,
                 location: jobData.location
@@ -1692,6 +1737,7 @@ export class DataStore {
                 ...data.jobs[jobIndex],
                 ...jobData,
                 title: jobData.title ? sanitizeInput(jobData.title) : data.jobs[jobIndex].title,
+                departmentId: jobData.departmentId ?? data.jobs[jobIndex].departmentId,
                 department: jobData.department ? sanitizeInput(jobData.department) : data.jobs[jobIndex].department,
                 employmentType: jobData.employmentType ?? data.jobs[jobIndex].employmentType,
                 location: jobData.location
@@ -1740,6 +1786,7 @@ export class DataStore {
             const normalized: Job = {
                 ...job,
                 title: sanitizeInput(job.title),
+                departmentId: job.departmentId,
                 department: job.department ? sanitizeInput(job.department) : undefined,
                 experience: job.experience ? sanitizeInput(job.experience) : '',
                 location: job.location
@@ -1779,6 +1826,7 @@ export class DataStore {
                 ...job,
                 companyId: job.companyId || companyId,
                 title: sanitizeInput(job.title),
+                departmentId: job.departmentId,
                 department: job.department ? sanitizeInput(job.department) : undefined,
                 experience: job.experience ? sanitizeInput(job.experience) : '',
                 location: job.location

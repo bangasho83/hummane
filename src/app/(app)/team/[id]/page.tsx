@@ -4,7 +4,7 @@ import { useEffect, useState } from 'react'
 import { useParams, useRouter } from 'next/navigation'
 import { useApp } from '@/lib/context/AppContext'
 import { DOCUMENT_KINDS } from '@/types'
-import type { Employee, DocumentKind } from '@/types'
+import type { Employee, EmployeeDocument, DocumentKind } from '@/types'
 import { Card, CardContent } from '@/components/ui/card'
 import { Badge } from '@/components/ui/badge'
 import { formatCurrency, formatDate } from '@/lib/utils'
@@ -21,9 +21,9 @@ import { uploadFileToStorage } from '@/lib/firebase/storage'
 export default function EmployeeProfilePage() {
     const params = useParams()
     const router = useRouter()
-    const { employees, updateEmployee, currentCompany } = useApp()
+    const { employees, currentCompany, addDocument, deleteDocument, getDocuments } = useApp()
     const [employee, setEmployee] = useState<Employee | null>(null)
-    const [docs, setDocs] = useState<NonNullable<Employee['documents']>['files']>([])
+    const [docs, setDocs] = useState<EmployeeDocument[]>([])
     const [isDocDialogOpen, setIsDocDialogOpen] = useState(false)
     const [docType, setDocType] = useState<DocumentKind>(DOCUMENT_KINDS[0])
     const [docFile, setDocFile] = useState<File | null>(null)
@@ -40,8 +40,24 @@ export default function EmployeeProfilePage() {
     }, [employees, employeeId, router])
 
     useEffect(() => {
-        setDocs(employee?.documents?.files || [])
-    }, [employee?.documents])
+        let isActive = true
+
+        const loadDocuments = async () => {
+            if (!employee) {
+                setDocs([])
+                return
+            }
+            const list = await getDocuments(employee.id)
+            if (isActive) {
+                setDocs(list)
+            }
+        }
+
+        void loadDocuments()
+        return () => {
+            isActive = false
+        }
+    }, [employee?.id])
 
     const handleDocUpload = async () => {
         if (!docFile) {
@@ -50,14 +66,13 @@ export default function EmployeeProfilePage() {
         }
         try {
             const url = await uploadFileToStorage(docFile, 'team', employeeId)
-            const nextDocs = [...docs, { name: docType, url }]
-            const updated = await updateEmployee(employeeId, {
-                documents: { files: nextDocs }
+            const created = await addDocument({
+                employeeId,
+                name: docType,
+                type: docType,
+                dataUrl: url
             })
-            if (updated) {
-                setEmployee(updated)
-            }
-            setDocs(nextDocs)
+            setDocs((prev) => [...prev, created])
             setIsDocDialogOpen(false)
             setDocFile(null)
             toast('Document uploaded', 'success')
@@ -66,16 +81,10 @@ export default function EmployeeProfilePage() {
         }
     }
 
-    const handleDeleteDoc = async (url: string) => {
+    const handleDeleteDoc = async (doc: EmployeeDocument) => {
         try {
-            const nextDocs = docs.filter(doc => doc.url !== url)
-            const updated = await updateEmployee(employeeId, {
-                documents: { files: nextDocs }
-            })
-            if (updated) {
-                setEmployee(updated)
-            }
-            setDocs(nextDocs)
+            await deleteDocument(doc.id)
+            setDocs((prev) => prev.filter(item => item.id !== doc.id))
             toast('Document removed', 'success')
         } catch (error: any) {
             toast(error?.message || 'Failed to remove document', 'error')
@@ -202,15 +211,15 @@ export default function EmployeeProfilePage() {
                         ) : (
                             <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3">
                                 {docs.map((doc) => (
-                                    <div key={doc.url} className="border border-slate-100 rounded-2xl bg-slate-50 p-4 flex flex-col gap-2">
+                                    <div key={doc.id} className="border border-slate-100 rounded-2xl bg-slate-50 p-4 flex flex-col gap-2">
                                         <div className="flex items-center justify-between">
                                             <div>
                                                 <p className="text-sm font-bold text-slate-900">{doc.name}</p>
                                             </div>
-                                            <Button variant="ghost" size="sm" className="text-red-500" onClick={() => handleDeleteDoc(doc.url)}>Delete</Button>
+                                            <Button variant="ghost" size="sm" className="text-red-500" onClick={() => handleDeleteDoc(doc)}>Delete</Button>
                                         </div>
                                         <a
-                                            href={doc.url}
+                                            href={doc.dataUrl}
                                             target="_blank"
                                             rel="noopener noreferrer"
                                             className="text-sm text-blue-600 font-semibold hover:underline"

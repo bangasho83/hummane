@@ -58,6 +58,9 @@ import {
     updateEmployeeApi,
     updateDepartmentApi,
     fetchDepartmentsApi,
+    createDocumentApi,
+    deleteDocumentApi,
+    fetchDocumentsApi,
     getStoredCompanyId,
     getStoredAccessToken,
     getStoredApiUser,
@@ -107,9 +110,9 @@ interface AppContextType {
     updateFeedbackEntry: (id: string, updates: Partial<Omit<FeedbackEntry, 'id' | 'companyId' | 'createdAt'>>) => Promise<FeedbackEntry | null>
     deleteFeedbackEntry: (id: string) => Promise<void>
     refreshFeedbackEntries: () => Promise<void>
-    addDocument: (doc: Omit<EmployeeDocument, 'id' | 'uploadedAt'>) => EmployeeDocument
-    deleteDocument: (id: string) => void
-    getDocuments: (employeeId: string) => EmployeeDocument[]
+    addDocument: (doc: Omit<EmployeeDocument, 'id' | 'uploadedAt'>) => Promise<EmployeeDocument>
+    deleteDocument: (id: string) => Promise<void>
+    getDocuments: (employeeId: string) => Promise<EmployeeDocument[]>
     createLeaveType: (leaveTypeData: Omit<LeaveType, 'id' | 'companyId' | 'createdAt' | 'updatedAt'>) => Promise<LeaveType>
     updateLeaveType: (id: string, leaveTypeData: Partial<Omit<LeaveType, 'id' | 'companyId' | 'createdAt' | 'updatedAt'>>) => Promise<LeaveType | null>
     deleteLeaveType: (id: string) => Promise<void>
@@ -287,6 +290,7 @@ export function AppProvider({ children }: { children: ReactNode }) {
             companyId: job.companyId || fallback.companyId || companyId,
             title: job.title || fallback.title || 'Job',
             roleId: job.roleId ?? fallback.roleId,
+            departmentId: job.departmentId ?? fallback.departmentId,
             department: job.department ?? fallback.department,
             employmentType: job.employmentType ?? fallback.employmentType,
             location: job.location ?? fallback.location,
@@ -480,6 +484,9 @@ export function AppProvider({ children }: { children: ReactNode }) {
             id,
             companyId: employee.companyId || fallback.companyId || companyId,
             employeeId: employee.employeeId || fallback.employeeId || `LEGACY-${id}`,
+            userId: employee.userId ?? fallback.userId,
+            departmentId: employee.departmentId ?? fallback.departmentId,
+            reportingManagerId: employee.reportingManagerId ?? fallback.reportingManagerId,
             name: employee.name || fallback.name || 'Employee',
             email: employee.email || fallback.email || '',
             position: employee.position || fallback.position || '',
@@ -490,7 +497,6 @@ export function AppProvider({ children }: { children: ReactNode }) {
             reportingManager: employee.reportingManager || fallback.reportingManager || 'Unassigned',
             gender: (employee.gender || fallback.gender || 'Prefer not to say') as Employee['gender'],
             salary,
-            documents: employee.documents ?? fallback.documents,
             createdAt: employee.createdAt || fallback.createdAt || now,
             updatedAt: employee.updatedAt || fallback.updatedAt
         }
@@ -836,15 +842,23 @@ export function AppProvider({ children }: { children: ReactNode }) {
             if (!currentCompany) throw new Error('No company set up')
 
             if (apiAccessToken) {
+                const departmentId = employeeData.department
+                    ? departments.find(dept => dept.name === employeeData.department)?.id
+                    : undefined
+                const reportingManagerId = employeeData.reportingManager
+                    ? employees.find(emp => emp.name === employeeData.reportingManager)?.id
+                    : undefined
                 const payload = {
                     employeeId: employeeData.employeeId,
                     companyId: currentCompany.id,
+                    userId: employeeData.userId,
+                    departmentId,
+                    reportingManagerId,
                     name: employeeData.name,
                     email: employeeData.email,
                     startDate: employeeData.startDate,
                     employmentType: employeeData.employmentType,
-                    gender: employeeData.gender,
-                    documents: employeeData.documents
+                    gender: employeeData.gender
                 }
                 const apiEmployee = await createEmployeeApi(payload, apiAccessToken)
                 const normalized = normalizeEmployee(apiEmployee, currentCompany.id, employeeData)
@@ -868,9 +882,18 @@ export function AppProvider({ children }: { children: ReactNode }) {
 
             if (apiAccessToken) {
                 const existing = dataStore.getEmployeesByCompanyId(currentCompany.id).find(emp => emp.id === id)
+                const departmentId = employeeData.department
+                    ? departments.find(dept => dept.name === employeeData.department)?.id
+                    : undefined
+                const reportingManagerId = employeeData.reportingManager
+                    ? employees.find(emp => emp.name === employeeData.reportingManager)?.id
+                    : undefined
                 const payload: {
                     companyId: string
                     employeeId?: string
+                    userId?: string
+                    departmentId?: string
+                    reportingManagerId?: string
                     name?: string
                     email?: string
                     department?: string
@@ -880,12 +903,14 @@ export function AppProvider({ children }: { children: ReactNode }) {
                     reportingManager?: string
                     gender?: Employee['gender']
                     salary?: number
-                    documents?: Employee['documents']
                 } = {
                     companyId: currentCompany.id
                 }
 
                 if (employeeData.employeeId !== undefined) payload.employeeId = employeeData.employeeId
+                if (employeeData.userId !== undefined) payload.userId = employeeData.userId
+                if (employeeData.department !== undefined) payload.departmentId = departmentId
+                if (employeeData.reportingManager !== undefined) payload.reportingManagerId = reportingManagerId
                 if (employeeData.name !== undefined) payload.name = employeeData.name
                 if (employeeData.email !== undefined) payload.email = employeeData.email
                 if (employeeData.department !== undefined) payload.department = employeeData.department
@@ -895,7 +920,6 @@ export function AppProvider({ children }: { children: ReactNode }) {
                 if (employeeData.reportingManager !== undefined) payload.reportingManager = employeeData.reportingManager
                 if (employeeData.gender !== undefined) payload.gender = employeeData.gender
                 if (employeeData.salary !== undefined) payload.salary = employeeData.salary
-                if (employeeData.documents !== undefined) payload.documents = employeeData.documents
 
                 const apiEmployee = await updateEmployeeApi(id, payload, apiAccessToken)
                 const normalized = normalizeEmployee(apiEmployee, currentCompany.id, {
@@ -964,12 +988,12 @@ export function AppProvider({ children }: { children: ReactNode }) {
             if (!currentCompany) throw new Error('No company set up')
 
             if (apiAccessToken) {
-                const payload: { companyId: string; name: string; desc?: string; managerId?: string } = {
+                const payload: { companyId: string; name: string; description?: string; managerId?: string } = {
                     companyId: currentCompany.id,
                     name: departmentData.name
                 }
                 if (departmentData.description) {
-                    payload.desc = departmentData.description
+                    payload.description = departmentData.description
                 }
                 if (departmentData.managerId) {
                     payload.managerId = departmentData.managerId
@@ -1001,14 +1025,14 @@ export function AppProvider({ children }: { children: ReactNode }) {
             }
 
             if (apiAccessToken) {
-                const payload: { companyId: string; name?: string; desc?: string } = {
+                const payload: { companyId: string; name?: string; description?: string } = {
                     companyId: currentCompany.id
                 }
                 if (departmentData.name) {
                     payload.name = departmentData.name
                 }
                 if (departmentData.description !== undefined) {
-                    payload.desc = departmentData.description
+                    payload.description = departmentData.description
                 }
 
                 const apiDepartment = await updateDepartmentApi(id, payload, apiAccessToken)
@@ -1436,8 +1460,31 @@ export function AppProvider({ children }: { children: ReactNode }) {
         void refreshFeedbackEntries()
     }, [currentCompany?.id, apiAccessToken])
 
-    const addDocument = (doc: Omit<EmployeeDocument, 'id' | 'uploadedAt'>) => {
+    const addDocument = async (doc: Omit<EmployeeDocument, 'id' | 'uploadedAt'>): Promise<EmployeeDocument> => {
         try {
+            if (apiAccessToken) {
+                if (!currentCompany) throw new Error('No company set up')
+                const payload = {
+                    employeeId: doc.employeeId,
+                    name: doc.name,
+                    type: doc.type,
+                    dataUrl: doc.dataUrl,
+                    companyId: currentCompany.id
+                }
+                const apiDoc = await createDocumentApi(payload, apiAccessToken)
+                const now = new Date().toISOString()
+                const normalized: EmployeeDocument = {
+                    id: apiDoc.id || `doc_${Date.now()}`,
+                    employeeId: apiDoc.employeeId || doc.employeeId,
+                    name: apiDoc.name || doc.name,
+                    type: (apiDoc.type || doc.type) as EmployeeDocument['type'],
+                    dataUrl: apiDoc.dataUrl || doc.dataUrl,
+                    uploadedAt: apiDoc.uploadedAt || now
+                }
+                const existing = dataStore.getDocumentsByEmployeeId(doc.employeeId)
+                dataStore.setDocumentsForEmployee(doc.employeeId, [...existing, normalized])
+                return normalized
+            }
             return dataStore.addDocument(doc)
         } catch (error) {
             console.error('Add document error:', error)
@@ -1445,8 +1492,11 @@ export function AppProvider({ children }: { children: ReactNode }) {
         }
     }
 
-    const deleteDocument = (id: string) => {
+    const deleteDocument = async (id: string): Promise<void> => {
         try {
+            if (apiAccessToken) {
+                await deleteDocumentApi(id, apiAccessToken)
+            }
             dataStore.deleteDocument(id)
         } catch (error) {
             console.error('Delete document error:', error)
@@ -1454,12 +1504,24 @@ export function AppProvider({ children }: { children: ReactNode }) {
         }
     }
 
-    const getDocuments = (employeeId: string): EmployeeDocument[] => {
+    const getDocuments = async (employeeId: string): Promise<EmployeeDocument[]> => {
         try {
+            if (apiAccessToken) {
+                const apiDocs = await fetchDocumentsApi(apiAccessToken, employeeId)
+                const normalized = apiDocs.map((doc) => ({
+                    id: doc.id || `doc_${Date.now()}`,
+                    employeeId: doc.employeeId || employeeId,
+                    name: doc.name || 'Document',
+                    type: (doc.type || 'Government ID') as EmployeeDocument['type'],
+                    dataUrl: doc.dataUrl || '',
+                    uploadedAt: doc.uploadedAt || new Date().toISOString()
+                }))
+                dataStore.setDocumentsForEmployee(employeeId, normalized)
+            }
             return dataStore.getDocumentsByEmployeeId(employeeId)
         } catch (error) {
             console.error('Get documents error:', error)
-            return []
+            return dataStore.getDocumentsByEmployeeId(employeeId)
         }
     }
 
@@ -1603,7 +1665,8 @@ export function AppProvider({ children }: { children: ReactNode }) {
                 const apiLeave = await createLeaveApi(
                     {
                         employeeId: leaveData.employeeId,
-                        date: leaveData.date,
+                        startDate: leaveData.date,
+                        endDate: leaveData.date,
                         type: leaveData.type,
                         unit: leaveData.unit,
                         amount: leaveData.amount,
@@ -1773,11 +1836,17 @@ export function AppProvider({ children }: { children: ReactNode }) {
                 throw new Error('No company found')
             }
             if (apiAccessToken) {
+                const departmentId = jobData.department
+                    ? departments.find(dept => dept.name === jobData.department)?.id
+                    : undefined
                 const apiJob = await createJobApi(
                     {
                         title: jobData.title,
                         status: jobData.status || 'open',
                         employmentType: jobData.employmentType,
+                        departmentId,
+                        salaryFrom: jobData.salary?.min,
+                        salaryTo: jobData.salary?.max,
                         companyId: currentCompany.id
                     },
                     apiAccessToken
@@ -1804,12 +1873,26 @@ export function AppProvider({ children }: { children: ReactNode }) {
             }
 
             if (apiAccessToken) {
-                const payload: { status?: string; companyId: string; title?: string; employmentType?: string } = {
+                const departmentId = jobData.department
+                    ? departments.find(dept => dept.name === jobData.department)?.id
+                    : undefined
+                const payload: {
+                    status?: string
+                    companyId: string
+                    title?: string
+                    employmentType?: string
+                    departmentId?: string
+                    salaryFrom?: number
+                    salaryTo?: number
+                } = {
                     companyId: currentCompany.id
                 }
                 if (jobData.status) payload.status = jobData.status
                 if (jobData.title) payload.title = jobData.title
                 if (jobData.employmentType) payload.employmentType = jobData.employmentType
+                if (departmentId) payload.departmentId = departmentId
+                if (jobData.salary?.min !== undefined) payload.salaryFrom = jobData.salary.min
+                if (jobData.salary?.max !== undefined) payload.salaryTo = jobData.salary.max
 
                 const apiJob = await updateJobApi(id, payload, apiAccessToken)
                 const existing = dataStore.getJobsByCompanyId(currentCompany.id).find(job => job.id === id)
