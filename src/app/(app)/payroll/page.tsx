@@ -61,8 +61,8 @@ export default function PayrollPage() {
 
     const formatMoney = (amount: number) => formatCurrency(amount, currentCompany?.currency)
 
-    const calculateSalary = (annualSalary: number) => {
-        const monthly = annualSalary / 12
+    const calculateSalary = (monthlySalary: number) => {
+        const monthly = monthlySalary
         const daily = monthly / (config.daysPerMonth || 1)
         const hourly = daily / (config.hoursPerDay || 1)
 
@@ -264,12 +264,6 @@ export default function PayrollPage() {
                 </div>
             </div>
 
-            <div className="mt-6 rounded-2xl border border-slate-200 bg-slate-50 p-4">
-                <p className="text-xs font-bold uppercase tracking-widest text-slate-500 mb-2">API Response</p>
-                <pre className="text-xs text-slate-600 whitespace-pre-wrap">
-                    {JSON.stringify(employees, null, 2)}
-                </pre>
-            </div>
         </div>
     )
 }
