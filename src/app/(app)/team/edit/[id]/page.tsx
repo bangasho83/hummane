@@ -102,7 +102,10 @@ export default function EditEmployeePage() {
     const selectedRole = roles.find(role => role.id === selectedRoleId)
 
     const handleSubmit = async (data: any) => {
-        if (!employee) return
+        if (!employee?.id) {
+            toast('Missing employee id', 'error')
+            return
+        }
         setLoading(true)
         try {
             await updateEmployee(employee.id, data)
