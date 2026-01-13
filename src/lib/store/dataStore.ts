@@ -60,8 +60,8 @@ export class DataStore {
 
             const rawEmployees = Array.isArray(parsed.employees) ? parsed.employees : []
             let strippedEmployeeDocs = false
-            const employees = rawEmployees.map((employee) => {
-                if (employee && typeof employee === 'object' && 'documents' in employee) {
+            const employees = rawEmployees.map((employee: unknown) => {
+                if (employee && typeof employee === 'object' && 'documents' in (employee as Record<string, unknown>)) {
                     const { documents, ...rest } = employee as Employee & { documents?: unknown }
                     strippedEmployeeDocs = true
                     return rest as Employee

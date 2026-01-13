@@ -465,7 +465,7 @@ export const updateDepartmentApi = async (
       id: departmentId,
       companyId: payload.companyId,
       name: payload.name || 'Department',
-      description: payload.desc,
+      description: payload.description,
       createdAt: new Date().toISOString()
     }
   }
