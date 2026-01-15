@@ -10,10 +10,11 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@
 import { useApp } from '@/lib/context/AppContext'
 import { toast } from '@/components/ui/toast'
 import { COMPANY_SIZES, type CompanySize } from '@/types'
+import { LogOut } from 'lucide-react'
 
 export default function CompanySetupPage() {
     const router = useRouter()
-    const { currentUser, currentCompany, createCompany } = useApp()
+    const { currentUser, currentCompany, createCompany, logout } = useApp()
     const [companyName, setCompanyName] = useState('')
     const [industry, setIndustry] = useState('')
     const [size, setSize] = useState<CompanySize | ''>('')
@@ -123,6 +124,22 @@ export default function CompanySetupPage() {
                     </form>
                 </Card>
 
+                <div className="mt-6 text-center">
+                    <button
+                        onClick={async () => {
+                            try {
+                                await logout()
+                                router.push('/login')
+                            } catch {
+                                toast('Failed to logout. Please try again.', 'error')
+                            }
+                        }}
+                        className="inline-flex items-center gap-2 text-sm font-medium text-slate-500 hover:text-red-600 transition-colors"
+                    >
+                        <LogOut className="w-4 h-4" />
+                        Logout
+                    </button>
+                </div>
             </div>
         </div>
     )
