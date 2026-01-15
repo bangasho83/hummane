@@ -8,7 +8,7 @@ import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select'
 import { useApp } from '@/lib/context/AppContext'
-import { EMPLOYMENT_TYPES, JOB_STATUSES, type EmploymentType, type Job, type JobStatus } from '@/types'
+import { EMPLOYMENT_MODES, EMPLOYMENT_TYPES, JOB_STATUSES, type EmploymentMode, type EmploymentType, type Job, type JobStatus } from '@/types'
 import { toast } from '@/components/ui/toast'
 
 type JobFormProps = {
@@ -21,6 +21,7 @@ type JobFormState = {
     roleId: string
     department: string
     employmentType: EmploymentType
+    employmentMode: EmploymentMode
     location: {
         city: string
         country: string
@@ -43,6 +44,7 @@ export function JobForm({ mode, job }: JobFormProps) {
         roleId: job?.roleId || '',
         department: job?.department || '',
         employmentType: job?.employmentType ?? EMPLOYMENT_TYPES[1],
+        employmentMode: job?.employmentMode ?? EMPLOYMENT_MODES[0],
         location: {
             city: job?.location?.city || '',
             country: job?.location?.country || ''
@@ -59,6 +61,7 @@ export function JobForm({ mode, job }: JobFormProps) {
                 roleId: job.roleId || '',
                 department: job.department || '',
                 employmentType: job.employmentType ?? EMPLOYMENT_TYPES[1],
+                employmentMode: job.employmentMode ?? EMPLOYMENT_MODES[0],
                 location: {
                     city: job.location?.city || '',
                     country: job.location?.country || ''
@@ -72,7 +75,7 @@ export function JobForm({ mode, job }: JobFormProps) {
 
     const handleSubmit = async (e: React.FormEvent) => {
         e.preventDefault()
-        if (!form.title || !form.experience) {
+        if (!form.title || !form.experience || !form.employmentMode) {
             toast('Please fill in all required fields', 'error')
             return
         }
@@ -169,6 +172,24 @@ export function JobForm({ mode, job }: JobFormProps) {
                             ))}
                         </SelectContent>
                     </Select>
+                    </div>
+                    <div className="space-y-2">
+                        <Label className="text-sm font-bold text-slate-700 px-1">Employment Mode</Label>
+                        <Select
+                            value={form.employmentMode}
+                            onValueChange={(value) => setForm({ ...form, employmentMode: value as EmploymentMode })}
+                        >
+                            <SelectTrigger className="rounded-xl border-slate-200 h-12">
+                                <SelectValue placeholder="Select employment mode" />
+                            </SelectTrigger>
+                            <SelectContent>
+                                {EMPLOYMENT_MODES.map((modeOption) => (
+                                    <SelectItem key={modeOption} value={modeOption}>
+                                        {modeOption}
+                                    </SelectItem>
+                                ))}
+                            </SelectContent>
+                        </Select>
                     </div>
                     <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                         <div className="space-y-2">

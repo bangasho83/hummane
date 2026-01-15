@@ -1,12 +1,13 @@
 'use client'
 
+import 'quill/dist/quill.snow.css'
+
 import { useMemo } from 'react'
 import { useParams, useRouter } from 'next/navigation'
 import { Card, CardContent } from '@/components/ui/card'
 import { Button } from '@/components/ui/button'
-import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table'
-import { useApp } from '@/lib/context/AppContext'
 import { Progress } from '@/components/ui/progress'
+import { useApp } from '@/lib/context/AppContext'
 import { ArrowLeft } from 'lucide-react'
 import { Badge } from '@/components/ui/badge'
 
@@ -33,21 +34,32 @@ export default function FeedbackDetailPage() {
         )
     }
 
-    const questionById = new Map(card?.questions.map(q => [q.id, q]) || [])
-    const scoreAnswers = entry.answers.filter(a => (questionById.get(a.questionId)?.kind || 'score') === 'score')
-    const totalScore = scoreAnswers.reduce((sum, a) => sum + a.score, 0)
+    // Use question data from API answer.question or fall back to card questions
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    const getQuestionKind = (a: any) => a.question?.kind || card?.questions.find(q => q.id === a.questionId)?.kind || 'score'
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    const getQuestionPrompt = (a: any) => a.question?.prompt || card?.questions.find(q => q.id === a.questionId)?.prompt || 'Question unavailable'
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    const scoreAnswers = entry.answers.filter((a: any) => getQuestionKind(a) === 'score')
+    // Get score from API 'answer' field (parsed)
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    const getScore = (a: any) => {
+        if (a.answer) {
+            const parsed = parseFloat(a.answer)
+            if (!isNaN(parsed)) return parsed
+        }
+        return 0
+    }
+    const totalScore = scoreAnswers.reduce((sum, a) => sum + getScore(a), 0)
     const maxScore = scoreAnswers.length * 5
     const percentScore = maxScore > 0 ? Math.round((totalScore / maxScore) * 100) : 0
     const avgScore = scoreAnswers.length > 0 ? (totalScore / scoreAnswers.length).toFixed(1) : '0.0'
-    const isIncomplete = card
-        ? card.questions.some((q) => {
-            const kind = q.kind ?? 'score'
-            const answer = entry.answers.find(a => a.questionId === q.id)
-            if (!answer) return true
-            if (kind === 'comment') return !answer.comment?.trim()
-            return answer.score < 1 || answer.score > 5
-        })
-        : false
+    // Incomplete if any score-type answer has value <= 0
+    const isIncomplete = scoreAnswers.some((a) => getScore(a) <= 0)
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    const contentBlocks = entry.answers.filter((a: any) => getQuestionKind(a) === 'content')
+    // Display type from API or derive from subjectType
+    const displayType = entry.type || (entry.subjectType === 'Employee' ? 'Team Member' : entry.subjectType) || '—'
 
 
     return (
@@ -73,7 +85,9 @@ export default function FeedbackDetailPage() {
                 </Button>
                 <div>
                     <p className="text-xs font-bold text-slate-400 uppercase tracking-widest">Feedback Detail</p>
-                    <h1 className="text-2xl font-extrabold text-slate-900 tracking-tight">{entry.id}</h1>
+                    <h1 className="text-2xl font-extrabold text-slate-900 tracking-tight">
+                        {entry.subjectName || 'Unknown'} <span className="text-slate-400 font-medium text-lg">({entry.id})</span>
+                    </h1>
                 </div>
             </div>
                 <div className="flex items-center gap-3">
@@ -95,7 +109,7 @@ export default function FeedbackDetailPage() {
                     <div className="grid grid-cols-1 md:grid-cols-4 gap-4 text-sm">
                         <div>
                             <p className="text-xs font-bold text-slate-400 uppercase tracking-widest">Type</p>
-                            <p className="font-semibold text-slate-900">{entry.type}</p>
+                            <p className="font-semibold text-slate-900">{displayType}</p>
                         </div>
                         <div>
                             <p className="text-xs font-bold text-slate-400 uppercase tracking-widest">Recipient</p>
@@ -129,41 +143,60 @@ export default function FeedbackDetailPage() {
             </Card>
 
             <Card className="border-none shadow-premium rounded-3xl bg-white overflow-hidden">
-                <CardContent className="p-0">
-                    <Table>
-                        <TableHeader className="bg-slate-50/50">
-                            <TableRow className="hover:bg-transparent border-slate-100">
-                                <TableHead className="pl-8 py-4 text-[10px] font-extrabold uppercase tracking-widest text-slate-400">Question</TableHead>
-                                <TableHead className="text-center py-4 text-[10px] font-extrabold uppercase tracking-widest text-slate-400">Score</TableHead>
-                            </TableRow>
-                        </TableHeader>
-                        <TableBody>
-                            {entry.answers.map((answer) => {
-                                const question = questionById.get(answer.questionId)
-                                        return (
-                                    <TableRow key={answer.questionId} className="hover:bg-slate-50/50 border-slate-50">
-                                        <TableCell className="pl-8 py-5 text-sm text-slate-700">
-                                            {question?.prompt || 'Question unavailable'}
-                                        </TableCell>
-                                        <TableCell className="text-center py-5 font-semibold text-slate-900">
-                                            {(question?.kind ?? 'score') === 'comment' ? (
-                                                <div className="text-sm text-slate-600 whitespace-pre-wrap text-left">
-                                                    {answer.comment || '—'}
+                <CardContent className="p-6 space-y-4">
+                    {contentBlocks.length > 0 && (
+                        <div className="space-y-2 pb-4 border-b border-slate-100">
+                            {/* eslint-disable-next-line @typescript-eslint/no-explicit-any */}
+                            {contentBlocks.map((block: any) => (
+                                <div key={block.questionId} className="p-1">
+                                    <div className="ql-snow">
+                                        <div
+                                            className="ql-editor p-0 text-sm text-slate-700"
+                                            dangerouslySetInnerHTML={{ __html: block.question?.prompt || '' }}
+                                        />
+                                    </div>
+                                </div>
+                            ))}
+                        </div>
+                    )}
+                    <div className="space-y-4">
+                        {/* eslint-disable-next-line @typescript-eslint/no-explicit-any */}
+                        {entry.answers.filter((answer: any) => getQuestionKind(answer) !== 'content').map((answer: any) => {
+                            const kind = getQuestionKind(answer)
+                            const prompt = getQuestionPrompt(answer)
+                            const displayScore = getScore(answer)
+                            const displayComment = answer.answer || '—'
+                            return (
+                                <div key={answer.questionId} className="rounded-2xl border border-slate-200 p-4 space-y-3">
+                                    <p className="text-sm font-semibold text-slate-800">
+                                        {prompt}
+                                    </p>
+                                    {kind === 'comment' ? (
+                                        <p className="text-sm text-slate-600 whitespace-pre-wrap">
+                                            {displayComment}
+                                        </p>
+                                    ) : (
+                                        <div className="flex items-center gap-2">
+                                            {[1, 2, 3, 4, 5].map((score) => (
+                                                <div
+                                                    key={score}
+                                                    className={`w-9 h-9 rounded-full flex items-center justify-center text-sm font-bold transition-all ${
+                                                        displayScore === score
+                                                            ? 'bg-blue-600 text-white shadow-md'
+                                                            : 'bg-slate-100 text-slate-400'
+                                                    }`}
+                                                >
+                                                    {score}
                                                 </div>
-                                            ) : (
-                                                <div className="flex flex-col items-center gap-2">
-                                                    <span className="text-lg font-extrabold text-slate-900">{answer.score}</span>
-                                                    <Progress value={(answer.score / 5) * 100} className="h-2 w-28" />
-                                                </div>
-                                            )}
-                                        </TableCell>
-                                    </TableRow>
+                                            ))}
+                                        </div>
+                                    )}
+                                </div>
+                            )
+                        })}
+                    </div>
+                </CardContent>
+            </Card>
+        </div>
     )
-                                })}
-                            </TableBody>
-                        </Table>
-                    </CardContent>
-                </Card>
-            </div>
-)
 }

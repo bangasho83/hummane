@@ -1,5 +1,7 @@
 'use client'
 
+import 'quill/dist/quill.snow.css'
+
 import { useEffect, useMemo, useState } from 'react'
 import { useParams, useRouter } from 'next/navigation'
 import { Card, CardContent } from '@/components/ui/card'
@@ -13,6 +15,7 @@ type DraftAnswer = {
     questionId: string
     score: number
     comment?: string
+    answer?: string  // Raw API field
 }
 
 export default function EditFeedbackPage() {
@@ -46,25 +49,34 @@ export default function EditFeedbackPage() {
 
     useEffect(() => {
         if (!entry) return
-        setType(entry.type)
+        // Derive type from subjectType (Employee = Team Member, otherwise Applicant)
+        const entryType = entry.subjectType === 'Employee' ? 'Team Member' : 'Applicant'
+        setType(entryType)
         setCardId(entry.cardId)
         setSubjectId(entry.subjectId || '')
         const card = feedbackCards.find(c => c.id === entry.cardId)
         if (card) {
-            setAnswers(card.questions.map(q => {
-                const existing = entry.answers.find(a => a.questionId === q.id)
+            const answerQuestions = card.questions.filter(q => (q.kind ?? 'score') !== 'content')
+            setAnswers(answerQuestions.map(q => {
+                // eslint-disable-next-line @typescript-eslint/no-explicit-any
+                const existing = entry.answers.find((a: any) => a.questionId === q.id) as any
                 const kind = q.kind ?? 'score'
+                // Use answer from API response (answer.answer field)
+                const answerValue = existing?.answer ?? ''
                 return {
                     questionId: q.id,
-                    score: existing?.score ?? 0,
-                    comment: existing?.comment ?? (kind === 'comment' ? '' : undefined)
+                    score: kind === 'score' ? (parseInt(answerValue, 10) || 0) : 0,
+                    comment: kind === 'comment' ? answerValue : undefined,
+                    answer: answerValue
                 }
             }))
         } else {
-            setAnswers(entry.answers.map(a => ({
+            // eslint-disable-next-line @typescript-eslint/no-explicit-any
+            setAnswers(entry.answers.map((a: any) => ({
                 questionId: a.questionId,
-                score: a.score,
-                comment: a.comment
+                score: parseInt(a.answer, 10) || 0,
+                comment: a.answer,
+                answer: a.answer
             })))
         }
     }, [entry, feedbackCards])
@@ -82,7 +94,8 @@ export default function EditFeedbackPage() {
             setAnswers([])
             return
         }
-        setAnswers(card.questions.map(q => ({
+        const answerQuestions = card.questions.filter(q => (q.kind ?? 'score') !== 'content')
+        setAnswers(answerQuestions.map(q => ({
             questionId: q.id,
             score: (q.kind ?? 'score') === 'score' ? 0 : 0,
             comment: (q.kind ?? 'score') === 'comment' ? '' : undefined
@@ -115,14 +128,21 @@ export default function EditFeedbackPage() {
         try {
             await updateFeedbackEntry(entry.id, {
                 type,
+                subjectType: type === 'Team Member' ? 'Employee' : 'Applicant',
                 cardId,
                 subjectId,
                 subjectName: subject?.label,
-                answers: answers.map(a => ({
-                    questionId: a.questionId,
-                    score: a.score,
-                    comment: a.comment
-                }))
+                answers: answers.map(a => {
+                    const question = selectedCard.questions.find(q => q.id === a.questionId)
+                    const kind = question?.kind ?? 'score'
+                    // Use 'answer' field for API compatibility
+                    return {
+                        questionId: a.questionId,
+                        answer: kind === 'comment' ? a.comment : String(a.score),
+                        score: a.score,
+                        comment: a.comment
+                    }
+                })
             })
             toast('Feedback updated', 'success')
             router.push('/performance/feedback')
@@ -219,14 +239,26 @@ export default function EditFeedbackPage() {
                             </div>
                             <div className="space-y-3">
                                 {selectedCard.questions.map((q, index) => {
+                                    const kind = q.kind ?? 'score'
+                                    if (kind === 'content') {
+                                        return (
+                                            <div key={q.id} className="rounded-2xl border border-slate-200 bg-white p-4">
+                                                <div className="ql-snow">
+                                                    <div
+                                                        className="ql-editor p-0 text-sm text-slate-700"
+                                                        dangerouslySetInnerHTML={{ __html: q.prompt }}
+                                                    />
+                                                </div>
+                                            </div>
+                                        )
+                                    }
                                     const current = answers.find(a => a.questionId === q.id)?.score ?? 0
                                     const commentValue = answers.find(a => a.questionId === q.id)?.comment ?? ''
-                                    const kind = q.kind ?? 'score'
-                                            return (
+                                    return (
                                         <div key={q.id} className="rounded-2xl border border-slate-200 p-4 space-y-3">
                                             <div className="flex items-center justify-between">
                                                 <p className="text-sm font-semibold text-slate-800">
-                                                    {index + 1}. {q.prompt}
+                                                    {q.prompt}
                                                 </p>
                                             </div>
                                             {kind === 'comment' ? (
@@ -253,8 +285,8 @@ export default function EditFeedbackPage() {
                                                 </div>
                                             )}
                                         </div>
-    )
-                                    })}
+                                    )
+                                })}
                                 </div>
                             </div>
                         )}

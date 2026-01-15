@@ -513,7 +513,16 @@ export default function ApplicantDetailPage() {
                         const card = cardsById.get(entry.cardId) as FeedbackCard | undefined
                         const questionById = new Map(card?.questions.map(q => [q.id, q]) || [])
                         const scoreAnswers = entry.answers.filter(a => (questionById.get(a.questionId)?.kind || 'score') === 'score')
-                        const totalScore = scoreAnswers.reduce((sum, a) => sum + a.score, 0)
+                        // Get score from API 'answer' field or 'score' field
+                        const getScore = (a: typeof entry.answers[0]) => {
+                            if (a.score !== undefined) return a.score
+                            if (a.answer) {
+                                const parsed = parseFloat(a.answer)
+                                if (!isNaN(parsed)) return parsed
+                            }
+                            return 0
+                        }
+                        const totalScore = scoreAnswers.reduce((sum, a) => sum + getScore(a), 0)
                         const maxScore = scoreAnswers.length * 5
                         const percentScore = maxScore > 0 ? Math.round((totalScore / maxScore) * 100) : 0
                         return (

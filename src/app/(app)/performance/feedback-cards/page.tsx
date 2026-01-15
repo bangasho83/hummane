@@ -13,6 +13,21 @@ import { Plus, Pencil, Trash2 } from 'lucide-react'
 export default function FeedbackCardsPage() {
     const { feedbackCards, deleteFeedbackCard } = useApp()
 
+    const getDeleteErrorMessage = (error: unknown) => {
+        if (error instanceof Error) {
+            const message = error.message?.trim()
+            if (!message) return 'Failed to delete feedback card'
+            try {
+                const parsed = JSON.parse(message) as { message?: string; action?: string }
+                const details = [parsed.message, parsed.action].filter(Boolean).join(' ')
+                return details || message
+            } catch {
+                return message
+            }
+        }
+        return 'Failed to delete feedback card'
+    }
+
     const sortedCards = useMemo(
         () => [...feedbackCards].sort((a, b) => a.title.localeCompare(b.title)),
         [feedbackCards]
@@ -21,10 +36,13 @@ export default function FeedbackCardsPage() {
     const handleDelete = async (card: FeedbackCard) => {
         if (confirm(`Delete "${card.title}"? This cannot be undone.`)) {
             try {
+                const curl = `curl -X DELETE \"$BASE_URL/feedback-cards/${card.id}\" \\\n` +
+                    `  -H \"Authorization: Bearer $TOKEN\"`
+                console.info(`Feedback card delete curl:\n${curl}`)
                 await deleteFeedbackCard(card.id)
                 toast('Feedback card deleted', 'success')
             } catch (error) {
-                toast('Failed to delete feedback card', 'error')
+                toast(getDeleteErrorMessage(error), 'error')
             }
         }
     }

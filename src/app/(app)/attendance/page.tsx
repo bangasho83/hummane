@@ -51,12 +51,16 @@ export default function AttendancePage() {
         const filteredLeaveTypes = emp
             ? leaveTypes.filter(lt => lt.employmentType === emp.employmentType)
             : []
-        if (filteredLeaveTypes.length > 0) {
-            setSelectedType(filteredLeaveTypes[0].id)
-        } else {
-            setSelectedType('')
+        // Only auto-select if there's no current selection or the current selection is invalid
+        const isCurrentSelectionValid = selectedType && filteredLeaveTypes.some(lt => lt.id === selectedType)
+        if (!isCurrentSelectionValid) {
+            if (filteredLeaveTypes.length > 0) {
+                setSelectedType(filteredLeaveTypes[0].id)
+            } else {
+                setSelectedType('')
+            }
         }
-    }, [leaveTypes, selectedEmployee, employees])
+    }, [leaveTypes, selectedEmployee, employees, selectedType])
 
     useEffect(() => {
         if (!isDialogOpen) return

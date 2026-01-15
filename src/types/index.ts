@@ -2,6 +2,7 @@ import type {
     ApplicantStatus,
     CompanySize,
     DocumentKind,
+    EmploymentMode,
     EmploymentType,
     FeedbackSubject,
     Gender,
@@ -53,6 +54,7 @@ export interface Employee {
     roleId: string
     startDate: string
     employmentType: EmploymentType
+    employmentMode: EmploymentMode
     reportingManager: string
     gender: Gender
     salary: number
@@ -77,6 +79,7 @@ export interface EmployeeApi {
     department?: string | null
     startDate?: string | null
     employmentType?: EmploymentType
+    employmentMode?: EmploymentMode
     gender?: Gender
     salary?: number | null
     createdAt?: string
@@ -162,6 +165,7 @@ export interface Job {
     departmentId?: string
     department?: string
     employmentType?: EmploymentType
+    employmentMode?: EmploymentMode
     location?: {
         city: string
         country: string
@@ -214,7 +218,7 @@ export interface Holiday {
 
 export interface FeedbackQuestion {
     id: string
-    kind: 'score' | 'comment'
+    kind: 'score' | 'comment' | 'content'
     prompt: string
     weight?: number
 }
@@ -231,19 +235,21 @@ export interface FeedbackCard {
 
 export interface FeedbackEntryAnswer {
     questionId: string
-    score: number
+    answer?: string
+    score?: number
     comment?: string
 }
 
 export interface FeedbackEntry {
     id: string
     companyId: string
-    type: FeedbackSubject
     cardId: string
+    type?: FeedbackSubject | null
+    subjectType?: string | null
     subjectId?: string
     subjectName?: string
-    authorId?: string
-    authorName?: string
+    authorId?: string | null
+    authorName?: string | null
     answers: FeedbackEntryAnswer[]
     createdAt: string
     updatedAt?: string

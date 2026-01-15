@@ -1,5 +1,7 @@
 'use client'
 
+import 'quill/dist/quill.snow.css'
+
 import { useMemo, useState } from 'react'
 import { useRouter } from 'next/navigation'
 import { Card, CardContent } from '@/components/ui/card'
@@ -54,7 +56,8 @@ export default function NewFeedbackPage() {
             setAnswers([])
             return
         }
-        setAnswers(card.questions.map(q => ({
+        const answerQuestions = card.questions.filter(q => (q.kind ?? 'score') !== 'content')
+        setAnswers(answerQuestions.map(q => ({
             questionId: q.id,
             score: (q.kind ?? 'score') === 'score' ? 0 : 0,
             comment: (q.kind ?? 'score') === 'comment' ? '' : undefined
@@ -89,19 +92,50 @@ export default function NewFeedbackPage() {
         setSaving(true)
         const subject = subjects.find(s => s.id === subjectId)
         const author = authors.find(a => a.id === authorId)
+        const apiPayload = {
+            cardId,
+            subjectType: type === 'Applicant' ? 'Applicant' : 'Employee',
+            subjectId,
+            subjectName: subject?.label,
+            answers: answers.map(answer => {
+                const kind = selectedCard.questions.find(q => q.id === answer.questionId)?.kind
+                const value = kind === 'comment'
+                    ? answer.comment || ''
+                    : Number.isFinite(answer.score)
+                        ? String(answer.score)
+                        : answer.comment || ''
+                return {
+                    questionId: answer.questionId,
+                    answer: value
+                }
+            }),
+            companyId: 'YOUR_COMPANY_ID'
+        }
         try {
+            const curl = `curl -X POST \"$BASE_URL/feedback-entries\" \\\n` +
+                `  -H \"Authorization: Bearer $TOKEN\" \\\n` +
+                `  -H \"Content-Type: application/json\" \\\n` +
+                `  -d '${JSON.stringify(apiPayload)}'`
+            console.info(`Feedback entry create curl:\n${curl}`)
             await createFeedbackEntry({
                 type,
+                subjectType: type === 'Applicant' ? 'Applicant' : 'Employee',
                 cardId,
                 subjectId,
                 subjectName: subject?.label,
                 authorId,
                 authorName: author?.label,
-                answers: answers.map(a => ({
-                    questionId: a.questionId,
-                    score: a.score,
-                    comment: a.comment
-                }))
+                answers: answers.map(a => {
+                    const question = selectedCard.questions.find(q => q.id === a.questionId)
+                    const kind = question?.kind ?? 'score'
+                    // Use 'answer' field for API compatibility
+                    return {
+                        questionId: a.questionId,
+                        answer: kind === 'comment' ? a.comment : String(a.score),
+                        score: a.score,
+                        comment: a.comment
+                    }
+                })
             })
             toast('Feedback submitted', 'success')
             router.push('/performance/feedback')
@@ -212,19 +246,28 @@ export default function NewFeedbackPage() {
 
                     {selectedCard && subjectId && (
                         <div className="space-y-4">
-                            <div>
-                                <p className="text-xs font-bold text-slate-400 uppercase tracking-widest px-1">Questions</p>
-                            </div>
                             <div className="space-y-3">
                                 {selectedCard.questions.map((q, index) => {
+                                    const kind = q.kind ?? 'score'
+                                    if (kind === 'content') {
+                                        return (
+                                            <div key={q.id} className="rounded-2xl bg-white p-2">
+                                                <div className="ql-snow">
+                                                    <div
+                                                        className="ql-editor p-0 text-sm text-slate-700"
+                                                        dangerouslySetInnerHTML={{ __html: q.prompt }}
+                                                    />
+                                                </div>
+                                            </div>
+                                        )
+                                    }
                                     const current = answers.find(a => a.questionId === q.id)?.score ?? 0
                                     const commentValue = answers.find(a => a.questionId === q.id)?.comment ?? ''
-                                    const kind = q.kind ?? 'score'
-                                            return (
+                                    return (
                                         <div key={q.id} className="rounded-2xl border border-slate-200 p-4 space-y-3">
                                             <div className="flex items-center justify-between">
                                                 <p className="text-sm font-semibold text-slate-800">
-                                                    {index + 1}. {q.prompt}
+                                                    {q.prompt}
                                                 </p>
                                             </div>
                                             {kind === 'comment' ? (
@@ -251,8 +294,8 @@ export default function NewFeedbackPage() {
                                                 </div>
                                             )}
                                         </div>
-    )
-                                    })}
+                                    )
+                                })}
                                 </div>
                             </div>
                         )}

@@ -1,5 +1,5 @@
 import { z } from 'zod'
-import { COMPANY_SIZES, EMPLOYMENT_TYPES, GENDER_OPTIONS, LEAVE_UNITS } from '@/types'
+import { COMPANY_SIZES, EMPLOYMENT_MODES, EMPLOYMENT_TYPES, GENDER_OPTIONS, LEAVE_UNITS } from '@/types'
 
 /**
  * Validation schemas for all data models in the application
@@ -79,6 +79,7 @@ export const employeeSchema = z.object({
             return d instanceof Date && !isNaN(d.getTime())
         }, 'Invalid date'),
     employmentType: z.enum(EMPLOYMENT_TYPES),
+    employmentMode: z.enum(EMPLOYMENT_MODES),
     reportingManager: z.string()
         .min(2, 'Reporting Manager is required')
         .max(100, 'Name must be less than 100 characters')

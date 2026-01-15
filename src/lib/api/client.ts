@@ -213,7 +213,9 @@ export const createEmployeeApi = async (
     email: string
     startDate: string
     employmentType: string
+    employmentMode: string
     gender: string
+    salary: number
   },
   accessToken: string
 ): Promise<Employee> => {
@@ -310,6 +312,7 @@ export const updateEmployeeApi = async (
     roleId?: string
     startDate?: string
     employmentType?: string
+    employmentMode?: string
     reportingManager?: string
     gender?: string
     salary?: number
@@ -350,6 +353,7 @@ export const updateEmployeeApi = async (
       roleId: '',
       startDate: new Date().toISOString().split('T')[0],
       employmentType: 'Full-time',
+      employmentMode: 'Onsite',
       reportingManager: 'Unassigned',
       gender: 'Prefer not to say',
       salary: 0,
@@ -996,8 +1000,30 @@ export const deleteFeedbackCardApi = async (cardId: string, accessToken: string)
   }
 
   if (!response.ok) {
-    const message = await response.text()
-    throw new Error(message || 'Failed to delete feedback card')
+    const rawText = await response.text()
+    let parsed: { message?: string; action?: string } | null = null
+    if (rawText) {
+      try {
+        parsed = JSON.parse(rawText) as { message?: string; action?: string }
+      } catch {
+        parsed = null
+      }
+    }
+    if (parsed && (parsed.message || parsed.action)) {
+      throw new Error(JSON.stringify({
+        message: parsed.message || 'Failed to delete feedback card',
+        action: parsed.action,
+        status: response.status
+      }))
+    }
+    if (response.status === 409) {
+      throw new Error(JSON.stringify({
+        message: 'Cannot delete feedback card with existing entries',
+        action: 'This card has feedback entries. Delete those entries first, then try again.',
+        status: response.status
+      }))
+    }
+    throw new Error(rawText || 'Failed to delete feedback card')
   }
 }
 
@@ -1007,17 +1033,28 @@ export const createFeedbackEntryApi = async (
     subjectType: string
     subjectId?: string
     subjectName?: string
-    answers: { questionId: string; answer: string }[]
+    type?: string
+    answers: {
+      questionId: string
+      answer: string
+      question: {
+        id: string
+        questionId: string
+        prompt: string
+        kind: 'score' | 'comment' | 'content'
+        weight?: number
+      }
+    }[]
     companyId: string
   },
   accessToken: string
 ): Promise<FeedbackEntry> => {
   console.info(
-    `Feedback entry create curl:\n` +
+    `\n📋 Feedback Entry Create - Copy this curl command:\n\n` +
       `curl -X POST "${FEEDBACK_ENTRIES_PATH}" \\\n` +
       `  -H "Authorization: Bearer ${accessToken}" \\\n` +
       `  -H "Content-Type: application/json" \\\n` +
-      `  -d '${JSON.stringify(payload)}'`
+      `  -d '${JSON.stringify(payload, null, 2)}'\n`
   )
   let response: Response
   try {
@@ -1236,6 +1273,7 @@ export const createJobApi = async (
     title: string
     status: string
     employmentType?: string
+    employmentMode?: string
     departmentId?: string
     salaryFrom?: number
     salaryTo?: number
@@ -1322,6 +1360,7 @@ export const updateJobApi = async (
     companyId: string
     title?: string
     employmentType?: string
+    employmentMode?: string
     departmentId?: string
     salaryFrom?: number
     salaryTo?: number
@@ -1356,6 +1395,7 @@ export const updateJobApi = async (
       companyId: payload.companyId,
       title: payload.title || 'Job',
       employmentType: payload.employmentType as Job['employmentType'],
+      employmentMode: payload.employmentMode as Job['employmentMode'],
       salary: { min: 0, max: 0, currency: 'USD' },
       experience: '',
       status: (payload.status as Job['status']) || 'open',

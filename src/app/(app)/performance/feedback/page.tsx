@@ -40,7 +40,9 @@ export default function FeedbackPage() {
                 || entry.id.toLowerCase().includes(searchTerm.toLowerCase())
                 || (entry.subjectName || '').toLowerCase().includes(searchTerm.toLowerCase())
                 || (card?.title || '').toLowerCase().includes(searchTerm.toLowerCase())
-            const matchesType = typeFilter === 'all' || entry.type === typeFilter
+            // Use subjectType for filtering since type can be null from API
+            const entryType = entry.type || (entry.subjectType === 'Employee' ? 'Team Member' : entry.subjectType === 'Applicant' ? 'Applicant' : null)
+            const matchesType = typeFilter === 'all' || entryType === typeFilter
             const matchesCard = cardFilter === 'all' || entry.cardId === cardFilter
             return matchesSearch && matchesType && matchesCard
         })
@@ -140,11 +142,10 @@ export default function FeedbackPage() {
                     <Table>
                         <TableHeader className="bg-slate-50/50">
                             <TableRow className="hover:bg-transparent border-slate-100">
-                                <TableHead className="pl-8 py-4 text-[10px] font-extrabold uppercase tracking-widest text-slate-400">ID</TableHead>
-                                <TableHead className="py-4 text-[10px] font-extrabold uppercase tracking-widest text-slate-400">Type</TableHead>
+                                <TableHead className="pl-8 py-4 text-[10px] font-extrabold uppercase tracking-widest text-slate-400">View Feedback</TableHead>
+                                <TableHead className="py-4 text-[10px] font-extrabold uppercase tracking-widest text-slate-400">Card</TableHead>
                                 <TableHead className="py-4 text-[10px] font-extrabold uppercase tracking-widest text-slate-400">Recipient</TableHead>
                                 <TableHead className="py-4 text-[10px] font-extrabold uppercase tracking-widest text-slate-400">From</TableHead>
-                                <TableHead className="py-4 text-[10px] font-extrabold uppercase tracking-widest text-slate-400">Card</TableHead>
                                 <TableHead className="py-4 text-[10px] font-extrabold uppercase tracking-widest text-slate-400">Date</TableHead>
                                 <TableHead className="text-right pr-8 py-4 text-[10px] font-extrabold uppercase tracking-widest text-slate-400">Actions</TableHead>
                             </TableRow>
@@ -152,25 +153,24 @@ export default function FeedbackPage() {
                         <TableBody>
                             {filteredEntries.length === 0 ? (
                                 <TableRow>
-                                    <TableCell colSpan={7} className="py-12 text-center text-slate-500">
+                                    <TableCell colSpan={6} className="py-12 text-center text-slate-500">
                                         {feedbackEntries.length === 0 ? 'No feedback submitted yet.' : 'No matches for the selected filters.'}
                                     </TableCell>
                                 </TableRow>
                             ) : (
                                 filteredEntries.map((entry) => {
                                     const card = cardsById.get(entry.cardId) as FeedbackCard | undefined
-                                    const isIncomplete = card
-                                        ? card.questions.some((q) => {
-                                            const kind = q.kind ?? 'score'
-                                            const answer = entry.answers.find(a => a.questionId === q.id)
-                                            if (!answer) return true
-                                            if (kind === 'comment') return !answer.comment?.trim()
-                                            return answer.score < 1 || answer.score > 5
-                                        })
-                                        : false
-                                            return (
+                                    // Complete if all answers with kind 'score' have answer value > 0
+                                    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+                                    const scoreAnswers = entry.answers.filter((a: any) => a.question?.kind === 'score')
+                                    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+                                    const isIncomplete = scoreAnswers.some((a: any) => {
+                                        const value = parseInt(a.answer, 10)
+                                        return isNaN(value) || value <= 0
+                                    })
+                                    return (
                                         <TableRow key={entry.id} className="hover:bg-slate-50/50 border-slate-50">
-                                            <TableCell className="pl-8 py-5 text-xs font-mono">
+                                            <TableCell className="pl-8 py-5">
                                                 <Link
                                                     href={`/performance/feedback/${entry.id}`}
                                                     onClick={() => {
@@ -178,14 +178,14 @@ export default function FeedbackPage() {
                                                             sessionStorage.setItem('feedbackDetailBack', pathname)
                                                         }
                                                     }}
-                                                    className="text-slate-500 hover:text-blue-600"
+                                                    className="inline-flex items-center gap-2 text-sm font-semibold text-blue-600 hover:text-blue-700"
                                                 >
-                                                    {entry.id}
+                                                    View Feedback
                                                 </Link>
                                             </TableCell>
-                                            <TableCell className="py-5 text-sm font-medium text-slate-600">
+                                            <TableCell className="py-5 text-sm text-slate-600">
                                                 <div className="flex items-center gap-2">
-                                                    <span>{entry.type}</span>
+                                                    <span>{card?.title || 'Unknown'}</span>
                                                     {isIncomplete && (
                                                         <span className="text-[10px] font-bold uppercase tracking-widest px-2 py-1 rounded-full bg-yellow-100 text-yellow-700">
                                                             Incomplete
@@ -198,9 +198,6 @@ export default function FeedbackPage() {
                                             </TableCell>
                                             <TableCell className="py-5 text-sm font-medium text-slate-600">
                                                 {entry.authorName || '—'}
-                                            </TableCell>
-                                            <TableCell className="py-5 text-sm text-slate-600">
-                                                {card?.title || 'Unknown'}
                                             </TableCell>
                                             <TableCell className="py-5 text-sm text-slate-500">
                                                 {new Date(entry.createdAt).toLocaleDateString()}
@@ -216,13 +213,13 @@ export default function FeedbackPage() {
                                                 </Button>
                                             </TableCell>
                                         </TableRow>
-    )
-                                    })
+                                    )
+                                })
                                 )}
                             </TableBody>
                         </Table>
-                    </CardContent>
-                </Card>
-            </div>
-)
+                </CardContent>
+            </Card>
+        </div>
+    )
 }

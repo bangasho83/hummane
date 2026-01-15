@@ -1,4 +1,4 @@
-import type { User, Company, Employee, Department, DataStoreSchema, LeaveRecord, Role, Job, Applicant, LeaveType, Holiday, FeedbackCard, FeedbackEntry } from '@/types'
+import type { User, Company, Employee, Department, DataStoreSchema, LeaveRecord, Role, Job, Applicant, LeaveType, Holiday, FeedbackCard, FeedbackEntry, FeedbackQuestion } from '@/types'
 import type { EmployeeDocument, DocumentKind } from '@/types'
 import { hashPassword, verifyPassword, sanitizeInput, sanitizeEmail, sanitizeRichText } from '@/lib/security/crypto'
 
@@ -390,6 +390,7 @@ export class DataStore {
                 roleId: sanitizedRoleId,
                 startDate: employeeData.startDate,
                 employmentType: employeeData.employmentType,
+                employmentMode: employeeData.employmentMode,
                 reportingManager: sanitizedManager,
                 gender: employeeData.gender,
                 salary: employeeData.salary,
@@ -413,9 +414,10 @@ export class DataStore {
                     ...emp,
                     // Backfill legacy records so UI/validation is consistent
                     employeeId: emp.employeeId || `LEGACY-${emp.id}`,
-                employmentType: emp.employmentType || 'Full-time',
-                reportingManager: emp.reportingManager || 'Unassigned',
-                gender: emp.gender || 'Prefer not to say'
+                    employmentType: emp.employmentType || 'Full-time',
+                    employmentMode: emp.employmentMode || 'Onsite',
+                    reportingManager: emp.reportingManager || 'Unassigned',
+                    gender: emp.gender || 'Prefer not to say'
                 }))
         } catch (error) {
             console.error('Error getting employees:', error)
@@ -451,6 +453,7 @@ export class DataStore {
             if (employeeData.roleId !== undefined) sanitizedData.roleId = sanitizeInput(employeeData.roleId)
             if (employeeData.startDate !== undefined) sanitizedData.startDate = employeeData.startDate
             if (employeeData.employmentType !== undefined) sanitizedData.employmentType = employeeData.employmentType
+            if (employeeData.employmentMode !== undefined) sanitizedData.employmentMode = employeeData.employmentMode
             if (employeeData.gender !== undefined) sanitizedData.gender = employeeData.gender
             if (employeeData.salary !== undefined) {
                 if (employeeData.salary < 0 || !isFinite(employeeData.salary)) {
@@ -511,6 +514,7 @@ export class DataStore {
                 roleId: sanitizeInput(employee.roleId || ''),
                 startDate: employee.startDate || new Date().toISOString().split('T')[0],
                 employmentType: employee.employmentType || 'Full-time',
+                employmentMode: employee.employmentMode || 'Onsite',
                 reportingManager: sanitizeInput(employee.reportingManager || 'Unassigned'),
                 gender: employee.gender || 'Prefer not to say',
                 salary: Number.isFinite(employee.salary) ? employee.salary : 0,
@@ -552,6 +556,7 @@ export class DataStore {
                     roleId: sanitizeInput(employee.roleId || ''),
                     startDate: employee.startDate || new Date().toISOString().split('T')[0],
                     employmentType: employee.employmentType || 'Full-time',
+                    employmentMode: employee.employmentMode || 'Onsite',
                     reportingManager: sanitizeInput(employee.reportingManager || 'Unassigned'),
                     gender: employee.gender || 'Prefer not to say',
                     salary: Number.isFinite(employee.salary) ? employee.salary : 0,
@@ -1172,11 +1177,12 @@ export class DataStore {
             const subject = cardData.subject === 'Applicant' ? 'Applicant' : 'Team Member'
             const questions = cardData.questions.map((q) => {
                 const rawWeight = q.weight
+                const kind = (q.kind === 'comment' ? 'comment' : q.kind === 'content' ? 'content' : 'score') as FeedbackQuestion['kind']
                 return {
                     id: q.id || this.generateId(),
-                    kind: (q.kind === 'comment' ? 'comment' : 'score') as 'comment' | 'score',
-                    prompt: sanitizeInput(q.prompt),
-                    weight: q.kind === 'score' && typeof rawWeight === 'number' && Number.isFinite(rawWeight)
+                    kind,
+                    prompt: kind === 'content' ? sanitizeRichText(q.prompt) : sanitizeInput(q.prompt),
+                    weight: kind === 'score' && typeof rawWeight === 'number' && Number.isFinite(rawWeight)
                         ? Math.max(0, Math.round(rawWeight))
                         : undefined
                 }
@@ -1222,11 +1228,12 @@ export class DataStore {
             const questions = updates.questions
                 ? updates.questions.map((q) => {
                     const rawWeight = q.weight
+                    const kind = (q.kind === 'comment' ? 'comment' : q.kind === 'content' ? 'content' : 'score') as FeedbackQuestion['kind']
                     return {
                         id: q.id || this.generateId(),
-                        kind: (q.kind === 'comment' ? 'comment' : 'score') as 'comment' | 'score',
-                        prompt: sanitizeInput(q.prompt),
-                        weight: q.kind === 'score' && typeof rawWeight === 'number' && Number.isFinite(rawWeight)
+                        kind,
+                        prompt: kind === 'content' ? sanitizeRichText(q.prompt) : sanitizeInput(q.prompt),
+                        weight: kind === 'score' && typeof rawWeight === 'number' && Number.isFinite(rawWeight)
                             ? Math.max(0, Math.round(rawWeight))
                             : undefined
                     }
@@ -1270,11 +1277,13 @@ export class DataStore {
             const subject = card.subject === 'Applicant' ? 'Applicant' : 'Team Member'
             const questions = (card.questions || []).map((q) => {
                 const rawWeight = q.weight
+                const kind = (q.kind === 'comment' ? 'comment' : q.kind === 'content' ? 'content' : 'score') as FeedbackQuestion['kind']
+                const prompt = kind === 'content' ? sanitizeRichText(q.prompt || '') : sanitizeInput(q.prompt || '')
                 return {
                     id: q.id || this.generateId(),
-                    kind: (q.kind === 'comment' ? 'comment' : 'score') as 'comment' | 'score',
-                    prompt: sanitizeInput(q.prompt || ''),
-                    weight: q.kind === 'score' && typeof rawWeight === 'number' && Number.isFinite(rawWeight)
+                    kind,
+                    prompt,
+                    weight: kind === 'score' && typeof rawWeight === 'number' && Number.isFinite(rawWeight)
                         ? Math.max(0, Math.round(rawWeight))
                         : undefined
                 }
@@ -1312,11 +1321,13 @@ export class DataStore {
                 const subject: FeedbackCard['subject'] = card.subject === 'Applicant' ? 'Applicant' : 'Team Member'
                 const questions = (card.questions || []).map((q) => {
                     const rawWeight = q.weight
+                    const kind = (q.kind === 'comment' ? 'comment' : q.kind === 'content' ? 'content' : 'score') as FeedbackQuestion['kind']
+                    const prompt = kind === 'content' ? sanitizeRichText(q.prompt || '') : sanitizeInput(q.prompt || '')
                     return {
                         id: q.id || this.generateId(),
-                        kind: (q.kind === 'comment' ? 'comment' : 'score') as 'comment' | 'score',
-                        prompt: sanitizeInput(q.prompt || ''),
-                        weight: q.kind === 'score' && typeof rawWeight === 'number' && Number.isFinite(rawWeight)
+                        kind,
+                        prompt,
+                        weight: kind === 'score' && typeof rawWeight === 'number' && Number.isFinite(rawWeight)
                             ? Math.max(0, Math.round(rawWeight))
                             : undefined
                     }
@@ -1345,20 +1356,18 @@ export class DataStore {
             const data = this.getData()
             if (!data.feedbackEntries) data.feedbackEntries = []
 
+            // Use raw data without transformation
             const entry: FeedbackEntry = {
                 id: this.generateId(),
                 companyId,
-                type: entryData.type === 'Applicant' ? 'Applicant' : 'Team Member',
                 cardId: entryData.cardId,
+                type: entryData.type,
+                subjectType: entryData.subjectType,
                 subjectId: entryData.subjectId,
-                subjectName: entryData.subjectName ? sanitizeInput(entryData.subjectName) : undefined,
+                subjectName: entryData.subjectName,
                 authorId: entryData.authorId,
-                authorName: entryData.authorName ? sanitizeInput(entryData.authorName) : undefined,
-                answers: entryData.answers.map((a) => ({
-                    questionId: a.questionId,
-                    score: Number.isFinite(a.score) ? Math.min(5, Math.max(0, Math.round(a.score))) : 0,
-                    comment: a.comment ? sanitizeInput(a.comment) : undefined
-                })),
+                authorName: entryData.authorName,
+                answers: entryData.answers,
                 createdAt: new Date().toISOString()
             }
 
@@ -1399,24 +1408,11 @@ export class DataStore {
             if (index === -1) return null
 
             const existing = data.feedbackEntries[index]
-            const type = updates.type ? (updates.type === 'Applicant' ? 'Applicant' : 'Team Member') : existing.type
-            const answers = updates.answers
-                ? updates.answers.map((a) => ({
-                    questionId: a.questionId,
-                    score: Number.isFinite(a.score) ? Math.min(5, Math.max(0, Math.round(a.score))) : 0,
-                    comment: a.comment ? sanitizeInput(a.comment) : undefined
-                }))
-                : existing.answers
 
+            // Use raw data without transformation
             const updated: FeedbackEntry = {
                 ...existing,
-                type,
-                cardId: updates.cardId ?? existing.cardId,
-                subjectId: updates.subjectId ?? existing.subjectId,
-                subjectName: updates.subjectName !== undefined ? sanitizeInput(updates.subjectName) : existing.subjectName,
-                authorId: updates.authorId ?? existing.authorId,
-                authorName: updates.authorName !== undefined ? sanitizeInput(updates.authorName) : existing.authorName,
-                answers,
+                ...updates,
                 updatedAt: new Date().toISOString()
             }
 
@@ -1434,28 +1430,15 @@ export class DataStore {
             const data = this.getData()
             if (!data.feedbackEntries) data.feedbackEntries = []
 
-            const normalized: FeedbackEntry = {
-                ...entry,
-                type: entry.type === 'Applicant' ? 'Applicant' : 'Team Member',
-                subjectName: entry.subjectName ? sanitizeInput(entry.subjectName) : undefined,
-                authorName: entry.authorName ? sanitizeInput(entry.authorName) : undefined,
-                answers: (entry.answers || []).map((a) => ({
-                    questionId: a.questionId,
-                    score: Number.isFinite(a.score) ? Math.min(5, Math.max(0, Math.round(a.score))) : 0,
-                    comment: a.comment ? sanitizeInput(a.comment) : undefined
-                })),
-                createdAt: entry.createdAt || new Date().toISOString(),
-                updatedAt: entry.updatedAt || entry.createdAt || new Date().toISOString()
-            }
-
+            // Use raw API response without transformation
             const index = data.feedbackEntries.findIndex(existing => existing.id === entry.id)
             if (index >= 0) {
-                data.feedbackEntries[index] = normalized
+                data.feedbackEntries[index] = entry
             } else {
-                data.feedbackEntries.push(normalized)
+                data.feedbackEntries.push(entry)
             }
             this.saveData(data)
-            return normalized
+            return entry
         } catch (error) {
             console.error('Error upserting feedback entry:', error)
             throw error
@@ -1467,21 +1450,8 @@ export class DataStore {
             const data = this.getData()
             const existing = data.feedbackEntries || []
             const preserved = existing.filter(entry => entry.companyId !== companyId)
-            const normalized: FeedbackEntry[] = entries.map((entry) => ({
-                ...entry,
-                companyId: entry.companyId || companyId,
-                type: (entry.type === 'Applicant' ? 'Applicant' : 'Team Member') as FeedbackEntry['type'],
-                subjectName: entry.subjectName ? sanitizeInput(entry.subjectName) : undefined,
-                authorName: entry.authorName ? sanitizeInput(entry.authorName) : undefined,
-                answers: (entry.answers || []).map((a) => ({
-                    questionId: a.questionId,
-                    score: Number.isFinite(a.score) ? Math.min(5, Math.max(0, Math.round(a.score))) : 0,
-                    comment: a.comment ? sanitizeInput(a.comment) : undefined
-                })),
-                createdAt: entry.createdAt || new Date().toISOString(),
-                updatedAt: entry.updatedAt || entry.createdAt || new Date().toISOString()
-            }))
-            data.feedbackEntries = [...preserved, ...normalized]
+            // Use raw API response without transformation
+            data.feedbackEntries = [...preserved, ...entries]
             this.saveData(data)
             return data.feedbackEntries
         } catch (error) {
@@ -1731,6 +1701,7 @@ export class DataStore {
                 departmentId: jobData.departmentId,
                 department: jobData.department ? sanitizeInput(jobData.department) : undefined,
                 employmentType: jobData.employmentType,
+                employmentMode: jobData.employmentMode,
                 location: jobData.location
                     ? {
                         city: sanitizeInput(jobData.location.city),
@@ -1770,6 +1741,7 @@ export class DataStore {
                 departmentId: jobData.departmentId ?? data.jobs[jobIndex].departmentId,
                 department: jobData.department ? sanitizeInput(jobData.department) : data.jobs[jobIndex].department,
                 employmentType: jobData.employmentType ?? data.jobs[jobIndex].employmentType,
+                employmentMode: jobData.employmentMode ?? data.jobs[jobIndex].employmentMode,
                 location: jobData.location
                     ? {
                         city: sanitizeInput(jobData.location.city),

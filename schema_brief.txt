@@ -27,10 +27,10 @@ Entities (from `schema.json`)
 - User: id, name, email, password (hashed), companyId?, createdAt
 - Company: id, name, industry, size, currency?, ownerId, createdAt
 - Employee: id, employeeId, companyId, name, email, position, department, roleId, startDate,
-  employmentType, reportingManager, gender, salary, createdAt, updatedAt?
+  employmentType, employmentMode, reportingManager, gender, salary, createdAt, updatedAt?
 - Department: id, companyId, name, description?, createdAt
 - Role: id, companyId, title, description, createdAt
-- Job: id, companyId, title, roleId?, department?, employmentType?, location?, salary, experience, status, createdAt, updatedAt?
+- Job: id, companyId, title, roleId?, department?, employmentType?, employmentMode, location?, salary, experience, status, createdAt, updatedAt?
 - Applicant: id, companyId, jobId?, fullName, email, phone, positionApplied, yearsOfExperience,
   currentSalary, expectedSalary, noticePeriod, resumeFile?, linkedinUrl?, status, appliedDate, createdAt, updatedAt?
 - LeaveType: id, companyId, name, code, unit, quota, employmentType, createdAt, updatedAt?
@@ -41,7 +41,8 @@ Entities (from `schema.json`)
 - EmployeeDocument: id, employeeId, name, type, dataUrl, uploadedAt
 
 Enums
-- EmploymentType: Contract | Full-time | Intern | Part-time
+- EmploymentType: Contract | Full-time | Intern | Part-time | Probation
+- EmploymentMode: Onsite | Hybrid | Remote
 - Gender: Male | Female | Non-binary | Prefer not to say
 - LeaveUnit: Day | Hour
 - JobStatus: open | closed

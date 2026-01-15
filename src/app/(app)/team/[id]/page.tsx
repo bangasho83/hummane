@@ -152,6 +152,7 @@ export default function EmployeeProfilePage() {
                             <InfoRow label="Position" value={employee.roleName || employee.position || '—'} />
                             <InfoRow label="Manager" value={employee.reportingManager} />
                             <InfoRow label="Employment Type" value={employee.employmentType} />
+                            <InfoRow label="Employment Mode" value={employee.employmentMode || '—'} />
                             <InfoRow label="Joining Date" value={formatDate(employee.startDate)} />
                             <InfoRow label="Gender" value={employee.gender} />
                             <InfoRow label="Monthly Salary" value={formatCurrency(employee.salary ?? 0, currentCompany?.currency)} />

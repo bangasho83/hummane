@@ -9,12 +9,22 @@ import { toast } from '@/components/ui/toast'
 
 export default function NewFeedbackCardPage() {
     const router = useRouter()
-    const { createFeedbackCard } = useApp()
+    const { createFeedbackCard, currentCompany } = useApp()
     const [saving, setSaving] = useState(false)
 
-    const handleSave = async (payload: { title: string; subject: 'Team Member' | 'Applicant'; questions: { id: string; kind: 'score' | 'comment'; prompt: string; weight?: number }[] }) => {
+    const handleSave = async (payload: { title: string; subject: 'Team Member' | 'Applicant'; questions: { id: string; kind: 'score' | 'comment' | 'content'; prompt: string; weight?: number }[] }) => {
         setSaving(true)
         try {
+            const apiPayload = {
+                title: payload.title,
+                subject: payload.subject,
+                questions: payload.questions.map(question => ({
+                    prompt: question.prompt,
+                    type: question.kind === 'comment' ? 'text' : question.kind === 'content' ? 'content' : 'score',
+                    weight: question.kind === 'score' ? question.weight : undefined
+                })),
+                companyId: currentCompany?.id || 'YOUR_COMPANY_ID'
+            }
             await createFeedbackCard(payload)
             toast('Feedback card created', 'success')
             router.push('/performance/feedback-cards')

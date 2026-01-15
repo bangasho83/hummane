@@ -25,6 +25,8 @@ const dayKeys = [
 
 type DayLabel = typeof dayKeys[number]['label']
 type ScheduleRow = { day: DayLabel; open: boolean; start: string; end: string }
+type SettingsField = 'companyName' | 'timezone' | 'industry' | 'currency'
+type SettingsErrors = Partial<Record<SettingsField, string>>
 
 const to12Hour = (time: string) => {
     const trimmed = time.trim()
@@ -49,14 +51,22 @@ const to24Hour = (time: string) => {
     return `${String(normalized).padStart(2, '0')}:${minute}`
 }
 
+const formatHolidayDate = (value: string) => {
+    const trimmed = value.trim()
+    if (!trimmed) return ''
+    return trimmed.split('T')[0] || trimmed
+}
+
 export function GeneralTab() {
     const { currentCompany, updateCompany, holidays, createHoliday, deleteHoliday } = useApp()
     const [timezones, setTimezones] = useState<string[]>(fallbackTimezones)
     const [timezone, setTimezone] = useState('')
+    const [companyName, setCompanyName] = useState('')
     const [industry, setIndustry] = useState('')
     const [currency, setCurrency] = useState('')
     const [isEditingSettings, setIsEditingSettings] = useState(false)
     const [settingsLoading, setSettingsLoading] = useState(false)
+    const [settingsErrors, setSettingsErrors] = useState<SettingsErrors>({})
     const [schedule, setSchedule] = useState<ScheduleRow[]>([])
     const [holidayRows, setHolidayRows] = useState([{ date: '', name: '' }])
     const [isHolidayDialogOpen, setIsHolidayDialogOpen] = useState(false)
@@ -87,6 +97,7 @@ export function GeneralTab() {
 
     useEffect(() => {
         if (!currentCompany || isEditingSettings) return
+        setCompanyName(currentCompany.name || '')
         setCurrency(currentCompany.currency || '')
         setIndustry(currentCompany.industry || '')
         if (currentCompany.timezone) {
@@ -114,20 +125,75 @@ export function GeneralTab() {
 
     const handleCurrencyChange = (value: string) => {
         setCurrency(value)
+        if (settingsErrors.currency) {
+            setSettingsErrors((prev) => {
+                const next = { ...prev }
+                delete next.currency
+                return next
+            })
+        }
     }
 
     const handleIndustryChange = (value: string) => {
         setIndustry(value)
+        if (settingsErrors.industry) {
+            setSettingsErrors((prev) => {
+                const next = { ...prev }
+                delete next.industry
+                return next
+            })
+        }
+    }
+
+    const handleTimezoneChange = (value: string) => {
+        setTimezone(value)
+        if (settingsErrors.timezone) {
+            setSettingsErrors((prev) => {
+                const next = { ...prev }
+                delete next.timezone
+                return next
+            })
+        }
+    }
+
+    const handleCompanyNameChange = (value: string) => {
+        setCompanyName(value)
+        if (settingsErrors.companyName) {
+            setSettingsErrors((prev) => {
+                const next = { ...prev }
+                delete next.companyName
+                return next
+            })
+        }
     }
 
     const handleSaveSettings = async () => {
         if (!currentCompany) return
+        const trimmedName = companyName.trim()
+        const trimmedTimezone = timezone.trim()
+        const trimmedIndustry = industry.trim()
+        const trimmedCurrency = currency.trim()
+        const nextErrors: SettingsErrors = {}
+
+        if (!trimmedName) nextErrors.companyName = 'Company name is required'
+        if (!trimmedTimezone) nextErrors.timezone = 'Timezone is required'
+        if (!trimmedIndustry) nextErrors.industry = 'Industry is required'
+        if (!trimmedCurrency) nextErrors.currency = 'Currency is required'
+
+        if (Object.keys(nextErrors).length > 0) {
+            setSettingsErrors(nextErrors)
+            toast('Please fill in all required fields', 'error')
+            return
+        }
+
         setSettingsLoading(true)
+        setSettingsErrors({})
         try {
             await updateCompany(currentCompany.id, {
-                industry,
-                currency,
-                timezone
+                name: trimmedName,
+                industry: trimmedIndustry,
+                currency: trimmedCurrency,
+                timezone: trimmedTimezone
             })
             toast('Company settings updated', 'success')
             setIsEditingSettings(false)
@@ -140,10 +206,12 @@ export function GeneralTab() {
 
     const handleCancelSettings = () => {
         if (currentCompany) {
+            setCompanyName(currentCompany.name || '')
             setIndustry(currentCompany.industry || '')
             setCurrency(currentCompany.currency || '')
             setTimezone(currentCompany.timezone || '')
         }
+        setSettingsErrors({})
         setIsEditingSettings(false)
     }
 
@@ -300,7 +368,10 @@ export function GeneralTab() {
                                     type="button"
                                     variant="outline"
                                     className="rounded-xl border-slate-200"
-                                    onClick={() => setIsEditingSettings(true)}
+                                    onClick={() => {
+                                        setIsEditingSettings(true)
+                                        setSettingsErrors({})
+                                    }}
                                 >
                                     Edit
                                 </Button>
@@ -308,10 +379,30 @@ export function GeneralTab() {
                         </div>
 
                         <div className="space-y-2">
+                            <Label className="text-sm font-bold text-slate-700 px-1">Company Name</Label>
+                            {isEditingSettings ? (
+                                <Input
+                                    value={companyName}
+                                    onChange={(e) => handleCompanyNameChange(e.target.value)}
+                                    className={`h-12 rounded-xl border-slate-200 ${settingsErrors.companyName ? 'border-red-500' : ''}`}
+                                    placeholder="Enter company name"
+                                    required
+                                />
+                            ) : (
+                                <div className="h-12 rounded-xl border border-slate-200 bg-slate-50 px-4 flex items-center text-sm font-medium text-slate-700">
+                                    {companyName || 'Not set'}
+                                </div>
+                            )}
+                            {isEditingSettings && settingsErrors.companyName && (
+                                <p className="text-xs text-red-600 mt-1">{settingsErrors.companyName}</p>
+                            )}
+                        </div>
+
+                        <div className="space-y-2">
                             <Label className="text-sm font-bold text-slate-700 px-1">Timezone</Label>
                             {isEditingSettings ? (
-                                <Select value={timezone} onValueChange={setTimezone}>
-                                    <SelectTrigger className="h-12 rounded-xl border-slate-200">
+                                <Select value={timezone} onValueChange={handleTimezoneChange}>
+                                    <SelectTrigger className={`h-12 rounded-xl border-slate-200 ${settingsErrors.timezone ? 'border-red-500' : ''}`}>
                                         <SelectValue placeholder="Select timezone" />
                                     </SelectTrigger>
                                     <SelectContent>
@@ -327,13 +418,16 @@ export function GeneralTab() {
                                     {timezone || 'Not set'}
                                 </div>
                             )}
+                            {isEditingSettings && settingsErrors.timezone && (
+                                <p className="text-xs text-red-600 mt-1">{settingsErrors.timezone}</p>
+                            )}
                         </div>
 
                         <div className="space-y-2">
                             <Label className="text-sm font-bold text-slate-700 px-1">Industry</Label>
                             {isEditingSettings ? (
                                 <Select value={industry} onValueChange={handleIndustryChange}>
-                                    <SelectTrigger className="h-12 rounded-xl border-slate-200">
+                                    <SelectTrigger className={`h-12 rounded-xl border-slate-200 ${settingsErrors.industry ? 'border-red-500' : ''}`}>
                                         <SelectValue placeholder="Select industry" />
                                     </SelectTrigger>
                                     <SelectContent>
@@ -351,13 +445,16 @@ export function GeneralTab() {
                                     {industry || 'Not set'}
                                 </div>
                             )}
+                            {isEditingSettings && settingsErrors.industry && (
+                                <p className="text-xs text-red-600 mt-1">{settingsErrors.industry}</p>
+                            )}
                         </div>
 
                         <div className="space-y-2">
                             <Label className="text-sm font-bold text-slate-700 px-1">Currency</Label>
                             {isEditingSettings ? (
                                 <Select value={currency} onValueChange={handleCurrencyChange}>
-                                    <SelectTrigger className="h-12 rounded-xl border-slate-200">
+                                    <SelectTrigger className={`h-12 rounded-xl border-slate-200 ${settingsErrors.currency ? 'border-red-500' : ''}`}>
                                         <SelectValue placeholder="Select currency" />
                                     </SelectTrigger>
                                     <SelectContent>
@@ -370,6 +467,9 @@ export function GeneralTab() {
                                 <div className="h-12 rounded-xl border border-slate-200 bg-slate-50 px-4 flex items-center text-sm font-medium text-slate-700">
                                     {currency || 'Not set'}
                                 </div>
+                            )}
+                            {isEditingSettings && settingsErrors.currency && (
+                                <p className="text-xs text-red-600 mt-1">{settingsErrors.currency}</p>
                             )}
                         </div>
                     </CardContent>
@@ -548,7 +648,7 @@ export function GeneralTab() {
                                 >
                                     <CalendarIcon className="w-4 h-4" />
                                     <span>{h.name}</span>
-                                    <span className="text-xs text-blue-500">{h.date}</span>
+                                    <span className="text-xs text-blue-500">{formatHolidayDate(h.date)}</span>
                                     <button
                                         type="button"
                                         onClick={() => removeHoliday(h.id)}

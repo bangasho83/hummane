@@ -154,8 +154,50 @@ export function AppProvider({ children }: { children: ReactNode }) {
     const [companyApiResponse, setCompanyApiResponse] = useState<Company | null>(null)
     const [apiCompanyId, setApiCompanyId] = useState<string | null>(null)
 
+    const loadCompanyDataFromApi = async (company: Company, accessToken: string) => {
+        setCurrentCompany(company)
+        try {
+            const [
+                apiEmployees,
+                apiDepartments,
+                apiLeaves,
+                apiLeaveTypes,
+                apiHolidays,
+                apiFeedbackCards,
+                apiFeedbackEntries,
+                apiRoles,
+                apiJobs,
+                apiApplicants
+            ] = await Promise.all([
+                fetchEmployeesApi(accessToken),
+                fetchDepartmentsApi(company.id, accessToken),
+                fetchLeavesApi(accessToken),
+                fetchLeaveTypesApi(accessToken),
+                fetchHolidaysApi(accessToken),
+                fetchFeedbackCardsApi(accessToken),
+                fetchFeedbackEntriesApi(accessToken),
+                fetchRolesApi(accessToken),
+                fetchJobsApi(accessToken),
+                fetchApplicantsApi(accessToken)
+            ])
+            setEmployees(apiEmployees.map(emp => normalizeEmployee(emp, company.id)))
+            setDepartments(apiDepartments.map(dept => normalizeDepartment(dept, company.id)))
+            setLeaves(apiLeaves.map(leave => normalizeLeave(leave, company.id)))
+            setLeaveTypes(apiLeaveTypes.map(lt => normalizeLeaveType(lt, company.id)))
+            setHolidays(apiHolidays.map(h => normalizeHoliday(h, company.id)))
+            setFeedbackCards(apiFeedbackCards.map(card => normalizeFeedbackCard(card, company.id)))
+            setFeedbackEntries(apiFeedbackEntries.map(entry => normalizeFeedbackEntry(entry, company.id)))
+            setRoles(apiRoles.map(role => normalizeRole(role, company.id)))
+            setJobs(apiJobs.map(job => normalizeJob(job, company.id)))
+            setApplicants(apiApplicants.map(app => normalizeApplicant(app, company.id)))
+        } catch (error) {
+            console.error('Error loading company data from API:', error)
+        }
+    }
+
     const loadCompanyData = (company: Company) => {
         setCurrentCompany(company)
+        // Legacy local store loading - only used as fallback when no API access
         setEmployees(dataStore.getEmployeesByCompanyId(company.id))
         setDepartments(dataStore.getDepartmentsByCompanyId(company.id))
         setLeaves(dataStore.getLeavesByCompanyId(company.id))
@@ -297,6 +339,7 @@ export function AppProvider({ children }: { children: ReactNode }) {
             departmentId: job.departmentId ?? fallback.departmentId,
             department: job.department ?? fallback.department,
             employmentType: job.employmentType ?? fallback.employmentType,
+            employmentMode: job.employmentMode ?? fallback.employmentMode,
             location: job.location ?? fallback.location,
             salary,
             experience: job.experience ?? fallback.experience ?? '',
@@ -376,7 +419,11 @@ export function AppProvider({ children }: { children: ReactNode }) {
             const fallbackQuestion = fallback.questions?.[index]
             const rawKind = (question as { kind?: string; type?: string }).kind || (question as { type?: string }).type
             const kind: FeedbackQuestion['kind'] =
-                rawKind === 'comment' || rawKind === 'text' ? 'comment' : 'score'
+                rawKind === 'comment' || rawKind === 'text'
+                    ? 'comment'
+                    : rawKind === 'content'
+                        ? 'content'
+                        : 'score'
             const weight = kind === 'score'
                 ? question.weight ?? fallbackQuestion?.weight ?? 1
                 : undefined
@@ -409,67 +456,22 @@ export function AppProvider({ children }: { children: ReactNode }) {
     const normalizeFeedbackEntry = (
         entry: Partial<FeedbackEntry>,
         companyId: string,
-        fallback: Partial<FeedbackEntry> = {}
+        _fallback: Partial<FeedbackEntry> = {}
     ): FeedbackEntry => {
-        const now = new Date().toISOString()
-        const id =
-            entry.id ||
-            fallback.id ||
-            (typeof crypto !== 'undefined' && 'randomUUID' in crypto ? crypto.randomUUID() : `entry_${Date.now()}`)
-
-        const cardId = entry.cardId || fallback.cardId || ''
-        const card = feedbackCards.find(item => item.id === cardId)
-        const questionKindById = new Map(card?.questions.map(q => [q.id, q.kind]) || [])
-        const sourceAnswers = Array.isArray(entry.answers) && entry.answers.length > 0
-            ? entry.answers
-            : (fallback.answers || [])
-
-        const answers = sourceAnswers.map((answer) => {
-            const questionId = answer.questionId
-            const kind = questionKindById.get(questionId)
-            const rawText = typeof (answer as { answer?: string }).answer === 'string'
-                ? (answer as { answer?: string }).answer
-                : answer.comment
-            const rawScore = typeof answer.score === 'number' ? answer.score : undefined
-            let score = 0
-            let comment: string | undefined
-
-            if (kind === 'comment') {
-                comment = rawText ?? ''
-            } else if (rawScore !== undefined && Number.isFinite(rawScore)) {
-                score = rawScore
-            } else if (typeof rawText === 'string') {
-                const parsed = Number.parseFloat(rawText)
-                if (Number.isFinite(parsed)) {
-                    score = parsed
-                } else {
-                    comment = rawText
-                }
-            }
-
-            if (Number.isFinite(score)) {
-                score = Math.min(5, Math.max(0, Math.round(score)))
-            }
-
-            return {
-                questionId,
-                score,
-                comment: comment?.trim() ? comment : undefined
-            }
-        })
-
+        // Use raw API response directly without any transformation
         return {
-            id,
-            companyId: entry.companyId || fallback.companyId || companyId,
-            type: (entry.type || fallback.type || card?.subject || 'Team Member') as FeedbackEntry['type'],
-            cardId,
-            subjectId: entry.subjectId ?? fallback.subjectId,
-            subjectName: entry.subjectName || fallback.subjectName,
-            authorId: entry.authorId ?? fallback.authorId,
-            authorName: entry.authorName || fallback.authorName,
-            answers,
-            createdAt: entry.createdAt || fallback.createdAt || now,
-            updatedAt: entry.updatedAt || fallback.updatedAt
+            id: entry.id || '',
+            companyId: entry.companyId || companyId,
+            cardId: entry.cardId || '',
+            type: entry.type,
+            subjectType: entry.subjectType,
+            subjectId: entry.subjectId,
+            subjectName: entry.subjectName,
+            authorId: entry.authorId,
+            authorName: entry.authorName,
+            answers: entry.answers || [],
+            createdAt: entry.createdAt || new Date().toISOString(),
+            updatedAt: entry.updatedAt
         }
     }
 
@@ -505,6 +507,7 @@ export function AppProvider({ children }: { children: ReactNode }) {
             roleId: employee.roleId || fallback.roleId || '',
             startDate: employee.startDate || fallback.startDate || new Date().toISOString().split('T')[0],
             employmentType: (employee.employmentType || fallback.employmentType || 'Full-time') as Employee['employmentType'],
+            employmentMode: (employee.employmentMode || fallback.employmentMode || 'Onsite') as Employee['employmentMode'],
             reportingManager: employee.reportingManager || fallback.reportingManager || 'Unassigned',
             gender: (employee.gender || fallback.gender || 'Prefer not to say') as Employee['gender'],
             salary,
@@ -636,27 +639,19 @@ export function AppProvider({ children }: { children: ReactNode }) {
                 name: credential.user.displayName || credential.user.email.split('@')[0],
                 password
             })
-            if (apiSession.company) {
+            setCurrentUser(localUser)
+            if (apiSession.company && apiSession.accessToken) {
                 const normalizedCompany = normalizeCompany(apiSession.company, localUser.id)
                 if (normalizedCompany) {
-                    dataStore.upsertCompany(normalizedCompany)
+                    await loadCompanyDataFromApi(normalizedCompany, apiSession.accessToken)
                 }
+            } else {
+                clearCompanyData()
             }
-            setUserSession(localUser)
             return { success: true, message: 'Welcome back!' }
         } catch (firebaseError) {
-            try {
-                // Fallback to local auth for existing demo accounts
-                const user = await dataStore.verifyUserPassword(email, password)
-                if (!user) {
-                    return { success: false, message: 'Invalid email or password' }
-                }
-                setUserSession(user)
-                return { success: true, message: 'Welcome back!' }
-            } catch (error) {
-                console.error('Login error:', error || firebaseError)
-                return { success: false, message: 'An error occurred during login. Please try again.' }
-            }
+            console.error('Login error:', firebaseError)
+            return { success: false, message: 'An error occurred during login. Please try again.' }
         }
     }
 
@@ -679,13 +674,15 @@ export function AppProvider({ children }: { children: ReactNode }) {
                 email: credential.user.email,
                 name: credential.user.displayName || credential.user.email.split('@')[0]
             })
-            if (apiSession.company) {
+            setCurrentUser(localUser)
+            if (apiSession.company && apiSession.accessToken) {
                 const normalizedCompany = normalizeCompany(apiSession.company, localUser.id)
                 if (normalizedCompany) {
-                    dataStore.upsertCompany(normalizedCompany)
+                    await loadCompanyDataFromApi(normalizedCompany, apiSession.accessToken)
                 }
+            } else {
+                clearCompanyData()
             }
-            setUserSession(localUser)
             return { success: true, message: 'Welcome back!' }
         } catch (error) {
             console.error('Google login error:', error)
@@ -727,13 +724,15 @@ export function AppProvider({ children }: { children: ReactNode }) {
                 return { success: false, message }
             }
             const localUser = await ensureLocalUser({ name, email, password })
-            if (apiSession.company) {
+            setCurrentUser(localUser)
+            if (apiSession.company && apiSession.accessToken) {
                 const normalizedCompany = normalizeCompany(apiSession.company, localUser.id)
                 if (normalizedCompany) {
-                    dataStore.upsertCompany(normalizedCompany)
+                    await loadCompanyDataFromApi(normalizedCompany, apiSession.accessToken)
                 }
+            } else {
+                clearCompanyData()
             }
-            setUserSession(localUser)
 
             return { success: true, message: 'Account created successfully!' }
         } catch (error) {
@@ -764,52 +763,47 @@ export function AppProvider({ children }: { children: ReactNode }) {
     const createCompany = async (name: string, industry: string, size: CompanySize): Promise<Company> => {
         try {
             if (!currentUser) throw new Error('No user logged in')
-            if (apiAccessToken) {
-                const ownerId = apiUser?.id
-                if (!ownerId) {
-                    throw new Error('API user not available')
-                }
-                const apiCompany = await createCompanyApi(
-                    {
-                        name,
-                        industry,
-                        size,
-                        ownerId
-                    },
-                    apiAccessToken
-                )
-                const firebaseUser = firebaseAuth.currentUser
-                if (!firebaseUser) {
-                    throw new Error('Company created. Please sign in again to finish setup.')
-                }
-                let refreshedSession: Awaited<ReturnType<typeof syncApiSession>>
-                try {
-                    refreshedSession = await syncApiSession(firebaseUser)
-                } catch (error) {
-                    console.error('Refresh auth session error:', error)
-                    throw new Error('Company created. Please sign in again to finish setup.')
-                }
-                if (!refreshedSession.companyId) {
-                    throw new Error('Company created. Please sign in again to finish setup.')
-                }
-                const normalizedCompany = normalizeCompany(apiCompany, currentUser.id, {
+            if (!apiAccessToken) throw new Error('API access required')
+
+            const ownerId = apiUser?.id
+            if (!ownerId) {
+                throw new Error('API user not available')
+            }
+            const apiCompany = await createCompanyApi(
+                {
                     name,
                     industry,
-                    size
-                })
-                if (!normalizedCompany) {
-                    throw new Error('Invalid company response')
-                }
-                dataStore.upsertCompany(normalizedCompany)
-                setApiCompanyId(refreshedSession.companyId)
-                persistCompanyId(refreshedSession.companyId)
-                loadCompanyData(normalizedCompany)
-                return normalizedCompany
+                    size,
+                    ownerId
+                },
+                apiAccessToken
+            )
+            const firebaseUser = firebaseAuth.currentUser
+            if (!firebaseUser) {
+                throw new Error('Company created. Please sign in again to finish setup.')
             }
-
-            const company = dataStore.createCompany({ name, industry, size }, currentUser.id)
-            loadCompanyData(company)
-            return company
+            let refreshedSession: Awaited<ReturnType<typeof syncApiSession>>
+            try {
+                refreshedSession = await syncApiSession(firebaseUser)
+            } catch (error) {
+                console.error('Refresh auth session error:', error)
+                throw new Error('Company created. Please sign in again to finish setup.')
+            }
+            if (!refreshedSession.companyId) {
+                throw new Error('Company created. Please sign in again to finish setup.')
+            }
+            const normalizedCompany = normalizeCompany(apiCompany, currentUser.id, {
+                name,
+                industry,
+                size
+            })
+            if (!normalizedCompany) {
+                throw new Error('Invalid company response')
+            }
+            setApiCompanyId(refreshedSession.companyId)
+            persistCompanyId(refreshedSession.companyId)
+            await loadCompanyDataFromApi(normalizedCompany, refreshedSession.accessToken)
+            return normalizedCompany
         } catch (error) {
             console.error('Create company error:', error)
             throw error
@@ -818,31 +812,21 @@ export function AppProvider({ children }: { children: ReactNode }) {
 
     const updateCompany = async (id: string, companyData: Partial<Omit<Company, 'id' | 'ownerId' | 'createdAt'>>): Promise<Company | null> => {
         try {
-            if (!currentUser) {
-                throw new Error('No user logged in')
-            }
+            if (!currentUser) throw new Error('No user logged in')
+            if (!apiAccessToken) throw new Error('API access required')
 
-            if (apiAccessToken) {
-                const apiCompany = await updateCompanyApi(id, companyData, apiAccessToken)
-                const ownerId = currentUser.id
-                const normalizedCompany = normalizeCompany(apiCompany, ownerId, {
-                    ...(currentCompany || {}),
-                    ...companyData,
-                    id
-                })
-                if (!normalizedCompany) {
-                    throw new Error('Invalid company response')
-                }
-                dataStore.upsertCompany(normalizedCompany)
-                setCurrentCompany(normalizedCompany)
-                return normalizedCompany
+            const apiCompany = await updateCompanyApi(id, companyData, apiAccessToken)
+            const ownerId = currentUser.id
+            const normalizedCompany = normalizeCompany(apiCompany, ownerId, {
+                ...(currentCompany || {}),
+                ...companyData,
+                id
+            })
+            if (!normalizedCompany) {
+                throw new Error('Invalid company response')
             }
-
-            const company = dataStore.updateCompany(id, companyData)
-            if (company) {
-                setCurrentCompany(company)
-            }
-            return company
+            setCurrentCompany(normalizedCompany)
+            return normalizedCompany
         } catch (error) {
             console.error('Update company error:', error)
             throw error
@@ -852,40 +836,36 @@ export function AppProvider({ children }: { children: ReactNode }) {
     const createEmployee = async (employeeData: Omit<Employee, 'id' | 'companyId' | 'createdAt'>): Promise<Employee> => {
         try {
             if (!currentCompany) throw new Error('No company set up')
+            if (!apiAccessToken) throw new Error('API access required')
 
-            if (apiAccessToken) {
-                const departmentId = employeeData.departmentId
-                    || (employeeData.department
-                        ? departments.find(dept => dept.id === employeeData.department)?.id
-                            || departments.find(dept => dept.name === employeeData.department)?.id
-                        : undefined)
-                const reportingManagerId = employeeData.reportingManagerId
-                    ?? (employeeData.reportingManager
-                        ? employees.find(emp => emp.name === employeeData.reportingManager)?.id
-                        : undefined)
-                const payload = {
-                    employeeId: employeeData.employeeId,
-                    companyId: currentCompany.id,
-                    userId: employeeData.userId,
-                    departmentId,
-                    reportingManagerId,
-                    roleId: employeeData.roleId,
-                    name: employeeData.name,
-                    email: employeeData.email,
-                    startDate: employeeData.startDate,
-                    employmentType: employeeData.employmentType,
-                    gender: employeeData.gender
-                }
-                const apiEmployee = await createEmployeeApi(payload, apiAccessToken)
-                const normalized = normalizeEmployee(apiEmployee, currentCompany.id, employeeData)
-                dataStore.upsertEmployee(normalized)
-                setEmployees(dataStore.getEmployeesByCompanyId(currentCompany.id))
-                return normalized
+            const departmentId = employeeData.departmentId
+                || (employeeData.department
+                    ? departments.find(dept => dept.id === employeeData.department)?.id
+                        || departments.find(dept => dept.name === employeeData.department)?.id
+                    : undefined)
+            const reportingManagerId = employeeData.reportingManagerId
+                ?? (employeeData.reportingManager
+                    ? employees.find(emp => emp.name === employeeData.reportingManager)?.id
+                    : undefined)
+            const payload = {
+                employeeId: employeeData.employeeId,
+                companyId: currentCompany.id,
+                userId: employeeData.userId,
+                departmentId,
+                reportingManagerId,
+                roleId: employeeData.roleId,
+                name: employeeData.name,
+                email: employeeData.email,
+                startDate: employeeData.startDate,
+                employmentType: employeeData.employmentType,
+                employmentMode: employeeData.employmentMode,
+                gender: employeeData.gender,
+                salary: employeeData.salary
             }
-
-            const employee = dataStore.createEmployee(employeeData, currentCompany.id)
-            setEmployees(dataStore.getEmployeesByCompanyId(currentCompany.id))
-            return employee
+            const apiEmployee = await createEmployeeApi(payload, apiAccessToken)
+            const normalized = normalizeEmployee(apiEmployee, currentCompany.id, employeeData)
+            setEmployees(prev => [...prev, normalized])
+            return normalized
         } catch (error) {
             console.error('Create employee error:', error)
             throw error
@@ -895,70 +875,64 @@ export function AppProvider({ children }: { children: ReactNode }) {
     const updateEmployee = async (id: string, employeeData: Partial<Omit<Employee, 'id' | 'companyId' | 'createdAt'>>): Promise<Employee | null> => {
         try {
             if (!currentCompany) throw new Error('No company set up')
+            if (!apiAccessToken) throw new Error('API access required')
 
-            if (apiAccessToken) {
-                const existing = dataStore.getEmployeesByCompanyId(currentCompany.id).find(emp => emp.id === id)
-                const departmentId = employeeData.departmentId
-                    || (employeeData.department
-                        ? departments.find(dept => dept.id === employeeData.department)?.id
-                            || departments.find(dept => dept.name === employeeData.department)?.id
-                        : undefined)
-                const reportingManagerId = employeeData.reportingManagerId
-                    ?? (employeeData.reportingManager
-                        ? employees.find(emp => emp.name === employeeData.reportingManager)?.id
-                        : undefined)
-                const payload: {
-                    companyId: string
-                    employeeId?: string
-                    userId?: string
-                    departmentId?: string
-                    reportingManagerId?: string
-                    name?: string
-                    email?: string
-                    department?: string
-                    roleId?: string
-                    startDate?: string
-                    employmentType?: Employee['employmentType']
-                    reportingManager?: string
-                    gender?: Employee['gender']
-                    salary?: number
-                } = {
-                    companyId: currentCompany.id
-                }
-
-                if (employeeData.employeeId !== undefined) payload.employeeId = employeeData.employeeId
-                if (employeeData.userId !== undefined) payload.userId = employeeData.userId
-                if (employeeData.department !== undefined) payload.departmentId = departmentId
-                if (employeeData.reportingManagerId !== undefined || employeeData.reportingManager !== undefined) {
-                    payload.reportingManagerId = reportingManagerId
-                }
-                if (employeeData.name !== undefined) payload.name = employeeData.name
-                if (employeeData.email !== undefined) payload.email = employeeData.email
-                if (employeeData.department !== undefined) payload.department = employeeData.department
-                if (employeeData.roleId !== undefined) payload.roleId = employeeData.roleId
-                if (employeeData.startDate !== undefined) payload.startDate = employeeData.startDate
-                if (employeeData.employmentType !== undefined) payload.employmentType = employeeData.employmentType
-                if (employeeData.reportingManager !== undefined) payload.reportingManager = employeeData.reportingManager
-                if (employeeData.gender !== undefined) payload.gender = employeeData.gender
-                if (employeeData.salary !== undefined) payload.salary = employeeData.salary
-
-                const apiEmployee = await updateEmployeeApi(id, payload, apiAccessToken)
-                const normalized = normalizeEmployee(apiEmployee, currentCompany.id, {
-                    ...(existing || {}),
-                    ...employeeData,
-                    id,
-                    companyId: currentCompany.id
-                })
-                dataStore.upsertEmployee(normalized)
-                setEmployees(dataStore.getEmployeesByCompanyId(currentCompany.id))
-                return normalized
+            const existing = employees.find(emp => emp.id === id)
+            const departmentId = employeeData.departmentId
+                || (employeeData.department
+                    ? departments.find(dept => dept.id === employeeData.department)?.id
+                        || departments.find(dept => dept.name === employeeData.department)?.id
+                    : undefined)
+            const reportingManagerId = employeeData.reportingManagerId
+                ?? (employeeData.reportingManager
+                    ? employees.find(emp => emp.name === employeeData.reportingManager)?.id
+                    : undefined)
+            const payload: {
+                companyId: string
+                employeeId?: string
+                userId?: string
+                departmentId?: string
+                reportingManagerId?: string
+                name?: string
+                email?: string
+                department?: string
+                roleId?: string
+                startDate?: string
+                employmentType?: Employee['employmentType']
+                employmentMode?: Employee['employmentMode']
+                reportingManager?: string
+                gender?: Employee['gender']
+                salary?: number
+            } = {
+                companyId: currentCompany.id
             }
 
-            const employee = dataStore.updateEmployee(id, employeeData)
-            if (currentCompany) {
-                setEmployees(dataStore.getEmployeesByCompanyId(currentCompany.id))
+            if (employeeData.employeeId !== undefined) payload.employeeId = employeeData.employeeId
+            if (employeeData.userId !== undefined) payload.userId = employeeData.userId
+            if (employeeData.department !== undefined) payload.departmentId = departmentId
+            if (employeeData.reportingManagerId !== undefined || employeeData.reportingManager !== undefined) {
+                payload.reportingManagerId = reportingManagerId
             }
-            return employee
+            if (employeeData.name !== undefined) payload.name = employeeData.name
+            if (employeeData.email !== undefined) payload.email = employeeData.email
+            if (employeeData.department !== undefined) payload.department = employeeData.department
+            if (employeeData.roleId !== undefined) payload.roleId = employeeData.roleId
+            if (employeeData.startDate !== undefined) payload.startDate = employeeData.startDate
+            if (employeeData.employmentType !== undefined) payload.employmentType = employeeData.employmentType
+            if (employeeData.employmentMode !== undefined) payload.employmentMode = employeeData.employmentMode
+            if (employeeData.reportingManager !== undefined) payload.reportingManager = employeeData.reportingManager
+            if (employeeData.gender !== undefined) payload.gender = employeeData.gender
+            if (employeeData.salary !== undefined) payload.salary = employeeData.salary
+
+            const apiEmployee = await updateEmployeeApi(id, payload, apiAccessToken)
+            const normalized = normalizeEmployee(apiEmployee, currentCompany.id, {
+                ...(existing || {}),
+                ...employeeData,
+                id,
+                companyId: currentCompany.id
+            })
+            setEmployees(prev => prev.map(emp => emp.id === id ? normalized : emp))
+            return normalized
         } catch (error) {
             console.error('Update employee error:', error)
             throw error
@@ -968,13 +942,9 @@ export function AppProvider({ children }: { children: ReactNode }) {
     const deleteEmployee = async (id: string) => {
         try {
             if (!currentCompany) return
-            if (apiAccessToken) {
-                await deleteEmployeeApi(id, apiAccessToken)
-            }
-            dataStore.deleteEmployee(id)
-            if (currentCompany) {
-                setEmployees(dataStore.getEmployeesByCompanyId(currentCompany.id))
-            }
+            if (!apiAccessToken) throw new Error('API access required')
+            await deleteEmployeeApi(id, apiAccessToken)
+            setEmployees(prev => prev.filter(emp => emp.id !== id))
         } catch (error) {
             console.error('Delete employee error:', error)
             throw error
@@ -984,16 +954,10 @@ export function AppProvider({ children }: { children: ReactNode }) {
     const refreshEmployees = async () => {
         try {
             if (!currentCompany) return
-            if (apiAccessToken) {
-                const apiEmployees = await fetchEmployeesApi(apiAccessToken)
-                const existing = dataStore.getEmployeesByCompanyId(currentCompany.id)
-                const normalized = apiEmployees.map(employee => {
-                    const fallback = existing.find(entry => entry.id === employee.id)
-                    return normalizeEmployee(employee, currentCompany.id, fallback)
-                })
-                dataStore.setEmployeesForCompany(currentCompany.id, normalized)
-            }
-            setEmployees(dataStore.getEmployeesByCompanyId(currentCompany.id))
+            if (!apiAccessToken) return
+            const apiEmployees = await fetchEmployeesApi(apiAccessToken)
+            const normalized = apiEmployees.map(employee => normalizeEmployee(employee, currentCompany.id))
+            setEmployees(normalized)
         } catch (error) {
             console.error('Refresh employees error:', error)
         }
@@ -1007,29 +971,23 @@ export function AppProvider({ children }: { children: ReactNode }) {
     const createDepartment = async (departmentData: Omit<Department, 'id' | 'companyId' | 'createdAt'>): Promise<Department> => {
         try {
             if (!currentCompany) throw new Error('No company set up')
+            if (!apiAccessToken) throw new Error('API access required')
 
-            if (apiAccessToken) {
-                const payload: { companyId: string; name: string; description?: string; managerId?: string } = {
-                    companyId: currentCompany.id,
-                    name: departmentData.name
-                }
-                if (departmentData.description) {
-                    payload.description = departmentData.description
-                }
-                if (departmentData.managerId) {
-                    payload.managerId = departmentData.managerId
-                }
-
-                const apiDepartment = await createDepartmentApi(payload, apiAccessToken)
-                const normalized = normalizeDepartment(apiDepartment, currentCompany.id, departmentData)
-                dataStore.upsertDepartment(normalized)
-                setDepartments(dataStore.getDepartmentsByCompanyId(currentCompany.id))
-                return normalized
+            const payload: { companyId: string; name: string; description?: string; managerId?: string } = {
+                companyId: currentCompany.id,
+                name: departmentData.name
+            }
+            if (departmentData.description) {
+                payload.description = departmentData.description
+            }
+            if (departmentData.managerId) {
+                payload.managerId = departmentData.managerId
             }
 
-            const department = dataStore.createDepartment(departmentData, currentCompany.id)
-            setDepartments(dataStore.getDepartmentsByCompanyId(currentCompany.id))
-            return department
+            const apiDepartment = await createDepartmentApi(payload, apiAccessToken)
+            const normalized = normalizeDepartment(apiDepartment, currentCompany.id, departmentData)
+            setDepartments(prev => [...prev, normalized])
+            return normalized
         } catch (error) {
             console.error('Create department error:', error)
             throw error
@@ -1041,50 +999,29 @@ export function AppProvider({ children }: { children: ReactNode }) {
         departmentData: Partial<Omit<Department, 'id' | 'companyId' | 'createdAt'>>
     ): Promise<Department | null> => {
         try {
-            if (!currentCompany) {
-                throw new Error('No company set up')
+            if (!currentCompany) throw new Error('No company set up')
+            if (!apiAccessToken) throw new Error('API access required')
+
+            const payload: { companyId: string; name?: string; description?: string } = {
+                companyId: currentCompany.id
+            }
+            if (departmentData.name) {
+                payload.name = departmentData.name
+            }
+            if (departmentData.description !== undefined) {
+                payload.description = departmentData.description
             }
 
-            if (apiAccessToken) {
-                const payload: { companyId: string; name?: string; description?: string } = {
-                    companyId: currentCompany.id
-                }
-                if (departmentData.name) {
-                    payload.name = departmentData.name
-                }
-                if (departmentData.description !== undefined) {
-                    payload.description = departmentData.description
-                }
-
-                const apiDepartment = await updateDepartmentApi(id, payload, apiAccessToken)
-                const existing = dataStore.getDepartmentsByCompanyId(currentCompany.id).find(dept => dept.id === id)
-                const normalized = normalizeDepartment(apiDepartment, currentCompany.id, {
-                    ...(existing || {}),
-                    ...departmentData,
-                    id,
-                    companyId: currentCompany.id
-                })
-
-                if (existing) {
-                    const updated = dataStore.updateDepartment(id, {
-                        name: normalized.name,
-                        description: normalized.description,
-                        managerId: normalized.managerId
-                    })
-                    setDepartments(dataStore.getDepartmentsByCompanyId(currentCompany.id))
-                    setEmployees(dataStore.getEmployeesByCompanyId(currentCompany.id))
-                    return updated
-                }
-
-                dataStore.upsertDepartment(normalized)
-                setDepartments(dataStore.getDepartmentsByCompanyId(currentCompany.id))
-                return normalized
-            }
-
-            const updated = dataStore.updateDepartment(id, departmentData)
-            setDepartments(dataStore.getDepartmentsByCompanyId(currentCompany.id))
-            setEmployees(dataStore.getEmployeesByCompanyId(currentCompany.id))
-            return updated
+            const apiDepartment = await updateDepartmentApi(id, payload, apiAccessToken)
+            const existing = departments.find(dept => dept.id === id)
+            const normalized = normalizeDepartment(apiDepartment, currentCompany.id, {
+                ...(existing || {}),
+                ...departmentData,
+                id,
+                companyId: currentCompany.id
+            })
+            setDepartments(prev => prev.map(dept => dept.id === id ? normalized : dept))
+            return normalized
         } catch (error) {
             console.error('Update department error:', error)
             throw error
@@ -1094,11 +1031,9 @@ export function AppProvider({ children }: { children: ReactNode }) {
     const deleteDepartment = async (id: string) => {
         try {
             if (!currentCompany) return
-            if (apiAccessToken) {
-                await deleteDepartmentApi(id, apiAccessToken)
-            }
-            dataStore.deleteDepartment(id)
-            setDepartments(dataStore.getDepartmentsByCompanyId(currentCompany.id))
+            if (!apiAccessToken) throw new Error('API access required')
+            await deleteDepartmentApi(id, apiAccessToken)
+            setDepartments(prev => prev.filter(dept => dept.id !== id))
         } catch (error) {
             console.error('Delete department error:', error)
             throw error
@@ -1108,12 +1043,10 @@ export function AppProvider({ children }: { children: ReactNode }) {
     const refreshDepartments = async () => {
         try {
             if (!currentCompany) return
-            if (apiAccessToken) {
-                const apiDepartments = await fetchDepartmentsApi(currentCompany.id, apiAccessToken)
-                const normalized = apiDepartments.map(dept => normalizeDepartment(dept, currentCompany.id))
-                dataStore.setDepartmentsForCompany(currentCompany.id, normalized)
-            }
-            setDepartments(dataStore.getDepartmentsByCompanyId(currentCompany.id))
+            if (!apiAccessToken) return
+            const apiDepartments = await fetchDepartmentsApi(currentCompany.id, apiAccessToken)
+            const normalized = apiDepartments.map(dept => normalizeDepartment(dept, currentCompany.id))
+            setDepartments(normalized)
         } catch (error) {
             console.error('Refresh departments error:', error)
         }
@@ -1146,7 +1079,6 @@ export function AppProvider({ children }: { children: ReactNode }) {
                     id: currentCompany.id
                 })
                 if (!normalizedCompany) return
-                dataStore.upsertCompany(normalizedCompany)
                 setCurrentCompany(normalizedCompany)
             } catch (error) {
                 console.error('Fetch company error:', error)
@@ -1154,11 +1086,6 @@ export function AppProvider({ children }: { children: ReactNode }) {
         }
         void syncCompany()
     }, [apiAccessToken, currentCompany?.id, currentUser])
-
-    useEffect(() => {
-        if (!apiAccessToken) return
-        if (!apiCompanyId) return
-    }, [apiAccessToken, apiCompanyId])
 
     useEffect(() => {
         if (!apiAccessToken || !apiCompanyId || !currentUser) return
@@ -1171,7 +1098,6 @@ export function AppProvider({ children }: { children: ReactNode }) {
                     id: apiCompanyId
                 })
                 if (!normalizedCompany) return
-                dataStore.upsertCompany(normalizedCompany)
                 setCurrentCompany(normalizedCompany)
             } catch (error) {
                 console.error('Hydrate company error:', error)
@@ -1183,25 +1109,19 @@ export function AppProvider({ children }: { children: ReactNode }) {
     const createHoliday = async (holiday: Omit<Holiday, 'id' | 'companyId' | 'createdAt'>) => {
         try {
             if (!currentCompany) throw new Error('No company set up')
+            if (!apiAccessToken) throw new Error('API access required')
 
-            if (apiAccessToken) {
-                const apiHoliday = await createHolidayApi(
-                    {
-                        date: holiday.date,
-                        name: holiday.name,
-                        companyId: currentCompany.id
-                    },
-                    apiAccessToken
-                )
-                const normalized = normalizeHoliday(apiHoliday, currentCompany.id, holiday)
-                dataStore.upsertHoliday(normalized)
-                setHolidays(dataStore.getHolidaysByCompanyId(currentCompany.id))
-                return normalized
-            }
-
-            const created = dataStore.createHoliday(holiday, currentCompany.id)
-            setHolidays(dataStore.getHolidaysByCompanyId(currentCompany.id))
-            return created
+            const apiHoliday = await createHolidayApi(
+                {
+                    date: holiday.date,
+                    name: holiday.name,
+                    companyId: currentCompany.id
+                },
+                apiAccessToken
+            )
+            const normalized = normalizeHoliday(apiHoliday, currentCompany.id, holiday)
+            setHolidays(prev => [...prev, normalized])
+            return normalized
         } catch (error) {
             console.error('Create holiday error:', error)
             throw error
@@ -1211,11 +1131,9 @@ export function AppProvider({ children }: { children: ReactNode }) {
     const deleteHoliday = async (id: string) => {
         try {
             if (!currentCompany) return
-            if (apiAccessToken) {
-                await deleteHolidayApi(id, apiAccessToken)
-            }
-            dataStore.deleteHoliday(id)
-            setHolidays(dataStore.getHolidaysByCompanyId(currentCompany.id))
+            if (!apiAccessToken) throw new Error('API access required')
+            await deleteHolidayApi(id, apiAccessToken)
+            setHolidays(prev => prev.filter(h => h.id !== id))
         } catch (error) {
             console.error('Delete holiday error:', error)
             throw error
@@ -1225,12 +1143,10 @@ export function AppProvider({ children }: { children: ReactNode }) {
     const refreshHolidays = async () => {
         try {
             if (!currentCompany) return
-            if (apiAccessToken) {
-                const apiHolidays = await fetchHolidaysApi(apiAccessToken)
-                const normalized = apiHolidays.map(h => normalizeHoliday(h, currentCompany.id))
-                dataStore.setHolidaysForCompany(currentCompany.id, normalized)
-            }
-            setHolidays(dataStore.getHolidaysByCompanyId(currentCompany.id))
+            if (!apiAccessToken) return
+            const apiHolidays = await fetchHolidaysApi(apiAccessToken)
+            const normalized = apiHolidays.map(h => normalizeHoliday(h, currentCompany.id))
+            setHolidays(normalized)
         } catch (error) {
             console.error('Refresh holidays error:', error)
         }
@@ -1239,29 +1155,25 @@ export function AppProvider({ children }: { children: ReactNode }) {
     const createFeedbackCard = async (cardData: Omit<FeedbackCard, 'id' | 'companyId' | 'createdAt' | 'updatedAt'>): Promise<FeedbackCard> => {
         try {
             if (!currentCompany) throw new Error('No company set up')
-            if (apiAccessToken) {
-                const questions = cardData.questions.map(question => ({
-                    prompt: question.prompt,
-                    type: question.kind === 'comment' ? 'text' : 'score',
-                    weight: question.kind === 'score' ? question.weight : undefined
-                }))
-                const apiCard = await createFeedbackCardApi(
-                    {
-                        title: cardData.title,
-                        subject: cardData.subject,
-                        questions,
-                        companyId: currentCompany.id
-                    },
-                    apiAccessToken
-                )
-                const normalized = normalizeFeedbackCard(apiCard, currentCompany.id, cardData)
-                dataStore.upsertFeedbackCard(normalized)
-                setFeedbackCards(dataStore.getFeedbackCardsByCompanyId(currentCompany.id))
-                return normalized
-            }
-            const created = dataStore.createFeedbackCard(currentCompany.id, cardData)
-            setFeedbackCards(dataStore.getFeedbackCardsByCompanyId(currentCompany.id))
-            return created
+            if (!apiAccessToken) throw new Error('API access required')
+
+            const questions = cardData.questions.map(question => ({
+                prompt: question.prompt,
+                type: question.kind === 'comment' ? 'text' : question.kind === 'content' ? 'content' : 'score',
+                weight: question.kind === 'score' ? question.weight : undefined
+            }))
+            const apiCard = await createFeedbackCardApi(
+                {
+                    title: cardData.title,
+                    subject: cardData.subject,
+                    questions,
+                    companyId: currentCompany.id
+                },
+                apiAccessToken
+            )
+            const normalized = normalizeFeedbackCard(apiCard, currentCompany.id, cardData)
+            setFeedbackCards(prev => [...prev, normalized])
+            return normalized
         } catch (error) {
             console.error('Create feedback card error:', error)
             throw error
@@ -1271,42 +1183,36 @@ export function AppProvider({ children }: { children: ReactNode }) {
     const updateFeedbackCard = async (id: string, updates: Partial<Omit<FeedbackCard, 'id' | 'companyId' | 'createdAt'>>): Promise<FeedbackCard | null> => {
         try {
             if (!currentCompany) throw new Error('No company set up')
-            if (apiAccessToken) {
-                const payload: {
-                    companyId: string
-                    title?: string
-                    subject?: string
-                    questions?: { prompt: string; type: string; weight?: number }[]
-                } = {
-                    companyId: currentCompany.id
-                }
-                if (updates.title !== undefined) payload.title = updates.title
-                if (updates.subject !== undefined) payload.subject = updates.subject
-                if (updates.questions) {
-                    payload.questions = updates.questions.map(question => ({
-                        prompt: question.prompt,
-                        type: question.kind === 'comment' ? 'text' : 'score',
-                        weight: question.kind === 'score' ? question.weight : undefined
-                    }))
-                }
+            if (!apiAccessToken) throw new Error('API access required')
 
-                const apiCard = await updateFeedbackCardApi(id, payload, apiAccessToken)
-                const existing = dataStore.getFeedbackCardsByCompanyId(currentCompany.id).find(card => card.id === id)
-                const normalized = normalizeFeedbackCard(apiCard, currentCompany.id, {
-                    ...(existing || {}),
-                    ...updates,
-                    id,
-                    companyId: currentCompany.id
-                })
-                dataStore.upsertFeedbackCard(normalized)
-                setFeedbackCards(dataStore.getFeedbackCardsByCompanyId(currentCompany.id))
-                return normalized
+            const payload: {
+                companyId: string
+                title?: string
+                subject?: string
+                questions?: { prompt: string; type: string; weight?: number }[]
+            } = {
+                companyId: currentCompany.id
             }
-            const updated = dataStore.updateFeedbackCard(id, updates)
-            if (currentCompany) {
-                setFeedbackCards(dataStore.getFeedbackCardsByCompanyId(currentCompany.id))
+            if (updates.title !== undefined) payload.title = updates.title
+            if (updates.subject !== undefined) payload.subject = updates.subject
+            if (updates.questions) {
+                payload.questions = updates.questions.map(question => ({
+                    prompt: question.prompt,
+                    type: question.kind === 'comment' ? 'text' : question.kind === 'content' ? 'content' : 'score',
+                    weight: question.kind === 'score' ? question.weight : undefined
+                }))
             }
-            return updated
+
+            const apiCard = await updateFeedbackCardApi(id, payload, apiAccessToken)
+            const existing = feedbackCards.find(card => card.id === id)
+            const normalized = normalizeFeedbackCard(apiCard, currentCompany.id, {
+                ...(existing || {}),
+                ...updates,
+                id,
+                companyId: currentCompany.id
+            })
+            setFeedbackCards(prev => prev.map(card => card.id === id ? normalized : card))
+            return normalized
         } catch (error) {
             console.error('Update feedback card error:', error)
             throw error
@@ -1316,13 +1222,9 @@ export function AppProvider({ children }: { children: ReactNode }) {
     const deleteFeedbackCard = async (id: string) => {
         try {
             if (!currentCompany) return
-            if (apiAccessToken) {
-                await deleteFeedbackCardApi(id, apiAccessToken)
-            }
-            dataStore.deleteFeedbackCard(id)
-            if (currentCompany) {
-                setFeedbackCards(dataStore.getFeedbackCardsByCompanyId(currentCompany.id))
-            }
+            if (!apiAccessToken) throw new Error('API access required')
+            await deleteFeedbackCardApi(id, apiAccessToken)
+            setFeedbackCards(prev => prev.filter(card => card.id !== id))
         } catch (error) {
             console.error('Delete feedback card error:', error)
             throw error
@@ -1332,16 +1234,10 @@ export function AppProvider({ children }: { children: ReactNode }) {
     const refreshFeedbackCards = async () => {
         try {
             if (!currentCompany) return
-            if (apiAccessToken) {
-                const apiCards = await fetchFeedbackCardsApi(apiAccessToken)
-                const existing = dataStore.getFeedbackCardsByCompanyId(currentCompany.id)
-                const normalized = apiCards.map(card => {
-                    const fallback = existing.find(entry => entry.id === card.id)
-                    return normalizeFeedbackCard(card, currentCompany.id, fallback)
-                })
-                dataStore.setFeedbackCardsForCompany(currentCompany.id, normalized)
-            }
-            setFeedbackCards(dataStore.getFeedbackCardsByCompanyId(currentCompany.id))
+            if (!apiAccessToken) return
+            const apiCards = await fetchFeedbackCardsApi(apiAccessToken)
+            const normalized = apiCards.map(card => normalizeFeedbackCard(card, currentCompany.id))
+            setFeedbackCards(normalized)
         } catch (error) {
             console.error('Refresh feedback cards error:', error)
         }
@@ -1355,40 +1251,45 @@ export function AppProvider({ children }: { children: ReactNode }) {
     const createFeedbackEntry = async (entry: Omit<FeedbackEntry, 'id' | 'companyId' | 'createdAt' | 'updatedAt'>): Promise<FeedbackEntry> => {
         try {
             if (!currentCompany) throw new Error('No company set up')
-            if (apiAccessToken) {
-                const card = feedbackCards.find(item => item.id === entry.cardId)
-                const apiAnswers = entry.answers.map((answer) => {
-                    const kind = card?.questions.find(q => q.id === answer.questionId)?.kind
-                    const value = kind === 'comment'
-                        ? answer.comment || ''
-                        : Number.isFinite(answer.score)
-                            ? String(answer.score)
-                            : answer.comment || ''
-                    return {
+            if (!apiAccessToken) throw new Error('API access required')
+
+            const card = feedbackCards.find(item => item.id === entry.cardId)
+            const apiAnswers = entry.answers.map((answer) => {
+                const questionDef = card?.questions.find(q => q.id === answer.questionId)
+                const kind = questionDef?.kind || 'comment'
+                const value = kind === 'comment'
+                    ? answer.comment || ''
+                    : Number.isFinite(answer.score)
+                        ? String(answer.score)
+                        : answer.comment || ''
+                return {
+                    questionId: answer.questionId,
+                    answer: value,
+                    question: {
+                        id: answer.questionId,
                         questionId: answer.questionId,
-                        answer: value
+                        prompt: questionDef?.prompt || '',
+                        kind,
+                        ...(questionDef?.weight !== undefined ? { weight: questionDef.weight } : {})
                     }
-                })
-                const subjectType = entry.type === 'Applicant' ? 'Applicant' : 'Employee'
-                const apiEntry = await createFeedbackEntryApi(
-                    {
-                        cardId: entry.cardId,
-                        subjectType,
-                        subjectId: entry.subjectId,
-                        subjectName: entry.subjectName,
-                        answers: apiAnswers,
-                        companyId: currentCompany.id
-                    },
-                    apiAccessToken
-                )
-                const normalized = normalizeFeedbackEntry(apiEntry, currentCompany.id, entry)
-                dataStore.upsertFeedbackEntry(normalized)
-                setFeedbackEntries(dataStore.getFeedbackEntriesByCompanyId(currentCompany.id))
-                return normalized
-            }
-            const created = dataStore.createFeedbackEntry(currentCompany.id, entry)
-            setFeedbackEntries(dataStore.getFeedbackEntriesByCompanyId(currentCompany.id))
-            return created
+                }
+            })
+            const subjectType = entry.type === 'Applicant' ? 'Applicant' : 'Employee'
+            const apiEntry = await createFeedbackEntryApi(
+                {
+                    cardId: entry.cardId,
+                    subjectType,
+                    subjectId: entry.subjectId,
+                    subjectName: entry.subjectName,
+                    type: entry.type === 'Applicant' ? 'applicant' : 'performance',
+                    answers: apiAnswers,
+                    companyId: currentCompany.id
+                },
+                apiAccessToken
+            )
+            const normalized = normalizeFeedbackEntry(apiEntry, currentCompany.id, entry)
+            setFeedbackEntries(prev => [...prev, normalized])
+            return normalized
         } catch (error) {
             console.error('Create feedback entry error:', error)
             throw error
@@ -1398,46 +1299,40 @@ export function AppProvider({ children }: { children: ReactNode }) {
     const updateFeedbackEntry = async (id: string, updates: Partial<Omit<FeedbackEntry, 'id' | 'companyId' | 'createdAt'>>): Promise<FeedbackEntry | null> => {
         try {
             if (!currentCompany) throw new Error('No company set up')
-            if (apiAccessToken) {
-                const existing = dataStore.getFeedbackEntriesByCompanyId(currentCompany.id).find(entry => entry.id === id)
-                const cardId = updates.cardId || existing?.cardId || ''
-                const card = feedbackCards.find(item => item.id === cardId)
-                const answers = updates.answers || existing?.answers || []
-                const apiAnswers = answers.map((answer) => {
-                    const kind = card?.questions.find(q => q.id === answer.questionId)?.kind
-                    const value = kind === 'comment'
-                        ? answer.comment || ''
-                        : Number.isFinite(answer.score)
-                            ? String(answer.score)
-                            : answer.comment || ''
-                    return {
-                        questionId: answer.questionId,
-                        answer: value
-                    }
-                })
-                const apiEntry = await updateFeedbackEntryApi(
-                    id,
-                    {
-                        answers: apiAnswers,
-                        companyId: currentCompany.id
-                    },
-                    apiAccessToken
-                )
-                const normalized = normalizeFeedbackEntry(apiEntry, currentCompany.id, {
-                    ...(existing || {}),
-                    ...updates,
-                    id,
+            if (!apiAccessToken) throw new Error('API access required')
+
+            const existing = feedbackEntries.find(entry => entry.id === id)
+            const cardId = updates.cardId || existing?.cardId || ''
+            const card = feedbackCards.find(item => item.id === cardId)
+            const answers = updates.answers || existing?.answers || []
+            const apiAnswers = answers.map((answer) => {
+                const kind = card?.questions.find(q => q.id === answer.questionId)?.kind
+                const value = kind === 'comment'
+                    ? answer.comment || ''
+                    : Number.isFinite(answer.score)
+                        ? String(answer.score)
+                        : answer.comment || ''
+                return {
+                    questionId: answer.questionId,
+                    answer: value
+                }
+            })
+            const apiEntry = await updateFeedbackEntryApi(
+                id,
+                {
+                    answers: apiAnswers,
                     companyId: currentCompany.id
-                })
-                dataStore.upsertFeedbackEntry(normalized)
-                setFeedbackEntries(dataStore.getFeedbackEntriesByCompanyId(currentCompany.id))
-                return normalized
-            }
-            const updated = dataStore.updateFeedbackEntry(id, updates)
-            if (currentCompany) {
-                setFeedbackEntries(dataStore.getFeedbackEntriesByCompanyId(currentCompany.id))
-            }
-            return updated
+                },
+                apiAccessToken
+            )
+            const normalized = normalizeFeedbackEntry(apiEntry, currentCompany.id, {
+                ...(existing || {}),
+                ...updates,
+                id,
+                companyId: currentCompany.id
+            })
+            setFeedbackEntries(prev => prev.map(entry => entry.id === id ? normalized : entry))
+            return normalized
         } catch (error) {
             console.error('Update feedback entry error:', error)
             throw error
@@ -1447,13 +1342,9 @@ export function AppProvider({ children }: { children: ReactNode }) {
     const deleteFeedbackEntry = async (id: string) => {
         try {
             if (!currentCompany) return
-            if (apiAccessToken) {
-                await deleteFeedbackEntryApi(id, apiAccessToken)
-            }
-            dataStore.deleteFeedbackEntry(id)
-            if (currentCompany) {
-                setFeedbackEntries(dataStore.getFeedbackEntriesByCompanyId(currentCompany.id))
-            }
+            if (!apiAccessToken) throw new Error('API access required')
+            await deleteFeedbackEntryApi(id, apiAccessToken)
+            setFeedbackEntries(prev => prev.filter(entry => entry.id !== id))
         } catch (error) {
             console.error('Delete feedback entry error:', error)
             throw error
@@ -1463,16 +1354,10 @@ export function AppProvider({ children }: { children: ReactNode }) {
     const refreshFeedbackEntries = async () => {
         try {
             if (!currentCompany) return
-            if (apiAccessToken) {
-                const apiEntries = await fetchFeedbackEntriesApi(apiAccessToken)
-                const existing = dataStore.getFeedbackEntriesByCompanyId(currentCompany.id)
-                const normalized = apiEntries.map(entry => {
-                    const fallback = existing.find(item => item.id === entry.id)
-                    return normalizeFeedbackEntry(entry, currentCompany.id, fallback)
-                })
-                dataStore.setFeedbackEntriesForCompany(currentCompany.id, normalized)
-            }
-            setFeedbackEntries(dataStore.getFeedbackEntriesByCompanyId(currentCompany.id))
+            if (!apiAccessToken) return
+            const apiEntries = await fetchFeedbackEntriesApi(apiAccessToken)
+            const normalized = apiEntries.map(entry => normalizeFeedbackEntry(entry, currentCompany.id))
+            setFeedbackEntries(normalized)
         } catch (error) {
             console.error('Refresh feedback entries error:', error)
         }
@@ -1485,30 +1370,27 @@ export function AppProvider({ children }: { children: ReactNode }) {
 
     const addDocument = async (doc: Omit<EmployeeDocument, 'id' | 'uploadedAt'>): Promise<EmployeeDocument> => {
         try {
-            if (apiAccessToken) {
-                if (!currentCompany) throw new Error('No company set up')
-                const payload = {
-                    employeeId: doc.employeeId,
-                    name: doc.name,
-                    type: doc.type,
-                    dataUrl: doc.dataUrl,
-                    companyId: currentCompany.id
-                }
-                const apiDoc = await createDocumentApi(payload, apiAccessToken)
-                const now = new Date().toISOString()
-                const normalized: EmployeeDocument = {
-                    id: apiDoc.id || `doc_${Date.now()}`,
-                    employeeId: apiDoc.employeeId || doc.employeeId,
-                    name: apiDoc.name || doc.name,
-                    type: (apiDoc.type || doc.type) as EmployeeDocument['type'],
-                    dataUrl: apiDoc.dataUrl || doc.dataUrl,
-                    uploadedAt: apiDoc.uploadedAt || now
-                }
-                const existing = dataStore.getDocumentsByEmployeeId(doc.employeeId)
-                dataStore.setDocumentsForEmployee(doc.employeeId, [...existing, normalized])
-                return normalized
+            if (!currentCompany) throw new Error('No company set up')
+            if (!apiAccessToken) throw new Error('API access required')
+
+            const payload = {
+                employeeId: doc.employeeId,
+                name: doc.name,
+                type: doc.type,
+                dataUrl: doc.dataUrl,
+                companyId: currentCompany.id
             }
-            return dataStore.addDocument(doc)
+            const apiDoc = await createDocumentApi(payload, apiAccessToken)
+            const now = new Date().toISOString()
+            const normalized: EmployeeDocument = {
+                id: apiDoc.id || `doc_${Date.now()}`,
+                employeeId: apiDoc.employeeId || doc.employeeId,
+                name: apiDoc.name || doc.name,
+                type: (apiDoc.type || doc.type) as EmployeeDocument['type'],
+                dataUrl: apiDoc.dataUrl || doc.dataUrl,
+                uploadedAt: apiDoc.uploadedAt || now
+            }
+            return normalized
         } catch (error) {
             console.error('Add document error:', error)
             throw error
@@ -1517,10 +1399,8 @@ export function AppProvider({ children }: { children: ReactNode }) {
 
     const deleteDocument = async (id: string): Promise<void> => {
         try {
-            if (apiAccessToken) {
-                await deleteDocumentApi(id, apiAccessToken)
-            }
-            dataStore.deleteDocument(id)
+            if (!apiAccessToken) throw new Error('API access required')
+            await deleteDocumentApi(id, apiAccessToken)
         } catch (error) {
             console.error('Delete document error:', error)
             throw error
@@ -1529,31 +1409,27 @@ export function AppProvider({ children }: { children: ReactNode }) {
 
     const getDocuments = async (employeeId: string): Promise<EmployeeDocument[]> => {
         try {
-            if (apiAccessToken) {
-                const apiDocs = await fetchDocumentsApi(apiAccessToken, employeeId)
-                const normalized = apiDocs.map((doc) => ({
-                    id: doc.id || `doc_${Date.now()}`,
-                    employeeId: doc.employeeId || employeeId,
-                    name: doc.name || 'Document',
-                    type: (doc.type || 'Government ID') as EmployeeDocument['type'],
-                    dataUrl: doc.dataUrl || '',
-                    uploadedAt: doc.uploadedAt || new Date().toISOString()
-                }))
-                dataStore.setDocumentsForEmployee(employeeId, normalized)
-            }
-            return dataStore.getDocumentsByEmployeeId(employeeId)
+            if (!apiAccessToken) return []
+            const apiDocs = await fetchDocumentsApi(apiAccessToken, employeeId)
+            const normalized = apiDocs.map((doc) => ({
+                id: doc.id || `doc_${Date.now()}`,
+                employeeId: doc.employeeId || employeeId,
+                name: doc.name || 'Document',
+                type: (doc.type || 'Government ID') as EmployeeDocument['type'],
+                dataUrl: doc.dataUrl || '',
+                uploadedAt: doc.uploadedAt || new Date().toISOString()
+            }))
+            return normalized
         } catch (error) {
             console.error('Get documents error:', error)
-            return dataStore.getDocumentsByEmployeeId(employeeId)
+            return []
         }
     }
 
     const createLeaveType = async (leaveTypeData: Omit<LeaveType, 'id' | 'companyId' | 'createdAt' | 'updatedAt'>) => {
         try {
             if (!currentCompany) throw new Error('No company set up')
-            if (!apiAccessToken) {
-                throw new Error('API session required to create leave types')
-            }
+            if (!apiAccessToken) throw new Error('API access required')
 
             const payload: {
                 name: string
@@ -1574,8 +1450,7 @@ export function AppProvider({ children }: { children: ReactNode }) {
 
             const apiLeaveType = await createLeaveTypeApi(payload, apiAccessToken)
             const normalized = normalizeLeaveType(apiLeaveType, currentCompany.id, leaveTypeData)
-            dataStore.upsertLeaveType(normalized)
-            setLeaveTypes(dataStore.getLeaveTypesByCompanyId(currentCompany.id))
+            setLeaveTypes(prev => [...prev, normalized])
             return normalized
         } catch (error) {
             console.error('Create leave type error:', error)
@@ -1586,12 +1461,9 @@ export function AppProvider({ children }: { children: ReactNode }) {
     const deleteLeaveType = async (id: string) => {
         try {
             if (!currentCompany) return
-            if (!apiAccessToken) {
-                throw new Error('API session required to delete leave types')
-            }
+            if (!apiAccessToken) throw new Error('API access required')
             await deleteLeaveTypeApi(id, apiAccessToken)
-            dataStore.deleteLeaveType(id)
-            setLeaveTypes(dataStore.getLeaveTypesByCompanyId(currentCompany.id))
+            setLeaveTypes(prev => prev.filter(lt => lt.id !== id))
         } catch (error) {
             console.error('Delete leave type error:', error)
             throw error
@@ -1604,9 +1476,7 @@ export function AppProvider({ children }: { children: ReactNode }) {
     ) => {
         try {
             if (!currentCompany) throw new Error('No company set up')
-            if (!apiAccessToken) {
-                throw new Error('API session required to update leave types')
-            }
+            if (!apiAccessToken) throw new Error('API access required')
 
             const payload: {
                 quota?: number
@@ -1626,29 +1496,14 @@ export function AppProvider({ children }: { children: ReactNode }) {
             if (leaveTypeData.employmentType) payload.employmentType = leaveTypeData.employmentType
 
             const apiLeaveType = await updateLeaveTypeApi(id, payload, apiAccessToken)
-            const existing = dataStore.getLeaveTypesByCompanyId(currentCompany.id).find(lt => lt.id === id)
+            const existing = leaveTypes.find(lt => lt.id === id)
             const normalized = normalizeLeaveType(apiLeaveType, currentCompany.id, {
                 ...(existing || {}),
                 ...leaveTypeData,
                 id,
                 companyId: currentCompany.id
             })
-
-            if (existing) {
-                const updated = dataStore.updateLeaveType(id, {
-                    name: normalized.name,
-                    code: normalized.code,
-                    unit: normalized.unit,
-                    quota: normalized.quota,
-                    employmentType: normalized.employmentType
-                })
-                setLeaveTypes(dataStore.getLeaveTypesByCompanyId(currentCompany.id))
-                setLeaves(dataStore.getLeavesByCompanyId(currentCompany.id))
-                return updated
-            }
-
-            dataStore.upsertLeaveType(normalized)
-            setLeaveTypes(dataStore.getLeaveTypesByCompanyId(currentCompany.id))
+            setLeaveTypes(prev => prev.map(lt => lt.id === id ? normalized : lt))
             return normalized
         } catch (error) {
             console.error('Update leave type error:', error)
@@ -1665,8 +1520,7 @@ export function AppProvider({ children }: { children: ReactNode }) {
             }
             const apiLeaveTypes = await fetchLeaveTypesApi(apiAccessToken)
             const normalized = apiLeaveTypes.map(lt => normalizeLeaveType(lt, currentCompany.id))
-            dataStore.setLeaveTypesForCompany(currentCompany.id, normalized)
-            setLeaveTypes(dataStore.getLeaveTypesByCompanyId(currentCompany.id))
+            setLeaveTypes(normalized)
         } catch (error) {
             console.error('Refresh leave types error:', error)
         }
@@ -1677,47 +1531,32 @@ export function AppProvider({ children }: { children: ReactNode }) {
     ): Promise<LeaveRecord> => {
         try {
             if (!currentCompany) throw new Error('No company set up')
+            if (!apiAccessToken) throw new Error('API access required')
 
-            if (apiAccessToken) {
-                const documents = leaveData.documents
-                    || (leaveData.attachments?.length
-                        ? { files: leaveData.attachments.map(file => file.dataUrl) }
-                        : undefined)
-                const startDate = leaveData.startDate || leaveData.date
-                const endDate = leaveData.endDate || leaveData.date
-                const apiLeave = await createLeaveApi(
-                    {
-                        employeeId: leaveData.employeeId,
-                        startDate,
-                        endDate,
-                        unit: leaveData.unit,
-                        amount: leaveData.amount,
-                        companyId: currentCompany.id,
-                        note: leaveData.note,
-                        leaveTypeId: leaveData.leaveTypeId,
-                        documents
-                    },
-                    apiAccessToken
-                )
-                const responseLeaves = Array.isArray(apiLeave) ? apiLeave : [apiLeave]
-                const normalizedLeaves = responseLeaves.map((leave) => normalizeLeave(leave, currentCompany.id, leaveData))
-                normalizedLeaves.forEach((leave) => dataStore.upsertLeave(leave))
-                setLeaves(dataStore.getLeavesByCompanyId(currentCompany.id))
-
-                await refreshLeaves()
-
-                const refreshed = dataStore.getLeavesByCompanyId(currentCompany.id)
-                const primaryId = responseLeaves[0]?.id
-                if (primaryId) {
-                    const matched = refreshed.find((leave) => leave.id === primaryId)
-                    if (matched) return matched
-                }
-                return normalizedLeaves[0]
-            }
-
-            const leave = dataStore.addLeave(leaveData, currentCompany.id)
-            setLeaves(dataStore.getLeavesByCompanyId(currentCompany.id))
-            return leave
+            const documents = leaveData.documents
+                || (leaveData.attachments?.length
+                    ? { files: leaveData.attachments.map(file => file.dataUrl) }
+                    : undefined)
+            const startDate = leaveData.startDate || leaveData.date
+            const endDate = leaveData.endDate || leaveData.date
+            const apiLeave = await createLeaveApi(
+                {
+                    employeeId: leaveData.employeeId,
+                    startDate,
+                    endDate,
+                    unit: leaveData.unit,
+                    amount: leaveData.amount,
+                    companyId: currentCompany.id,
+                    note: leaveData.note,
+                    leaveTypeId: leaveData.leaveTypeId,
+                    documents
+                },
+                apiAccessToken
+            )
+            const responseLeaves = Array.isArray(apiLeave) ? apiLeave : [apiLeave]
+            const normalizedLeaves = responseLeaves.map((leave) => normalizeLeave(leave, currentCompany.id, leaveData))
+            setLeaves(prev => [...prev, ...normalizedLeaves])
+            return normalizedLeaves[0]
         } catch (error) {
             console.error('Add leave error:', error)
             throw error
@@ -1727,16 +1566,10 @@ export function AppProvider({ children }: { children: ReactNode }) {
     const refreshLeaves = async () => {
         try {
             if (!currentCompany) return
-            if (apiAccessToken) {
-                const apiLeaves = await fetchLeavesApi(apiAccessToken)
-                const existing = dataStore.getLeavesByCompanyId(currentCompany.id)
-                const normalized = apiLeaves.map(leave => {
-                    const fallback = existing.find(entry => entry.id === leave.id)
-                    return normalizeLeave(leave, currentCompany.id, fallback)
-                })
-                dataStore.setLeavesForCompany(currentCompany.id, normalized)
-            }
-            setLeaves(dataStore.getLeavesByCompanyId(currentCompany.id))
+            if (!apiAccessToken) return
+            const apiLeaves = await fetchLeavesApi(apiAccessToken)
+            const normalized = apiLeaves.map(leave => normalizeLeave(leave, currentCompany.id))
+            setLeaves(normalized)
         } catch (error) {
             console.error('Refresh leaves error:', error)
         }
@@ -1750,25 +1583,19 @@ export function AppProvider({ children }: { children: ReactNode }) {
     const createRole = async (roleData: Omit<Role, 'id' | 'companyId' | 'createdAt'>): Promise<Role> => {
         try {
             if (!currentCompany) throw new Error('No company set up')
+            if (!apiAccessToken) throw new Error('API access required')
 
-            if (apiAccessToken) {
-                const apiRole = await createRoleApi(
-                    {
-                        title: roleData.title,
-                        description: roleData.description,
-                        companyId: currentCompany.id
-                    },
-                    apiAccessToken
-                )
-                const normalized = normalizeRole(apiRole, currentCompany.id, roleData)
-                dataStore.upsertRole(normalized)
-                setRoles(dataStore.getRolesByCompanyId(currentCompany.id))
-                return normalized
-            }
-
-            const role = dataStore.createRole(roleData, currentCompany.id)
-            setRoles(dataStore.getRolesByCompanyId(currentCompany.id))
-            return role
+            const apiRole = await createRoleApi(
+                {
+                    title: roleData.title,
+                    description: roleData.description,
+                    companyId: currentCompany.id
+                },
+                apiAccessToken
+            )
+            const normalized = normalizeRole(apiRole, currentCompany.id, roleData)
+            setRoles(prev => [...prev, normalized])
+            return normalized
         } catch (error) {
             console.error('Create role error:', error)
             throw error
@@ -1777,47 +1604,29 @@ export function AppProvider({ children }: { children: ReactNode }) {
 
     const updateRole = async (id: string, roleData: Partial<Omit<Role, 'id' | 'companyId' | 'createdAt'>>): Promise<Role | null> => {
         try {
-            if (!currentCompany) {
-                throw new Error('No company set up')
+            if (!currentCompany) throw new Error('No company set up')
+            if (!apiAccessToken) throw new Error('API access required')
+
+            const payload: { description?: string; companyId: string; title?: string } = {
+                companyId: currentCompany.id
+            }
+            if (roleData.description !== undefined) {
+                payload.description = roleData.description
+            }
+            if (roleData.title) {
+                payload.title = roleData.title
             }
 
-            if (apiAccessToken) {
-                const payload: { description?: string; companyId: string; title?: string } = {
-                    companyId: currentCompany.id
-                }
-                if (roleData.description !== undefined) {
-                    payload.description = roleData.description
-                }
-                if (roleData.title) {
-                    payload.title = roleData.title
-                }
-
-                const apiRole = await updateRoleApi(id, payload, apiAccessToken)
-                const existing = dataStore.getRolesByCompanyId(currentCompany.id).find(role => role.id === id)
-                const normalized = normalizeRole(apiRole, currentCompany.id, {
-                    ...(existing || {}),
-                    ...roleData,
-                    id,
-                    companyId: currentCompany.id
-                })
-
-                if (existing) {
-                    const updated = dataStore.updateRole(id, {
-                        title: normalized.title,
-                        description: normalized.description
-                    })
-                    setRoles(dataStore.getRolesByCompanyId(currentCompany.id))
-                    return updated
-                }
-
-                dataStore.upsertRole(normalized)
-                setRoles(dataStore.getRolesByCompanyId(currentCompany.id))
-                return normalized
-            }
-
-            const role = dataStore.updateRole(id, roleData)
-            setRoles(dataStore.getRolesByCompanyId(currentCompany.id))
-            return role
+            const apiRole = await updateRoleApi(id, payload, apiAccessToken)
+            const existing = roles.find(role => role.id === id)
+            const normalized = normalizeRole(apiRole, currentCompany.id, {
+                ...(existing || {}),
+                ...roleData,
+                id,
+                companyId: currentCompany.id
+            })
+            setRoles(prev => prev.map(role => role.id === id ? normalized : role))
+            return normalized
         } catch (error) {
             console.error('Update role error:', error)
             throw error
@@ -1827,11 +1636,9 @@ export function AppProvider({ children }: { children: ReactNode }) {
     const deleteRole = async (id: string) => {
         try {
             if (!currentCompany) return
-            if (apiAccessToken) {
-                await deleteRoleApi(id, apiAccessToken)
-            }
-            dataStore.deleteRole(id)
-            setRoles(dataStore.getRolesByCompanyId(currentCompany.id))
+            if (!apiAccessToken) throw new Error('API access required')
+            await deleteRoleApi(id, apiAccessToken)
+            setRoles(prev => prev.filter(role => role.id !== id))
         } catch (error) {
             console.error('Delete role error:', error)
             throw error
@@ -1841,12 +1648,10 @@ export function AppProvider({ children }: { children: ReactNode }) {
     const refreshRoles = async () => {
         try {
             if (!currentCompany) return
-            if (apiAccessToken) {
-                const apiRoles = await fetchRolesApi(apiAccessToken)
-                const normalized = apiRoles.map(role => normalizeRole(role, currentCompany.id))
-                dataStore.setRolesForCompany(currentCompany.id, normalized)
-            }
-            setRoles(dataStore.getRolesByCompanyId(currentCompany.id))
+            if (!apiAccessToken) return
+            const apiRoles = await fetchRolesApi(apiAccessToken)
+            const normalized = apiRoles.map(role => normalizeRole(role, currentCompany.id))
+            setRoles(normalized)
         } catch (error) {
             console.error('Refresh roles error:', error)
         }
@@ -1864,34 +1669,28 @@ export function AppProvider({ children }: { children: ReactNode }) {
 
     const createJob = async (jobData: Omit<Job, 'id' | 'companyId' | 'createdAt'>): Promise<Job> => {
         try {
-            if (!currentCompany) {
-                throw new Error('No company found')
-            }
-            if (apiAccessToken) {
-                const departmentId = jobData.department
-                    ? departments.find(dept => dept.name === jobData.department)?.id
-                    : undefined
-                const apiJob = await createJobApi(
-                    {
-                        title: jobData.title,
-                        status: jobData.status || 'open',
-                        employmentType: jobData.employmentType,
-                        departmentId,
-                        salaryFrom: jobData.salary?.min,
-                        salaryTo: jobData.salary?.max,
-                        companyId: currentCompany.id
-                    },
-                    apiAccessToken
-                )
-                const normalized = normalizeJob(apiJob, currentCompany.id, jobData)
-                dataStore.upsertJob(normalized)
-                setJobs(dataStore.getJobsByCompanyId(currentCompany.id))
-                return normalized
-            }
+            if (!currentCompany) throw new Error('No company found')
+            if (!apiAccessToken) throw new Error('API access required')
 
-            const job = dataStore.createJob(currentCompany.id, jobData)
-            setJobs(dataStore.getJobsByCompanyId(currentCompany.id))
-            return job
+            const departmentId = jobData.department
+                ? departments.find(dept => dept.name === jobData.department)?.id
+                : undefined
+            const apiJob = await createJobApi(
+                {
+                    title: jobData.title,
+                    status: jobData.status || 'open',
+                    employmentType: jobData.employmentType,
+                    employmentMode: jobData.employmentMode,
+                    departmentId,
+                    salaryFrom: jobData.salary?.min,
+                    salaryTo: jobData.salary?.max,
+                    companyId: currentCompany.id
+                },
+                apiAccessToken
+            )
+            const normalized = normalizeJob(apiJob, currentCompany.id, jobData)
+            setJobs(prev => [...prev, normalized])
+            return normalized
         } catch (error) {
             console.error('Create job error:', error)
             throw error
@@ -1900,64 +1699,42 @@ export function AppProvider({ children }: { children: ReactNode }) {
 
     const updateJob = async (id: string, jobData: Partial<Omit<Job, 'id' | 'companyId' | 'createdAt'>>): Promise<Job | null> => {
         try {
-            if (!currentCompany) {
-                throw new Error('No company found')
+            if (!currentCompany) throw new Error('No company found')
+            if (!apiAccessToken) throw new Error('API access required')
+
+            const departmentId = jobData.department
+                ? departments.find(dept => dept.name === jobData.department)?.id
+                : undefined
+            const payload: {
+                status?: string
+                companyId: string
+                title?: string
+                employmentType?: string
+                employmentMode?: string
+                departmentId?: string
+                salaryFrom?: number
+                salaryTo?: number
+            } = {
+                companyId: currentCompany.id
             }
+            if (jobData.status) payload.status = jobData.status
+            if (jobData.title) payload.title = jobData.title
+            if (jobData.employmentType) payload.employmentType = jobData.employmentType
+            if (jobData.employmentMode) payload.employmentMode = jobData.employmentMode
+            if (departmentId) payload.departmentId = departmentId
+            if (jobData.salary?.min !== undefined) payload.salaryFrom = jobData.salary.min
+            if (jobData.salary?.max !== undefined) payload.salaryTo = jobData.salary.max
 
-            if (apiAccessToken) {
-                const departmentId = jobData.department
-                    ? departments.find(dept => dept.name === jobData.department)?.id
-                    : undefined
-                const payload: {
-                    status?: string
-                    companyId: string
-                    title?: string
-                    employmentType?: string
-                    departmentId?: string
-                    salaryFrom?: number
-                    salaryTo?: number
-                } = {
-                    companyId: currentCompany.id
-                }
-                if (jobData.status) payload.status = jobData.status
-                if (jobData.title) payload.title = jobData.title
-                if (jobData.employmentType) payload.employmentType = jobData.employmentType
-                if (departmentId) payload.departmentId = departmentId
-                if (jobData.salary?.min !== undefined) payload.salaryFrom = jobData.salary.min
-                if (jobData.salary?.max !== undefined) payload.salaryTo = jobData.salary.max
-
-                const apiJob = await updateJobApi(id, payload, apiAccessToken)
-                const existing = dataStore.getJobsByCompanyId(currentCompany.id).find(job => job.id === id)
-                const normalized = normalizeJob(apiJob, currentCompany.id, {
-                    ...(existing || {}),
-                    ...jobData,
-                    id,
-                    companyId: currentCompany.id
-                })
-
-                if (existing) {
-                    const updated = dataStore.updateJob(id, {
-                        title: normalized.title,
-                        roleId: normalized.roleId,
-                        department: normalized.department,
-                        employmentType: normalized.employmentType,
-                        location: normalized.location,
-                        salary: normalized.salary,
-                        experience: normalized.experience,
-                        status: normalized.status
-                    })
-                    setJobs(dataStore.getJobsByCompanyId(currentCompany.id))
-                    return updated
-                }
-
-                dataStore.upsertJob(normalized)
-                setJobs(dataStore.getJobsByCompanyId(currentCompany.id))
-                return normalized
-            }
-
-            const job = dataStore.updateJob(id, jobData)
-            setJobs(dataStore.getJobsByCompanyId(currentCompany.id))
-            return job
+            const apiJob = await updateJobApi(id, payload, apiAccessToken)
+            const existing = jobs.find(job => job.id === id)
+            const normalized = normalizeJob(apiJob, currentCompany.id, {
+                ...(existing || {}),
+                ...jobData,
+                id,
+                companyId: currentCompany.id
+            })
+            setJobs(prev => prev.map(job => job.id === id ? normalized : job))
+            return normalized
         } catch (error) {
             console.error('Update job error:', error)
             throw error
@@ -1967,11 +1744,9 @@ export function AppProvider({ children }: { children: ReactNode }) {
     const deleteJob = async (id: string) => {
         try {
             if (!currentCompany) return
-            if (apiAccessToken) {
-                await deleteJobApi(id, apiAccessToken)
-            }
-            dataStore.deleteJob(id)
-            setJobs(dataStore.getJobsByCompanyId(currentCompany.id))
+            if (!apiAccessToken) throw new Error('API access required')
+            await deleteJobApi(id, apiAccessToken)
+            setJobs(prev => prev.filter(job => job.id !== id))
         } catch (error) {
             console.error('Delete job error:', error)
             throw error
@@ -1981,16 +1756,10 @@ export function AppProvider({ children }: { children: ReactNode }) {
     const refreshJobs = async () => {
         try {
             if (!currentCompany) return
-            if (apiAccessToken) {
-                const apiJobs = await fetchJobsApi(apiAccessToken)
-                const existing = dataStore.getJobsByCompanyId(currentCompany.id)
-                const normalized = apiJobs.map(job => {
-                    const fallback = existing.find(item => item.id === job.id)
-                    return normalizeJob(job, currentCompany.id, fallback)
-                })
-                dataStore.setJobsForCompany(currentCompany.id, normalized)
-            }
-            setJobs(dataStore.getJobsByCompanyId(currentCompany.id))
+            if (!apiAccessToken) return
+            const apiJobs = await fetchJobsApi(apiAccessToken)
+            const normalized = apiJobs.map(job => normalizeJob(job, currentCompany.id))
+            setJobs(normalized)
         } catch (error) {
             console.error('Refresh jobs error:', error)
         }
@@ -1998,58 +1767,52 @@ export function AppProvider({ children }: { children: ReactNode }) {
 
     const createApplicant = async (applicantData: Omit<Applicant, 'id' | 'companyId' | 'createdAt'>): Promise<Applicant> => {
         try {
-            if (!currentCompany) {
-                throw new Error('No company found')
-            }
-            if (apiAccessToken) {
-                const appliedDate = applicantData.appliedDate || new Date().toISOString().split('T')[0]
-                const payload: {
-                    fullName: string
-                    email: string
-                    status: string
-                    appliedDate: string
-                    companyId: string
-                    documents?: { files: string[] }
-                    linkedinUrl?: string
-                    phone?: string
-                    positionApplied?: string
-                    yearsOfExperience?: number
-                    currentSalary?: number
-                    expectedSalary?: number
-                    noticePeriod?: string
-                    jobId?: string
-                } = {
-                    fullName: applicantData.fullName,
-                    email: applicantData.email,
-                    status: applicantData.status || 'new',
-                    appliedDate,
-                    companyId: currentCompany.id
-                }
+            if (!currentCompany) throw new Error('No company found')
+            if (!apiAccessToken) throw new Error('API access required')
 
-                if (applicantData.resumeFile) {
-                    payload.documents = { files: [applicantData.resumeFile.dataUrl] }
-                }
-                if (applicantData.linkedinUrl) payload.linkedinUrl = applicantData.linkedinUrl
-                if (applicantData.phone) payload.phone = applicantData.phone
-                if (applicantData.positionApplied) payload.positionApplied = applicantData.positionApplied
-                if (applicantData.yearsOfExperience !== undefined) payload.yearsOfExperience = applicantData.yearsOfExperience
-                if (applicantData.currentSalary !== undefined) payload.currentSalary = applicantData.currentSalary
-                if (applicantData.expectedSalary !== undefined) payload.expectedSalary = applicantData.expectedSalary
-                if (applicantData.noticePeriod) payload.noticePeriod = applicantData.noticePeriod
-                if (applicantData.jobId) payload.jobId = applicantData.jobId
-
-                const apiApplicant = await createApplicantApi(payload, apiAccessToken)
-                const normalized = normalizeApplicant(apiApplicant, currentCompany.id, {
-                    ...applicantData,
-                    appliedDate
-                })
-                dataStore.upsertApplicant(normalized)
-                setApplicants(dataStore.getApplicantsByCompanyId(currentCompany.id))
-                return normalized
+            const appliedDate = applicantData.appliedDate || new Date().toISOString().split('T')[0]
+            const payload: {
+                fullName: string
+                email: string
+                status: string
+                appliedDate: string
+                companyId: string
+                documents?: { files: string[] }
+                linkedinUrl?: string
+                phone?: string
+                positionApplied?: string
+                yearsOfExperience?: number
+                currentSalary?: number
+                expectedSalary?: number
+                noticePeriod?: string
+                jobId?: string
+            } = {
+                fullName: applicantData.fullName,
+                email: applicantData.email,
+                status: applicantData.status || 'new',
+                appliedDate,
+                companyId: currentCompany.id
             }
-            const applicant = dataStore.createApplicant(currentCompany.id, applicantData)
-            setApplicants(dataStore.getApplicantsByCompanyId(currentCompany.id))
-            return applicant
+
+            if (applicantData.resumeFile) {
+                payload.documents = { files: [applicantData.resumeFile.dataUrl] }
+            }
+            if (applicantData.linkedinUrl) payload.linkedinUrl = applicantData.linkedinUrl
+            if (applicantData.phone) payload.phone = applicantData.phone
+            if (applicantData.positionApplied) payload.positionApplied = applicantData.positionApplied
+            if (applicantData.yearsOfExperience !== undefined) payload.yearsOfExperience = applicantData.yearsOfExperience
+            if (applicantData.currentSalary !== undefined) payload.currentSalary = applicantData.currentSalary
+            if (applicantData.expectedSalary !== undefined) payload.expectedSalary = applicantData.expectedSalary
+            if (applicantData.noticePeriod) payload.noticePeriod = applicantData.noticePeriod
+            if (applicantData.jobId) payload.jobId = applicantData.jobId
+
+            const apiApplicant = await createApplicantApi(payload, apiAccessToken)
+            const normalized = normalizeApplicant(apiApplicant, currentCompany.id, {
+                ...applicantData,
+                appliedDate
+            })
+            setApplicants(prev => [...prev, normalized])
+            return normalized
         } catch (error) {
             console.error('Create applicant error:', error)
             throw error
@@ -2058,36 +1821,28 @@ export function AppProvider({ children }: { children: ReactNode }) {
 
     const updateApplicant = async (id: string, applicantData: Partial<Omit<Applicant, 'id' | 'companyId' | 'createdAt'>>): Promise<Applicant | null> => {
         try {
-            if (!currentCompany) {
-                throw new Error('No company found')
-            }
-            if (apiAccessToken) {
-                const existing = dataStore.getApplicantsByCompanyId(currentCompany.id).find(applicant => applicant.id === id)
-                const status = (applicantData.status || existing?.status || 'new') as Applicant['status']
-                const apiApplicant = await updateApplicantApi(
-                    id,
-                    {
-                        status,
-                        companyId: currentCompany.id
-                    },
-                    apiAccessToken
-                )
-                const normalized = normalizeApplicant(apiApplicant, currentCompany.id, {
-                    ...(existing || {}),
-                    ...applicantData,
-                    id,
-                    companyId: currentCompany.id,
-                    status
-                })
-                dataStore.upsertApplicant(normalized)
-                setApplicants(dataStore.getApplicantsByCompanyId(currentCompany.id))
-                return normalized
-            }
-            const applicant = dataStore.updateApplicant(id, applicantData)
-            if (currentCompany) {
-                setApplicants(dataStore.getApplicantsByCompanyId(currentCompany.id))
-            }
-            return applicant
+            if (!currentCompany) throw new Error('No company found')
+            if (!apiAccessToken) throw new Error('API access required')
+
+            const existing = applicants.find(applicant => applicant.id === id)
+            const status = (applicantData.status || existing?.status || 'new') as Applicant['status']
+            const apiApplicant = await updateApplicantApi(
+                id,
+                {
+                    status,
+                    companyId: currentCompany.id
+                },
+                apiAccessToken
+            )
+            const normalized = normalizeApplicant(apiApplicant, currentCompany.id, {
+                ...(existing || {}),
+                ...applicantData,
+                id,
+                companyId: currentCompany.id,
+                status
+            })
+            setApplicants(prev => prev.map(applicant => applicant.id === id ? normalized : applicant))
+            return normalized
         } catch (error) {
             console.error('Update applicant error:', error)
             throw error
@@ -2097,13 +1852,9 @@ export function AppProvider({ children }: { children: ReactNode }) {
     const deleteApplicant = async (id: string) => {
         try {
             if (!currentCompany) return
-            if (apiAccessToken) {
-                await deleteApplicantApi(id, apiAccessToken)
-            }
-            dataStore.deleteApplicant(id)
-            if (currentCompany) {
-                setApplicants(dataStore.getApplicantsByCompanyId(currentCompany.id))
-            }
+            if (!apiAccessToken) throw new Error('API access required')
+            await deleteApplicantApi(id, apiAccessToken)
+            setApplicants(prev => prev.filter(applicant => applicant.id !== id))
         } catch (error) {
             console.error('Delete applicant error:', error)
             throw error
@@ -2113,16 +1864,10 @@ export function AppProvider({ children }: { children: ReactNode }) {
     const refreshApplicants = async () => {
         try {
             if (!currentCompany) return
-            if (apiAccessToken) {
-                const apiApplicants = await fetchApplicantsApi(apiAccessToken)
-                const existing = dataStore.getApplicantsByCompanyId(currentCompany.id)
-                const normalized = apiApplicants.map(applicant => {
-                    const fallback = existing.find(entry => entry.id === applicant.id)
-                    return normalizeApplicant(applicant, currentCompany.id, fallback)
-                })
-                dataStore.setApplicantsForCompany(currentCompany.id, normalized)
-            }
-            setApplicants(dataStore.getApplicantsByCompanyId(currentCompany.id))
+            if (!apiAccessToken) return
+            const apiApplicants = await fetchApplicantsApi(apiAccessToken)
+            const normalized = apiApplicants.map(applicant => normalizeApplicant(applicant, currentCompany.id))
+            setApplicants(normalized)
         } catch (error) {
             console.error('Refresh applicants error:', error)
         }

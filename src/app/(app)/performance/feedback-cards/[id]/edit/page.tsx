@@ -23,7 +23,7 @@ export default function EditFeedbackCardPage() {
         }
     }, [card, feedbackCards.length, router])
 
-    const handleSave = async (payload: { title: string; subject: 'Team Member' | 'Applicant'; questions: { id: string; kind: 'score' | 'comment'; prompt: string; weight?: number }[] }) => {
+    const handleSave = async (payload: { title: string; subject: 'Team Member' | 'Applicant'; questions: { id: string; kind: 'score' | 'comment' | 'content'; prompt: string; weight?: number }[] }) => {
         if (!card) return
         setSaving(true)
         try {

@@ -4,7 +4,7 @@ import { useState, useEffect } from 'react'
 import { Input } from '@/components/ui/input'
 import { Button } from '@/components/ui/button'
 import { Label } from '@/components/ui/label'
-import { EMPLOYMENT_TYPES, GENDER_OPTIONS, type Employee, type EmployeeApi, type EmploymentType, type Gender } from '@/types'
+import { EMPLOYMENT_MODES, EMPLOYMENT_TYPES, GENDER_OPTIONS, type Employee, type EmployeeApi, type EmploymentMode, type EmploymentType, type Gender } from '@/types'
 import { useApp } from '@/lib/context/AppContext'
 import {
     Select,
@@ -34,6 +34,7 @@ type EmployeeFormState = {
     roleId: string
     startDate: string
     employmentType: EmploymentType
+    employmentMode: EmploymentMode
     reportingManager: string
     gender: Gender
     salary: string
@@ -47,6 +48,7 @@ const getDefaultFormData = (): EmployeeFormState => ({
     roleId: '',
     startDate: '',
     employmentType: EMPLOYMENT_TYPES[1],
+    employmentMode: EMPLOYMENT_MODES[0],
     reportingManager: 'self',
     gender: GENDER_OPTIONS[0],
     salary: ''
@@ -55,6 +57,23 @@ const getDefaultFormData = (): EmployeeFormState => ({
 const toDateInputValue = (value?: string | null) => {
     if (!value) return ''
     return value.split('T')[0] || ''
+}
+
+const normalizeEnumValue = <T extends readonly string[]>(
+    value: string | null | undefined,
+    options: T
+): T[number] | undefined => {
+    if (!value) return undefined
+    const trimmed = value.trim()
+    if (!trimmed) return undefined
+    const normalizeKey = (input: string) =>
+        input
+            .trim()
+            .toLowerCase()
+            .replace(/[^a-z0-9]+/g, ' ')
+            .trim()
+    const normalizedValue = normalizeKey(trimmed)
+    return options.find(option => normalizeKey(option) === normalizedValue)
 }
 
 export function EmployeeForm({
@@ -77,6 +96,26 @@ export function EmployeeForm({
                 ? roles.find(role => role.title === employee.roleName)?.id
                 : undefined
 
+            const rawEmploymentType = employee.employmentType?.trim() || ''
+            const rawEmploymentMode = employee.employmentMode?.trim() || ''
+            const rawGender = employee.gender?.trim() || ''
+
+            const normalizedEmploymentType = normalizeEnumValue(rawEmploymentType || null, EMPLOYMENT_TYPES)
+            const normalizedEmploymentMode = normalizeEnumValue(rawEmploymentMode || null, EMPLOYMENT_MODES)
+            const normalizedGender = normalizeEnumValue(rawGender || null, GENDER_OPTIONS)
+
+            const employmentTypeValue = normalizedEmploymentType || rawEmploymentType || EMPLOYMENT_TYPES[1]
+            const employmentModeValue = normalizedEmploymentMode || rawEmploymentMode || EMPLOYMENT_MODES[0]
+            const genderValue = normalizedGender || rawGender || GENDER_OPTIONS[0]
+
+            const managerId = employee.reportingManagerId?.trim()
+            const reportingManagerFromName = employee.reportingManager
+                ? employees.find(e => e.name === employee.reportingManager)?.id
+                : undefined
+            const reportingManagerValue = managerId && managerId !== employee.id
+                ? managerId
+                : reportingManagerFromName || 'self'
+
             setFormData({
                 employeeId: employee.employeeId || '',
                 name: employee.name || '',
@@ -84,11 +123,10 @@ export function EmployeeForm({
                 departmentId: employee.departmentId?.trim() || departmentIdFromName?.trim() || '',
                 roleId: employee.roleId?.trim() || roleFromName?.trim() || '',
                 startDate: toDateInputValue(employee.startDate),
-                employmentType: employee.employmentType || EMPLOYMENT_TYPES[1],
-                reportingManager: employee.reportingManagerId
-                    || employees.find(e => e.name === employee.reportingManager)?.id
-                    || 'self',
-                gender: employee.gender || GENDER_OPTIONS[0],
+                employmentType: employmentTypeValue as EmploymentType,
+                employmentMode: employmentModeValue as EmploymentMode,
+                reportingManager: reportingManagerValue,
+                gender: genderValue as Gender,
                 salary: employee.salary != null ? employee.salary.toString() : ''
             })
         } else {
@@ -96,6 +134,66 @@ export function EmployeeForm({
         }
         setErrors({})
     }, [employee, employees, departments, roles])
+
+    useEffect(() => {
+        if (!employee) return
+        const managerId = employee.reportingManagerId?.trim()
+        if (!managerId || managerId === employee.id) return
+        setFormData((prev) => {
+            if (prev.reportingManager === managerId) return prev
+            return { ...prev, reportingManager: managerId }
+        })
+    }, [employee?.id, employee?.reportingManagerId, employees.length])
+
+    useEffect(() => {
+        if (!employee) return
+        const rawEmploymentType = employee.employmentType?.trim() || ''
+        const rawEmploymentMode = employee.employmentMode?.trim() || ''
+        const rawGender = employee.gender?.trim() || ''
+        const normalizedEmploymentType = normalizeEnumValue(rawEmploymentType || null, EMPLOYMENT_TYPES)
+        const normalizedEmploymentMode = normalizeEnumValue(rawEmploymentMode || null, EMPLOYMENT_MODES)
+        const normalizedGender = normalizeEnumValue(rawGender || null, GENDER_OPTIONS)
+        const employmentTypeValue = normalizedEmploymentType || rawEmploymentType
+        const employmentModeValue = normalizedEmploymentMode || rawEmploymentMode
+        const genderValue = normalizedGender || rawGender
+
+        setFormData((prev) => {
+            if (!employmentTypeValue && !employmentModeValue && !genderValue) return prev
+            let changed = false
+            const next = { ...prev }
+            if (employmentTypeValue && prev.employmentType !== employmentTypeValue) {
+                next.employmentType = employmentTypeValue as EmploymentType
+                changed = true
+            }
+            if (employmentModeValue && prev.employmentMode !== employmentModeValue) {
+                next.employmentMode = employmentModeValue as EmploymentMode
+                changed = true
+            }
+            if (genderValue && prev.gender !== genderValue) {
+                next.gender = genderValue as Gender
+                changed = true
+            }
+            return changed ? next : prev
+        })
+    }, [employee?.id, employee?.employmentType, employee?.employmentMode, employee?.gender])
+
+    const managerOptions = employees.filter(emp => !employee || emp.id !== employee.id)
+    const reportingManagerId = employee?.reportingManagerId?.trim()
+    const reportingManagerEntry = reportingManagerId
+        ? managerOptions.find(emp => emp.id === reportingManagerId)
+        : undefined
+    const showMissingManager = reportingManagerId
+        && reportingManagerId !== employee?.id
+        && !reportingManagerEntry
+    const missingManagerLabel = reportingManagerId
+        ? `${employee?.reportingManager?.trim() || 'Unknown'} [${reportingManagerEntry?.employeeId || 'Unknown'}] ${reportingManagerId}`
+        : ''
+    const normalizedEmploymentTypeValue = normalizeEnumValue(formData.employmentType as string, EMPLOYMENT_TYPES)
+    const normalizedEmploymentModeValue = normalizeEnumValue(formData.employmentMode as string, EMPLOYMENT_MODES)
+    const showMissingEmploymentType = Boolean(formData.employmentType && !normalizedEmploymentTypeValue)
+    const showMissingEmploymentMode = Boolean(formData.employmentMode && !normalizedEmploymentModeValue)
+    const normalizedGenderValue = normalizeEnumValue(formData.gender as string, GENDER_OPTIONS)
+    const showMissingGender = Boolean(formData.gender && !normalizedGenderValue)
 
     useEffect(() => {
         if (onRoleChange) {
@@ -125,6 +223,7 @@ export function EmployeeForm({
                 roleId: formData.roleId,
                 startDate: formData.startDate,
                 employmentType: formData.employmentType,
+                employmentMode: formData.employmentMode,
                 reportingManager: managerName,
                 gender: formData.gender,
                 salary: parseFloat(formData.salary)
@@ -193,11 +292,17 @@ export function EmployeeForm({
                     <Select
                         value={formData.employmentType}
                         onValueChange={(value) => handleChange('employmentType', value as EmploymentType)}
+                        key={formData.employmentType}
                     >
                         <SelectTrigger id="employmentType" className="rounded-xl border-slate-200">
                             <SelectValue placeholder="Select employment type" />
                         </SelectTrigger>
                         <SelectContent>
+                            {showMissingEmploymentType && (
+                                <SelectItem value={formData.employmentType}>
+                                    {formData.employmentType}
+                                </SelectItem>
+                            )}
                             {EMPLOYMENT_TYPES.map((type) => (
                                 <SelectItem key={type} value={type}>
                                     {type}
@@ -207,6 +312,33 @@ export function EmployeeForm({
                     </Select>
                     {errors.employmentType && (
                         <p className="text-xs text-red-600 mt-1">{errors.employmentType}</p>
+                    )}
+                </div>
+                <div className="space-y-2">
+                    <Label htmlFor="employmentMode">Employment Mode</Label>
+                    <Select
+                        value={formData.employmentMode}
+                        onValueChange={(value) => handleChange('employmentMode', value as EmploymentMode)}
+                        key={formData.employmentMode}
+                    >
+                        <SelectTrigger id="employmentMode" className="rounded-xl border-slate-200">
+                            <SelectValue placeholder="Select employment mode" />
+                        </SelectTrigger>
+                        <SelectContent>
+                            {showMissingEmploymentMode && (
+                                <SelectItem value={formData.employmentMode}>
+                                    {formData.employmentMode}
+                                </SelectItem>
+                            )}
+                            {EMPLOYMENT_MODES.map((modeOption) => (
+                                <SelectItem key={modeOption} value={modeOption}>
+                                    {modeOption}
+                                </SelectItem>
+                            ))}
+                        </SelectContent>
+                    </Select>
+                    {errors.employmentMode && (
+                        <p className="text-xs text-red-600 mt-1">{errors.employmentMode}</p>
                     )}
                 </div>
             </div>
@@ -334,19 +466,23 @@ export function EmployeeForm({
                     <Select
                         value={formData.reportingManager || "self"}
                         onValueChange={(value) => handleChange('reportingManager', value)}
+                        key={`${formData.reportingManager}-${employees.length}`}
                     >
                         <SelectTrigger id="reportingManager" className={`rounded-xl border-slate-200 ${errors.reportingManager ? 'border-red-500' : ''}`}>
                             <SelectValue placeholder="Select Manager" />
                         </SelectTrigger>
                         <SelectContent>
                             <SelectItem value="self">Self / This employee leads</SelectItem>
-                            {employees
-                                .filter(emp => !employee || emp.id !== employee.id)
-                                .map((emp) => (
-                                    <SelectItem key={emp.id} value={emp.id}>
-                                        {emp.name} ({emp.position})
-                                    </SelectItem>
-                                ))}
+                            {showMissingManager && (
+                                <SelectItem value={reportingManagerId as string}>
+                                    {missingManagerLabel}
+                                </SelectItem>
+                            )}
+                            {managerOptions.map((emp) => (
+                                <SelectItem key={emp.id} value={emp.id}>
+                                    {emp.name} [{emp.employeeId}]
+                                </SelectItem>
+                            ))}
                         </SelectContent>
                     </Select>
                     {errors.reportingManager && (
@@ -361,11 +497,17 @@ export function EmployeeForm({
                     <Select
                         value={formData.gender}
                         onValueChange={(value) => handleChange('gender', value as Gender)}
+                        key={formData.gender}
                     >
                         <SelectTrigger id="gender" className="rounded-xl border-slate-200">
                             <SelectValue placeholder="Select gender" />
                         </SelectTrigger>
                         <SelectContent>
+                            {showMissingGender && (
+                                <SelectItem value={formData.gender}>
+                                    {formData.gender}
+                                </SelectItem>
+                            )}
                             {GENDER_OPTIONS.map((gender) => (
                                 <SelectItem key={gender} value={gender}>
                                     {gender}
@@ -386,7 +528,7 @@ export function EmployeeForm({
                         id="salary"
                         type="number"
                         placeholder="8000"
-                        step="100"
+                        step="1"
                         min="0"
                         value={formData.salary}
                         onChange={(e) => handleChange('salary', e.target.value)}

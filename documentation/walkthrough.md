@@ -295,7 +295,7 @@ Create a job
 curl -X POST "$API_URL/jobs" \
   -H "Authorization: Bearer $TOKEN" \
   -H "Content-Type: application/json" \
-  -d '{ "title": "Backend Engineer", "status": "open", "employmentType": "Full-time", "companyId": "YOUR_COMPANY_ID" }'
+  -d '{ "title": "Backend Engineer", "departmentId": "YOUR_DEPARTMENT_ID", "status": "open", "employmentType": "Full-time", "employmentMode": "Remote", "salaryFrom": 60000, "salaryTo": 85000, "companyId": "YOUR_COMPANY_ID" }'
 ```
 
 List jobs
@@ -315,7 +315,7 @@ Update a job
 curl -X PUT "$API_URL/jobs/YOUR_JOB_ID" \
   -H "Authorization: Bearer $TOKEN" \
   -H "Content-Type: application/json" \
-  -d '{ "status": "closed", "companyId": "YOUR_COMPANY_ID" }'
+  -d '{ "status": "closed", "departmentId": "YOUR_DEPARTMENT_ID", "employmentMode": "Hybrid", "salaryTo": 90000, "companyId": "YOUR_COMPANY_ID" }'
 ```
 
 Delete a job
@@ -331,7 +331,7 @@ Create an employee
 curl -X POST "$API_URL/employees" \
   -H "Authorization: Bearer $TOKEN" \
   -H "Content-Type: application/json" \
-  -d '{ "employeeId": "EMP-001", "companyId": "YOUR_COMPANY_ID", "name": "Jane Doe", "email": "jane@example.com", "startDate": "2024-01-01", "employmentType": "Full-time", "gender": "Female" }'
+  -d '{ "employeeId": "EMP-001", "companyId": "YOUR_COMPANY_ID", "userId": "YOUR_USER_ID", "departmentId": "YOUR_DEPARTMENT_ID", "reportingManagerId": "YOUR_MANAGER_EMPLOYEE_ID", "name": "Jane Doe", "email": "jane@example.com", "startDate": "2024-01-01", "employmentType": "Full-time", "employmentMode": "Onsite", "gender": "Female" }'
 ```
 
 List employees
@@ -351,7 +351,7 @@ Update an employee
 curl -X PUT "$API_URL/employees/YOUR_EMPLOYEE_ID" \
   -H "Authorization: Bearer $TOKEN" \
   -H "Content-Type: application/json" \
-  -d '{ "companyId": "YOUR_COMPANY_ID" }'
+  -d '{ "companyId": "YOUR_COMPANY_ID", "userId": "YOUR_USER_ID", "departmentId": "YOUR_DEPARTMENT_ID", "employmentType": "Full-time", "employmentMode": "Hybrid" }'
 ```
 
 Delete an employee

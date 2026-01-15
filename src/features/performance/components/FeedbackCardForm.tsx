@@ -4,6 +4,7 @@ import { useState } from 'react'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
+import { QuillEditor } from '@/components/ui/quill-editor'
 import type { FeedbackQuestion } from '@/types'
 import { Plus, Trash2 } from 'lucide-react'
 import { toast } from '@/components/ui/toast'
@@ -24,6 +25,14 @@ const createQuestion = (kind: FeedbackQuestion['kind']): FeedbackQuestion => ({
     prompt: '',
     weight: kind === 'score' ? 1 : undefined
 })
+
+const hasPromptText = (prompt: string) => {
+    const cleaned = prompt
+        .replace(/<[^>]*>/g, ' ')
+        .replace(/&nbsp;/gi, ' ')
+        .trim()
+    return cleaned.length > 0
+}
 
 export function FeedbackCardForm({
     initialTitle = '',
@@ -68,7 +77,12 @@ export function FeedbackCardForm({
             toast('Add at least one question', 'error')
             return false
         }
-        const hasEmpty = questions.some(q => !q.prompt.trim())
+        const hasEmpty = questions.some(q => {
+            if (q.kind === 'content') {
+                return !hasPromptText(q.prompt)
+            }
+            return !q.prompt.trim()
+        })
         if (hasEmpty) {
             toast('All questions must have text', 'error')
             return false
@@ -126,7 +140,9 @@ export function FeedbackCardForm({
                     {questions.map((q, index) => (
                         <div key={q.id} className="rounded-2xl border border-slate-200 p-4 space-y-3">
                             <div className="flex items-center justify-between">
-                                <p className="text-xs font-bold text-slate-400 uppercase tracking-widest">Question {index + 1}</p>
+                                <p className="text-xs font-bold text-slate-400 uppercase tracking-widest">
+                                    {q.kind === 'content' ? 'Content Block' : 'Question'}
+                                </p>
                                 <Button
                                     type="button"
                                     variant="ghost"
@@ -138,45 +154,61 @@ export function FeedbackCardForm({
                                 </Button>
                             </div>
                             <div className="grid grid-cols-1 md:grid-cols-[1fr_140px] gap-3 items-start">
-                                <Input
-                                    className="h-11 rounded-xl border-slate-200"
-                                    placeholder={q.kind === 'comment' ? 'Comment box label' : 'Describe the employee’s impact on team goals.'}
-                                    value={q.prompt}
-                                    onChange={(e) => handleQuestionChange(q.id, 'prompt', e.target.value)}
-                                />
-                                {q.kind === 'score' ? (
-                                    <div className="space-y-1.5">
-                                        <Input
-                                            type="number"
-                                            min={0}
-                                            step={1}
-                                            inputMode="numeric"
-                                            className="h-11 rounded-xl border-slate-200"
-                                            placeholder="Weight"
-                                            value={q.weight ?? 1}
-                                            onKeyDown={(e) => {
-                                                if (e.key === '-' || e.key === '+' || e.key.toLowerCase() === 'e' || e.key === '.') {
-                                                    e.preventDefault()
-                                                }
-                                            }}
-                                            onChange={(e) => handleQuestionChange(q.id, 'weight', e.target.value)}
+                                {q.kind === 'content' ? (
+                                    <div className="md:col-span-2 space-y-2">
+                                        <QuillEditor
+                                            value={q.prompt}
+                                            onChange={(value) => handleQuestionChange(q.id, 'prompt', value)}
+                                            placeholder="Add any context or instructions for this card..."
+                                            className="bg-white"
                                         />
-                                        <p className="text-[11px] text-slate-400 px-1">Weight (default 1)</p>
+                                        <p className="text-[11px] text-slate-400 px-1">Content block</p>
                                     </div>
                                 ) : (
-                                    <div className="text-xs text-slate-400 px-1 pt-2">Comment box</div>
+                                    <>
+                                        <Input
+                                            className="h-11 rounded-xl border-slate-200"
+                                            placeholder={q.kind === 'comment' ? 'Comment box label' : 'Describe the employee’s impact on team goals.'}
+                                            value={q.prompt}
+                                            onChange={(e) => handleQuestionChange(q.id, 'prompt', e.target.value)}
+                                        />
+                                        {q.kind === 'score' ? (
+                                            <div className="space-y-1.5">
+                                                <Input
+                                                    type="number"
+                                                    min={0}
+                                                    step={1}
+                                                    inputMode="numeric"
+                                                    className="h-11 rounded-xl border-slate-200"
+                                                    placeholder="Weight"
+                                                    value={q.weight ?? 1}
+                                                    onKeyDown={(e) => {
+                                                        if (e.key === '-' || e.key === '+' || e.key.toLowerCase() === 'e' || e.key === '.') {
+                                                            e.preventDefault()
+                                                        }
+                                                    }}
+                                                    onChange={(e) => handleQuestionChange(q.id, 'weight', e.target.value)}
+                                                />
+                                                <p className="text-[11px] text-slate-400 px-1">Weight (default 1)</p>
+                                            </div>
+                                        ) : (
+                                            <div className="text-xs text-slate-400 px-1 pt-2">Comment box</div>
+                                        )}
+                                    </>
                                 )}
                             </div>
                         </div>
                     ))}
                 </div>
-                <div className="flex justify-end gap-2">
-                    <Button type="button" variant="outline" className="rounded-xl" onClick={() => handleAddQuestion('comment')}>
-                        Add Text Area
-                    </Button>
+                <div className="flex items-center gap-2">
                     <Button type="button" variant="outline" className="rounded-xl" onClick={() => handleAddQuestion('score')}>
-                        <Plus className="w-4 h-4 mr-2" />
                         Add Question
+                    </Button>
+                    <Button type="button" variant="outline" className="rounded-xl" onClick={() => handleAddQuestion('comment')}>
+                        Add Comment Section
+                    </Button>
+                    <Button type="button" variant="outline" className="rounded-xl" onClick={() => handleAddQuestion('content')}>
+                        Add Content Block
                     </Button>
                 </div>
             </div>
