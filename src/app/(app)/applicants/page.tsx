@@ -281,9 +281,9 @@ export default function ApplicantsPage() {
                                             <Label className="text-sm font-bold text-slate-700 px-1">Years of Experience</Label>
                                             <Input
                                                 type="number"
-                                                placeholder="1"
+                                                placeholder="0"
                                                 className="rounded-xl border-slate-200 h-12"
-                                                value={newApplicant.yearsOfExperience || ''}
+                                                value={newApplicant.yearsOfExperience}
                                                 min={0}
                                                 step={0.1}
                                                 inputMode="numeric"
