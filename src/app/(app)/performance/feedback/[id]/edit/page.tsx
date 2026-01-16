@@ -170,12 +170,12 @@ export default function EditFeedbackPage() {
             }).filter(Boolean)
 
             const payload = {
-                type: apiEntry.type,
-                subjectType: type === 'Team Member' ? 'Employee' : 'Applicant',
+                type: type as 'Team Member' | 'Applicant',
+                subjectType: (type === 'Team Member' ? 'Employee' : 'Applicant') as 'Employee' | 'Applicant',
                 cardId: apiEntry.cardId,
                 subjectId,
                 subjectName: subject?.label,
-                answers: apiAnswers
+                answers: apiAnswers.filter((a): a is { questionId: string; answer: string } => a !== null)
             }
 
             // Print curl command to console
