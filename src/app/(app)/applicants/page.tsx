@@ -314,7 +314,7 @@ export default function ApplicantsPage() {
                                                 type="number"
                                                 placeholder="70000"
                                                 className="rounded-xl border-slate-200 h-12 [appearance:textfield] [&::-webkit-outer-spin-button]:appearance-none [&::-webkit-inner-spin-button]:appearance-none"
-                                                value={newApplicant.currentSalary || ''}
+                                                value={newApplicant.currentSalary}
                                                 min={0}
                                                 step={1}
                                                 inputMode="numeric"
