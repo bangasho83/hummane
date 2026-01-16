@@ -282,7 +282,7 @@ export default function ApplicantsPage() {
                                             <Input
                                                 type="number"
                                                 placeholder="0"
-                                                className="rounded-xl border-slate-200 h-12"
+                                                className="rounded-xl border-slate-200 h-12 [appearance:textfield] [&::-webkit-outer-spin-button]:appearance-none [&::-webkit-inner-spin-button]:appearance-none"
                                                 value={newApplicant.yearsOfExperience}
                                                 min={0}
                                                 step={0.1}
@@ -313,7 +313,7 @@ export default function ApplicantsPage() {
                                             <Input
                                                 type="number"
                                                 placeholder="70000"
-                                                className="rounded-xl border-slate-200 h-12"
+                                                className="rounded-xl border-slate-200 h-12 [appearance:textfield] [&::-webkit-outer-spin-button]:appearance-none [&::-webkit-inner-spin-button]:appearance-none"
                                                 value={newApplicant.currentSalary || ''}
                                                 min={0}
                                                 step={1}
@@ -343,7 +343,7 @@ export default function ApplicantsPage() {
                                             <Input
                                                 type="number"
                                                 placeholder="90000"
-                                                className="rounded-xl border-slate-200 h-12"
+                                                className="rounded-xl border-slate-200 h-12 [appearance:textfield] [&::-webkit-outer-spin-button]:appearance-none [&::-webkit-inner-spin-button]:appearance-none"
                                                 value={newApplicant.expectedSalary || ''}
                                                 min={0}
                                                 step={1}

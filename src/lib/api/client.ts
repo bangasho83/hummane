@@ -863,11 +863,23 @@ export const createFeedbackCardApi = async (
   payload: {
     title: string
     subject: string
-    questions: { prompt: string; type: string; weight?: number }[]
+    questions: { prompt: string; kind: 'score' | 'comment' | 'content'; weight?: number }[]
     companyId: string
   },
   accessToken: string
 ): Promise<FeedbackCard> => {
+  const jsonBody = JSON.stringify(payload)
+
+  // Log curl command for debugging
+  const escapedBody = jsonBody.replace(/'/g, "'\\''")
+  const curlCommand = `curl -X POST '${FEEDBACK_CARDS_PATH}' \\
+  -H 'Content-Type: application/json' \\
+  -H 'Authorization: Bearer ${accessToken}' \\
+  -d '${escapedBody}'`
+  console.log('=== CURL COMMAND FOR CREATE FEEDBACK CARD ===')
+  console.log(curlCommand)
+  console.log('=== END CURL COMMAND ===')
+
   let response: Response
   try {
     response = await fetch(FEEDBACK_CARDS_PATH, {
@@ -876,7 +888,7 @@ export const createFeedbackCardApi = async (
         'Content-Type': 'application/json',
         Authorization: `Bearer ${accessToken}`,
       },
-      body: JSON.stringify(payload),
+      body: jsonBody,
     })
   } catch (error) {
     console.error('API /feedback-cards POST network error:', error)
@@ -946,10 +958,22 @@ export const updateFeedbackCardApi = async (
     companyId: string
     title?: string
     subject?: string
-    questions?: { prompt: string; type: string; weight?: number }[]
+    questions?: { prompt: string; kind: 'score' | 'comment' | 'content'; weight?: number }[]
   },
   accessToken: string
 ): Promise<FeedbackCard> => {
+  const jsonBody = JSON.stringify(payload)
+
+  // Log curl command for debugging
+  const escapedBody = jsonBody.replace(/'/g, "'\\''")
+  const curlCommand = `curl -X PUT '${FEEDBACK_CARDS_PATH}/${encodeURIComponent(cardId)}' \\
+  -H 'Content-Type: application/json' \\
+  -H 'Authorization: Bearer ${accessToken}' \\
+  -d '${escapedBody}'`
+  console.log('=== CURL COMMAND FOR UPDATE FEEDBACK CARD ===')
+  console.log(curlCommand)
+  console.log('=== END CURL COMMAND ===')
+
   let response: Response
   try {
     response = await fetch(`${FEEDBACK_CARDS_PATH}/${encodeURIComponent(cardId)}`, {
@@ -958,7 +982,7 @@ export const updateFeedbackCardApi = async (
         'Content-Type': 'application/json',
         Authorization: `Bearer ${accessToken}`,
       },
-      body: JSON.stringify(payload),
+      body: jsonBody,
     })
   } catch (error) {
     console.error('API /feedback-cards PUT network error:', error)

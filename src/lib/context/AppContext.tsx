@@ -203,8 +203,9 @@ export function AppProvider({ children }: { children: ReactNode }) {
         setLeaves(dataStore.getLeavesByCompanyId(company.id))
         setLeaveTypes(dataStore.getLeaveTypesByCompanyId(company.id))
         setHolidays(dataStore.getHolidaysByCompanyId(company.id))
-        setFeedbackCards(dataStore.getFeedbackCardsByCompanyId(company.id))
-        setFeedbackEntries(dataStore.getFeedbackEntriesByCompanyId(company.id))
+        // Feedback cards are loaded only from API, not localStorage
+        setFeedbackCards([])
+        setFeedbackEntries([])
         setRoles(dataStore.getRolesByCompanyId(company.id))
         setJobs(dataStore.getJobsByCompanyId(company.id))
         setApplicants(dataStore.getApplicantsByCompanyId(company.id))
@@ -1161,7 +1162,7 @@ export function AppProvider({ children }: { children: ReactNode }) {
 
             const questions = cardData.questions.map(question => ({
                 prompt: question.prompt,
-                type: question.kind === 'comment' ? 'text' : question.kind === 'content' ? 'content' : 'score',
+                kind: question.kind,
                 weight: question.kind === 'score' ? question.weight : undefined
             }))
             const apiCard = await createFeedbackCardApi(
@@ -1191,7 +1192,7 @@ export function AppProvider({ children }: { children: ReactNode }) {
                 companyId: string
                 title?: string
                 subject?: string
-                questions?: { prompt: string; type: string; weight?: number }[]
+                questions?: { prompt: string; kind: 'score' | 'comment' | 'content'; weight?: number }[]
             } = {
                 companyId: currentCompany.id
             }
@@ -1200,7 +1201,7 @@ export function AppProvider({ children }: { children: ReactNode }) {
             if (updates.questions) {
                 payload.questions = updates.questions.map(question => ({
                     prompt: question.prompt,
-                    type: question.kind === 'comment' ? 'text' : question.kind === 'content' ? 'content' : 'score',
+                    kind: question.kind,
                     weight: question.kind === 'score' ? question.weight : undefined
                 }))
             }

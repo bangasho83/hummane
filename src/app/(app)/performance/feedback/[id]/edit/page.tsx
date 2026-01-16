@@ -11,35 +11,114 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@
 import { toast } from '@/components/ui/toast'
 import { useApp } from '@/lib/context/AppContext'
 
+const API_BASE_URL = process.env.NEXT_PUBLIC_API_BASE_URL || 'https://hummane-api.vercel.app'
+
+// Types for the API card structure
+interface CardQuestion {
+    type: 'content' | 'score' | 'text'
+    prompt: string
+    weight?: number
+    answer?: {
+        answer: string
+        questionId: string
+    }
+}
+
+interface ApiCard {
+    id: string
+    companyId: string
+    title: string
+    subject: string
+    questions: CardQuestion[]
+    createdAt: string
+    updatedAt: string
+}
+
+interface ApiEntry {
+    id: string
+    subjectName?: string
+    subjectType?: string
+    type?: string
+    cardId: string
+    subjectId?: string
+    createdAt: string
+    card: ApiCard
+}
+
 type DraftAnswer = {
-    questionId: string
+    index: number  // Use index since questions don't have IDs
     score: number
     comment?: string
-    answer?: string  // Raw API field
 }
 
 export default function EditFeedbackPage() {
     const params = useParams()
     const router = useRouter()
-    const { feedbackCards, feedbackEntries, employees, applicants, updateFeedbackEntry } = useApp()
+    const { employees, applicants, updateFeedbackEntry, apiAccessToken } = useApp()
     const entryId = params.id as string
-    const entry = useMemo(() => feedbackEntries.find(e => e.id === entryId) || null, [feedbackEntries, entryId])
 
-    const [type, setType] = useState<'Team Member' | 'Applicant'>('Team Member')
-    const [cardId, setCardId] = useState<string>('')
-    const [subjectId, setSubjectId] = useState<string>('')
-    const [answers, setAnswers] = useState<DraftAnswer[]>([])
+    // API data state
+    const [apiEntry, setApiEntry] = useState<ApiEntry | null>(null)
+    const [loading, setLoading] = useState(true)
     const [saving, setSaving] = useState(false)
 
-    const filteredCards = useMemo(
-        () => feedbackCards.filter(card => card.subject === type),
-        [feedbackCards, type]
-    )
+    // Form state
+    const [type, setType] = useState<'Team Member' | 'Applicant'>('Team Member')
+    const [subjectId, setSubjectId] = useState<string>('')
+    const [answers, setAnswers] = useState<DraftAnswer[]>([])
 
-    const selectedCard = useMemo(
-        () => filteredCards.find(card => card.id === cardId) || null,
-        [filteredCards, cardId]
-    )
+    // API Debug state
+    const [apiResponse, setApiResponse] = useState<string>('')
+    const [curlCommand, setCurlCommand] = useState<string>('')
+
+    // Fetch from API
+    useEffect(() => {
+        if (!entryId || !apiAccessToken) return
+
+        const url = `${API_BASE_URL}/feedback-entries/${encodeURIComponent(entryId)}`
+        const curl = `curl -X GET '${url}' \\
+  -H 'Authorization: Bearer ${apiAccessToken}'`
+        setCurlCommand(curl)
+
+        fetch(url, {
+            method: 'GET',
+            headers: {
+                Authorization: `Bearer ${apiAccessToken}`,
+            },
+        })
+            .then(res => res.json())
+            .then(data => {
+                setApiResponse(JSON.stringify(data, null, 2))
+                const entry = data?.data || data
+                setApiEntry(entry)
+
+                // Initialize form from API data
+                if (entry) {
+                    const entryType = entry.subjectType === 'Employee' ? 'Team Member' : 'Applicant'
+                    setType(entryType)
+                    setSubjectId(entry.subjectId || '')
+
+                    // Initialize answers from card.questions with embedded answers
+                    if (entry.card?.questions) {
+                        const initialAnswers: DraftAnswer[] = entry.card.questions.map((q: CardQuestion, index: number) => {
+                            const answerValue = q.answer?.answer || ''
+                            if (q.type === 'score') {
+                                return { index, score: parseInt(answerValue, 10) || 0 }
+                            } else if (q.type === 'text') {
+                                return { index, score: 0, comment: answerValue }
+                            }
+                            return { index, score: 0 }
+                        })
+                        setAnswers(initialAnswers)
+                    }
+                }
+                setLoading(false)
+            })
+            .catch(err => {
+                setApiResponse(`Error: ${err.message}`)
+                setLoading(false)
+            })
+    }, [entryId, apiAccessToken])
 
     const subjects = useMemo(() => {
         return type === 'Applicant'
@@ -47,103 +126,69 @@ export default function EditFeedbackPage() {
             : employees.map(e => ({ id: e.id, label: e.name }))
     }, [type, applicants, employees])
 
-    useEffect(() => {
-        if (!entry) return
-        // Derive type from subjectType (Employee = Team Member, otherwise Applicant)
-        const entryType = entry.subjectType === 'Employee' ? 'Team Member' : 'Applicant'
-        setType(entryType)
-        setCardId(entry.cardId)
-        setSubjectId(entry.subjectId || '')
-        const card = feedbackCards.find(c => c.id === entry.cardId)
-        if (card) {
-            const answerQuestions = card.questions.filter(q => (q.kind ?? 'score') !== 'content')
-            setAnswers(answerQuestions.map(q => {
-                // eslint-disable-next-line @typescript-eslint/no-explicit-any
-                const existing = entry.answers.find((a: any) => a.questionId === q.id) as any
-                const kind = q.kind ?? 'score'
-                // Use answer from API response (answer.answer field)
-                const answerValue = existing?.answer ?? ''
-                return {
-                    questionId: q.id,
-                    score: kind === 'score' ? (parseInt(answerValue, 10) || 0) : 0,
-                    comment: kind === 'comment' ? answerValue : undefined,
-                    answer: answerValue
-                }
-            }))
-        } else {
-            // eslint-disable-next-line @typescript-eslint/no-explicit-any
-            setAnswers(entry.answers.map((a: any) => ({
-                questionId: a.questionId,
-                score: parseInt(a.answer, 10) || 0,
-                comment: a.answer,
-                answer: a.answer
-            })))
-        }
-    }, [entry, feedbackCards])
+    if (loading) {
+        return (
+            <div className="p-8 text-slate-500">Loading feedback entry...</div>
+        )
+    }
 
-    if (!entry) {
+    if (!apiEntry || !apiEntry.card) {
         return (
             <div className="p-8 text-slate-500">Feedback entry not found.</div>
         )
     }
 
-    const handleSelectCard = (value: string) => {
-        setCardId(value)
-        const card = filteredCards.find(c => c.id === value)
-        if (!card) {
-            setAnswers([])
-            return
-        }
-        const answerQuestions = card.questions.filter(q => (q.kind ?? 'score') !== 'content')
-        setAnswers(answerQuestions.map(q => ({
-            questionId: q.id,
-            score: (q.kind ?? 'score') === 'score' ? 0 : 0,
-            comment: (q.kind ?? 'score') === 'comment' ? '' : undefined
-        })))
+    const card = apiEntry.card
+    const questions = card.questions || []
+
+    const handleAnswerChange = (index: number, score: number) => {
+        setAnswers(prev => prev.map(a => (a.index === index ? { ...a, score } : a)))
     }
 
-    const handleAnswerChange = (questionId: string, score: number) => {
-        setAnswers(prev => prev.map(a => (a.questionId === questionId ? { ...a, score } : a)))
-    }
-
-    const handleCommentChange = (questionId: string, comment: string) => {
-        setAnswers(prev => prev.map(a => (a.questionId === questionId ? { ...a, comment } : a)))
+    const handleCommentChange = (index: number, comment: string) => {
+        setAnswers(prev => prev.map(a => (a.index === index ? { ...a, comment } : a)))
     }
 
     const handleSave = async () => {
-        if (!cardId) {
-            toast('Select a feedback card', 'error')
-            return
-        }
         if (!subjectId) {
             toast('Select a recipient', 'error')
-            return
-        }
-        if (!selectedCard) {
-            toast('Selected card not found', 'error')
             return
         }
         setSaving(true)
         const subject = subjects.find(s => s.id === subjectId)
         try {
-            await updateFeedbackEntry(entry.id, {
-                type,
+            // Build answers array from questions with answers
+            const apiAnswers = questions.map((q, index) => {
+                const answer = answers.find(a => a.index === index)
+                const questionId = q.answer?.questionId || `q_${index}`
+                if (q.type === 'text') {
+                    return { questionId, answer: answer?.comment || '' }
+                } else if (q.type === 'score') {
+                    return { questionId, answer: String(answer?.score || 0) }
+                }
+                return null
+            }).filter(Boolean)
+
+            const payload = {
+                type: apiEntry.type,
                 subjectType: type === 'Team Member' ? 'Employee' : 'Applicant',
-                cardId,
+                cardId: apiEntry.cardId,
                 subjectId,
                 subjectName: subject?.label,
-                answers: answers.map(a => {
-                    const question = selectedCard.questions.find(q => q.id === a.questionId)
-                    const kind = question?.kind ?? 'score'
-                    // Use 'answer' field for API compatibility
-                    return {
-                        questionId: a.questionId,
-                        answer: kind === 'comment' ? a.comment : String(a.score),
-                        score: a.score,
-                        comment: a.comment
-                    }
-                })
-            })
+                answers: apiAnswers
+            }
+
+            // Print curl command to console
+            const updateUrl = `${API_BASE_URL}/feedback-entries/${encodeURIComponent(apiEntry.id)}`
+            const curlCmd = `curl -X PATCH '${updateUrl}' \\
+  -H 'Authorization: Bearer ${apiAccessToken}' \\
+  -H 'Content-Type: application/json' \\
+  -d '${JSON.stringify(payload)}'`
+            console.log('=== SUBMIT FEEDBACK CURL ===')
+            console.log(curlCmd)
+            console.log('=== END CURL ===')
+
+            await updateFeedbackEntry(apiEntry.id, payload)
             toast('Feedback updated', 'success')
             router.push('/performance/feedback')
         } catch (error) {
@@ -164,38 +209,19 @@ export default function EditFeedbackPage() {
 
             <Card className="border border-slate-100 shadow-premium rounded-3xl bg-white overflow-hidden">
                 <CardContent className="p-8 space-y-5">
+                    {/* Header info */}
                     <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
                         <div className="space-y-2">
                             <Label className="text-sm font-bold text-slate-700 px-1">Type</Label>
-                            <Select
-                                value={type}
-                                onValueChange={(value: 'Team Member' | 'Applicant') => {
-                                    setType(value)
-                                    setCardId('')
-                                    setSubjectId('')
-                                    setAnswers([])
-                                }}
-                            >
-                                <SelectTrigger className="h-11 rounded-xl border-slate-200">
-                                    <SelectValue placeholder="Select type" />
-                                </SelectTrigger>
-                                <SelectContent>
-                                    <SelectItem value="Team Member">Team Member</SelectItem>
-                                    <SelectItem value="Applicant">Applicant</SelectItem>
-                                </SelectContent>
-                            </Select>
+                            <div className="h-11 rounded-xl border border-slate-200 bg-slate-50 px-3 flex items-center text-sm text-slate-600">
+                                {apiEntry.type || type}
+                            </div>
                         </div>
                         <div className="space-y-2">
-                            <Label className="text-sm font-bold text-slate-700 px-1">
-                                {type === 'Applicant' ? 'Applicant' : 'Team Member'}
-                            </Label>
+                            <Label className="text-sm font-bold text-slate-700 px-1">Recipient</Label>
                             <Select
                                 value={subjectId || 'none'}
-                                onValueChange={(value) => {
-                                    setSubjectId(value === 'none' ? '' : value)
-                                    setCardId('')
-                                    setAnswers([])
-                                }}
+                                onValueChange={(value) => setSubjectId(value === 'none' ? '' : value)}
                             >
                                 <SelectTrigger className="h-11 rounded-xl border-slate-200">
                                     <SelectValue placeholder="Select person" />
@@ -212,100 +238,105 @@ export default function EditFeedbackPage() {
                         </div>
                         <div className="space-y-2">
                             <Label className="text-sm font-bold text-slate-700 px-1">Feedback Card</Label>
-                            <Select
-                                value={cardId || 'none'}
-                                onValueChange={(value) => handleSelectCard(value === 'none' ? '' : value)}
-                                disabled={!subjectId}
-                            >
-                                <SelectTrigger className="h-11 rounded-xl border-slate-200">
-                                    <SelectValue placeholder="Select card" />
-                                </SelectTrigger>
-                                <SelectContent>
-                                    <SelectItem value="none">Select</SelectItem>
-                                    {filteredCards.map(card => (
-                                        <SelectItem key={card.id} value={card.id}>
-                                            {card.title}
-                                        </SelectItem>
-                                    ))}
-                                </SelectContent>
-                            </Select>
+                            <div className="h-11 rounded-xl border border-slate-200 bg-slate-50 px-3 flex items-center text-sm text-slate-600">
+                                {card.title}
+                            </div>
                         </div>
                     </div>
 
-                    {selectedCard && subjectId && (
-                        <div className="space-y-4">
-                            <div>
-                                <p className="text-xs font-bold text-slate-400 uppercase tracking-widest px-1">Questions</p>
-                            </div>
-                            <div className="space-y-3">
-                                {selectedCard.questions.map((q, index) => {
-                                    const kind = q.kind ?? 'score'
-                                    if (kind === 'content') {
-                                        return (
-                                            <div key={q.id} className="rounded-2xl border border-slate-200 bg-white p-4">
-                                                <div className="ql-snow">
-                                                    <div
-                                                        className="ql-editor p-0 text-sm text-slate-700"
-                                                        dangerouslySetInnerHTML={{ __html: q.prompt }}
-                                                    />
-                                                </div>
-                                            </div>
-                                        )
-                                    }
-                                    const current = answers.find(a => a.questionId === q.id)?.score ?? 0
-                                    const commentValue = answers.find(a => a.questionId === q.id)?.comment ?? ''
+                    {/* Questions in order from card.questions */}
+                    <div className="space-y-4">
+                        <div>
+                            <p className="text-xs font-bold text-slate-400 uppercase tracking-widest px-1">Questions</p>
+                        </div>
+                        <div className="space-y-3">
+                            {questions.map((q, index) => {
+                                if (q.type === 'content') {
+                                    // Content block - section header
                                     return (
-                                        <div key={q.id} className="rounded-2xl border border-slate-200 p-4 space-y-3">
-                                            <div className="flex items-center justify-between">
-                                                <p className="text-sm font-semibold text-slate-800">
-                                                    {q.prompt}
-                                                </p>
-                                            </div>
-                                            {kind === 'comment' ? (
-                                                <textarea
-                                                    className="w-full min-h-[120px] rounded-xl border border-slate-200 p-3 text-sm text-slate-700"
-                                                    placeholder="Add your comments..."
-                                                    value={commentValue}
-                                                    onChange={(e) => handleCommentChange(q.id, e.target.value)}
+                                        <div key={index} className="pt-2">
+                                            <div className="ql-snow">
+                                                <div
+                                                    className="ql-editor p-0 text-sm text-slate-700"
+                                                    dangerouslySetInnerHTML={{ __html: q.prompt }}
                                                 />
-                                            ) : (
-                                                <div className="flex flex-wrap gap-3">
-                                                    {[1, 2, 3, 4, 5].map((score) => (
-                                                        <label key={score} className="flex items-center gap-2 text-sm text-slate-600 font-medium">
-                                                            <input
-                                                                type="radio"
-                                                                name={`score-${q.id}`}
-                                                                value={score}
-                                                                checked={current === score}
-                                                                onChange={() => handleAnswerChange(q.id, score)}
-                                                            />
-                                                            {score}
-                                                        </label>
-                                                    ))}
-                                                </div>
-                                            )}
+                                            </div>
                                         </div>
                                     )
-                                })}
-                                </div>
-                            </div>
-                        )}
-
-                        <div className="flex justify-end gap-3 pt-2">
-                            <Button type="button" variant="outline" className="rounded-xl" onClick={() => router.push('/performance/feedback')}>
-                                Cancel
-                            </Button>
-                            <Button
-                                type="button"
-                                className="bg-blue-600 hover:bg-blue-700 text-white rounded-xl"
-                                onClick={handleSave}
-                                disabled={saving}
-                            >
-                                {saving ? 'Saving...' : 'Submit Feedback'}
-                            </Button>
+                                } else if (q.type === 'score') {
+                                    // Score question
+                                    const current = answers.find(a => a.index === index)?.score ?? 0
+                                    return (
+                                        <div key={index} className="rounded-2xl border border-slate-200 p-4 space-y-3">
+                                            <p className="text-sm font-semibold text-slate-800">
+                                                {q.prompt}
+                                            </p>
+                                            <div className="flex flex-wrap gap-3">
+                                                {[1, 2, 3, 4, 5].map((score) => (
+                                                    <label key={score} className="flex items-center gap-2 text-sm text-slate-600 font-medium">
+                                                        <input
+                                                            type="radio"
+                                                            name={`score-${index}`}
+                                                            value={score}
+                                                            checked={current === score}
+                                                            onChange={() => handleAnswerChange(index, score)}
+                                                        />
+                                                        {score}
+                                                    </label>
+                                                ))}
+                                            </div>
+                                        </div>
+                                    )
+                                } else if (q.type === 'text') {
+                                    // Comment/text question
+                                    const commentValue = answers.find(a => a.index === index)?.comment ?? ''
+                                    return (
+                                        <div key={index} className="rounded-2xl border border-slate-200 p-4 space-y-3">
+                                            <p className="text-sm font-semibold text-slate-800">
+                                                {q.prompt}
+                                            </p>
+                                            <textarea
+                                                className="w-full min-h-30 rounded-xl border border-slate-200 p-3 text-sm text-slate-700"
+                                                placeholder="Add your comments..."
+                                                value={commentValue}
+                                                onChange={(e) => handleCommentChange(index, e.target.value)}
+                                            />
+                                        </div>
+                                    )
+                                }
+                                return null
+                            })}
                         </div>
-                    </CardContent>
-                </Card>
+                    </div>
+
+                    <div className="flex justify-end gap-3 pt-2">
+                        <Button type="button" variant="outline" className="rounded-xl" onClick={() => router.push('/performance/feedback')}>
+                            Cancel
+                        </Button>
+                        <Button
+                            type="button"
+                            className="bg-blue-600 hover:bg-blue-700 text-white rounded-xl"
+                            onClick={handleSave}
+                            disabled={saving}
+                        >
+                            {saving ? 'Saving...' : 'Submit Feedback'}
+                        </Button>
+                    </div>
+                </CardContent>
+            </Card>
+
+                {/* API Debug */}
+                <div className="space-y-4">
+                    <p className="text-xs font-bold text-slate-400 uppercase tracking-widest">Curl Command</p>
+                    <pre className="bg-slate-900 text-green-400 p-4 rounded-xl text-xs overflow-x-auto whitespace-pre-wrap">
+                        {curlCommand || 'No API access token available'}
+                    </pre>
+
+                    <p className="text-xs font-bold text-slate-400 uppercase tracking-widest">API Response</p>
+                    <pre className="bg-slate-900 text-blue-400 p-4 rounded-xl text-xs overflow-x-auto max-h-96 overflow-y-auto whitespace-pre-wrap">
+                        {apiResponse || 'Loading...'}
+                    </pre>
+                </div>
             </div>
-)
+    )
 }
