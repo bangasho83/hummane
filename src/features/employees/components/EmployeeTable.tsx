@@ -6,9 +6,9 @@ import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@
 import { Input } from '@/components/ui/input'
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select'
 import { Button } from '@/components/ui/button'
-import { Pencil, Trash2, Search, Filter, Users } from 'lucide-react'
+import { Pencil, Trash2, Search, Users } from 'lucide-react'
 import type { Employee } from '@/types'
-import { formatCurrency, formatDate } from '@/lib/utils'
+import { formatCurrency } from '@/lib/utils'
 import { useApp } from '@/lib/context/AppContext'
 import { toast } from '@/components/ui/toast'
 
@@ -17,9 +17,10 @@ import Link from 'next/link'
 
 interface EmployeeTableProps {
     employees: Employee[]
+    onRefresh?: () => void
 }
 
-export function EmployeeTable({ employees }: EmployeeTableProps) {
+export function EmployeeTable({ employees, onRefresh }: EmployeeTableProps) {
     const router = useRouter()
     const { deleteEmployee, currentCompany } = useApp()
     const [searchTerm, setSearchTerm] = useState('')
@@ -65,7 +66,8 @@ export function EmployeeTable({ employees }: EmployeeTableProps) {
             try {
                 await deleteEmployee(employee.id)
                 toast('Employee deleted successfully', 'success')
-            } catch (error) {
+                onRefresh?.()
+            } catch {
                 toast('Failed to delete employee', 'error')
             }
         }
@@ -140,13 +142,12 @@ export function EmployeeTable({ employees }: EmployeeTableProps) {
                 <Table>
                     <TableHeader className="bg-slate-50/50">
                         <TableRow className="hover:bg-transparent border-slate-100">
-                            <TableHead className="w-[220px] pl-8 py-4 text-[10px] font-extrabold uppercase tracking-widest text-slate-400">Employee</TableHead>
-                            <TableHead className="py-4 text-[10px] font-extrabold uppercase tracking-widest text-slate-400">Employee ID</TableHead>
+                            <TableHead className="pl-8 py-4 text-[10px] font-extrabold uppercase tracking-widest text-slate-400">Employee ID</TableHead>
+                            <TableHead className="py-4 text-[10px] font-extrabold uppercase tracking-widest text-slate-400">Employee</TableHead>
                             <TableHead className="py-4 text-[10px] font-extrabold uppercase tracking-widest text-slate-400">Role</TableHead>
                             <TableHead className="py-4 text-[10px] font-extrabold uppercase tracking-widest text-slate-400">Department</TableHead>
                             <TableHead className="py-4 text-[10px] font-extrabold uppercase tracking-widest text-slate-400">Manager</TableHead>
                             <TableHead className="py-4 text-[10px] font-extrabold uppercase tracking-widest text-slate-400">Employment</TableHead>
-                            <TableHead className="py-4 text-[10px] font-extrabold uppercase tracking-widest text-slate-400">Joining</TableHead>
                             <TableHead className="text-right py-4 text-[10px] font-extrabold uppercase tracking-widest text-slate-400">Monthly Salary</TableHead>
                             <TableHead className="text-right pr-8 py-4 text-[10px] font-extrabold uppercase tracking-widest text-slate-400">Actions</TableHead>
                         </TableRow>
@@ -154,7 +155,7 @@ export function EmployeeTable({ employees }: EmployeeTableProps) {
                     <TableBody>
                         {filteredEmployees.length === 0 ? (
                             <TableRow>
-                                <TableCell colSpan={9} className="border-0">
+                                <TableCell colSpan={8} className="border-0">
                                     <div className="p-20 flex flex-col items-center justify-center text-center">
                                         <div className="w-20 h-20 bg-slate-50 rounded-3xl flex items-center justify-center mb-6">
                                             <Users className="w-10 h-10 text-slate-200" />
@@ -184,18 +185,13 @@ export function EmployeeTable({ employees }: EmployeeTableProps) {
                             filteredEmployees.map((employee) => (
                                 <TableRow key={employee.id} className="hover:bg-slate-50/50 group border-slate-50">
                                     <TableCell className="pl-8 py-5">
-                                        <Link href={`/team/${employee.id}`} className="flex items-center gap-3 group">
-                                            <div className="w-10 h-10 rounded-2xl bg-blue-50 text-blue-600 flex items-center justify-center font-bold text-sm">
-                                                {employee.name?.[0].toUpperCase()}
-                                            </div>
-                                            <div>
-                                                <p className="font-bold text-slate-900 text-base group-hover:text-blue-600 transition-colors">{employee.name}</p>
-                                                <p className="text-xs text-slate-400 font-medium">{employee.email}</p>
-                                            </div>
-                                        </Link>
+                                        <span className="text-xs font-bold text-slate-500 uppercase tracking-wide">{employee.employeeId}</span>
                                     </TableCell>
                                     <TableCell>
-                                        <span className="text-xs font-bold text-slate-500 uppercase tracking-wide">{employee.employeeId}</span>
+                                        <Link href={`/team/${employee.id}`} className="group">
+                                            <p className="font-bold text-slate-900 text-base group-hover:text-blue-600 transition-colors">{employee.name}</p>
+                                            <p className="text-xs text-slate-400 font-medium">{employee.email}</p>
+                                        </Link>
                                     </TableCell>
                                     <TableCell>
                                         <span className="text-sm font-medium text-slate-500">{employee.roleName || employee.position || '—'}</span>
@@ -206,13 +202,10 @@ export function EmployeeTable({ employees }: EmployeeTableProps) {
                                         </Badge>
                                     </TableCell>
                                     <TableCell>
-                                        <span className="text-sm font-medium text-slate-500">{employee.reportingManager}</span>
+                                        <span className="text-sm font-medium text-slate-500">{employee.reportingManagerName || employee.reportingManager || '—'}</span>
                                     </TableCell>
                                     <TableCell>
                                         <span className="text-xs font-bold text-slate-600">{employee.employmentType}</span>
-                                    </TableCell>
-                                    <TableCell>
-                                        <span className="text-sm font-medium text-slate-500">{formatDate(employee.startDate)}</span>
                                     </TableCell>
                                     <TableCell className="text-right">
                                         <span className="font-bold text-slate-900">{formatCurrency(employee.salary, currentCompany?.currency)}</span>

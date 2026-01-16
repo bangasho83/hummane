@@ -143,8 +143,8 @@ export default function FeedbackPage() {
                         <TableHeader className="bg-slate-50/50">
                             <TableRow className="hover:bg-transparent border-slate-100">
                                 <TableHead className="pl-8 py-4 text-[10px] font-extrabold uppercase tracking-widest text-slate-400">View Feedback</TableHead>
-                                <TableHead className="py-4 text-[10px] font-extrabold uppercase tracking-widest text-slate-400">Card</TableHead>
                                 <TableHead className="py-4 text-[10px] font-extrabold uppercase tracking-widest text-slate-400">Recipient</TableHead>
+                                <TableHead className="py-4 text-[10px] font-extrabold uppercase tracking-widest text-slate-400">Card</TableHead>
                                 <TableHead className="py-4 text-[10px] font-extrabold uppercase tracking-widest text-slate-400">From</TableHead>
                                 <TableHead className="py-4 text-[10px] font-extrabold uppercase tracking-widest text-slate-400">Date</TableHead>
                                 <TableHead className="text-right pr-8 py-4 text-[10px] font-extrabold uppercase tracking-widest text-slate-400">Actions</TableHead>
@@ -183,6 +183,18 @@ export default function FeedbackPage() {
                                                     View Feedback
                                                 </Link>
                                             </TableCell>
+                                            <TableCell className="py-5 font-semibold text-slate-900">
+                                                {entry.subjectId ? (
+                                                    <Link
+                                                        href={`/team/${entry.subjectId}/feedback`}
+                                                        className="hover:text-blue-600 transition-colors"
+                                                    >
+                                                        {entry.subjectName || 'Unknown'}
+                                                    </Link>
+                                                ) : (
+                                                    entry.subjectName || 'Unknown'
+                                                )}
+                                            </TableCell>
                                             <TableCell className="py-5 text-sm text-slate-600">
                                                 <div className="flex items-center gap-2">
                                                     <span>{card?.title || 'Unknown'}</span>
@@ -192,9 +204,6 @@ export default function FeedbackPage() {
                                                         </span>
                                                     )}
                                                 </div>
-                                            </TableCell>
-                                            <TableCell className="py-5 font-semibold text-slate-900">
-                                                {entry.subjectName || 'Unknown'}
                                             </TableCell>
                                             <TableCell className="py-5 text-sm font-medium text-slate-600">
                                                 {entry.authorName || '—'}

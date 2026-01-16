@@ -150,7 +150,7 @@ export default function EmployeeProfilePage() {
                             <InfoRow label="Email" value={employee.email} />
                             <InfoRow label="Department" value={employee.departmentName || employee.department || '—'} />
                             <InfoRow label="Position" value={employee.roleName || employee.position || '—'} />
-                            <InfoRow label="Manager" value={employee.reportingManager} />
+                            <InfoRow label="Manager" value={employee.reportingManagerName || employee.reportingManager || '—'} />
                             <InfoRow label="Employment Type" value={employee.employmentType} />
                             <InfoRow label="Employment Mode" value={employee.employmentMode || '—'} />
                             <InfoRow label="Joining Date" value={formatDate(employee.startDate)} />
@@ -234,8 +234,6 @@ export default function EmployeeProfilePage() {
                     </CardContent>
                 </Card>
             </div>
-
-
         </div>
     )
 }

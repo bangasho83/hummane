@@ -498,6 +498,8 @@ export function AppProvider({ children }: { children: ReactNode }) {
             departmentName: (employee as { departmentName?: string | null }).departmentName
                 ?? (fallback as { departmentName?: string | null }).departmentName,
             reportingManagerId: employee.reportingManagerId ?? fallback.reportingManagerId,
+            reportingManagerName: (employee as { reportingManagerName?: string | null }).reportingManagerName
+                ?? (fallback as { reportingManagerName?: string | null }).reportingManagerName,
             roleName: (employee as { roleName?: string | null }).roleName
                 ?? (fallback as { roleName?: string | null }).roleName,
             name: employee.name || fallback.name || 'Employee',

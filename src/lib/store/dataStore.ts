@@ -549,6 +549,7 @@ export class DataStore {
                     userId: employee.userId,
                     departmentId: employee.departmentId,
                     reportingManagerId: employee.reportingManagerId,
+                    reportingManagerName: employee.reportingManagerName,
                     name: sanitizeInput(employee.name || 'Employee'),
                     email: sanitizeEmail(employee.email || ''),
                     position: sanitizeInput(employee.position || ''),

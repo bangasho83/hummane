@@ -46,6 +46,7 @@ export interface Employee {
     departmentId?: string
     departmentName?: string | null
     reportingManagerId?: string
+    reportingManagerName?: string | null
     roleName?: string | null
     name: string
     email: string

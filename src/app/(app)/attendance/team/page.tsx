@@ -1,6 +1,7 @@
 'use client'
 
 import { useMemo, useState } from 'react'
+import Link from 'next/link'
 import { AttendanceTabs } from '@/features/attendance'
 import { useApp } from '@/lib/context/AppContext'
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table'
@@ -223,10 +224,12 @@ export default function AttendanceTeamPage() {
                                                 return (
                                             <TableRow key={emp.id} className="hover:bg-slate-50/50 border-slate-50">
                                                 <TableCell className="pl-8 py-4">
-                                                    <div className="font-bold text-slate-900">{emp.name}</div>
-                                                    <div className="text-[11px] text-slate-500 font-medium">
-                                                        {emp.department}
-                                                    </div>
+                                                    <Link href={`/team/${emp.id}/attendance`} className="block group">
+                                                        <div className="font-bold text-slate-900 group-hover:text-blue-600 transition-colors">{emp.name}</div>
+                                                        <div className="text-[11px] text-slate-500 font-medium">
+                                                            {emp.department}
+                                                        </div>
+                                                    </Link>
                                                 </TableCell>
                                                 {leaveTypesOrdered.map((lt) => {
                                                     const count = getCount(emp.id, emp.employeeId, lt.id, lt.name)

@@ -1,28 +1,59 @@
 'use client'
 
+import { useState, useEffect } from 'react'
 import { useRouter } from 'next/navigation'
 import { useApp } from '@/lib/context/AppContext'
 import { Button } from '@/components/ui/button'
 import { Plus } from 'lucide-react'
 import { EmployeeTable } from '@/features/employees'
+import type { Employee } from '@/types'
+
+const API_BASE_URL = process.env.NEXT_PUBLIC_API_BASE_URL || 'https://hummane-api.vercel.app'
 
 export default function EmployeesPage() {
     const router = useRouter()
-    const { currentUser, currentCompany, employees } = useApp()
+    const { currentUser, currentCompany, apiAccessToken } = useApp()
+    const [rawApiResponse, setRawApiResponse] = useState<Employee[] | null>(null)
+    const [isLoading, setIsLoading] = useState(true)
+
+    const fetchEmployees = async () => {
+        if (!apiAccessToken) return
+        setIsLoading(true)
+        try {
+            const res = await fetch(`${API_BASE_URL}/employees`, {
+                headers: { Authorization: `Bearer ${apiAccessToken}` }
+            })
+            if (res.ok) {
+                const data = await res.json()
+                setRawApiResponse(data)
+            }
+        } catch {
+            // ignore
+        } finally {
+            setIsLoading(false)
+        }
+    }
+
+    useEffect(() => {
+        fetchEmployees()
+    }, [apiAccessToken])
 
     // Redirect if not logged in or no company
-    if (!currentUser) {
-        router.push('/login')
-        return null
-    }
-
-    if (!currentCompany) {
-        router.push('/company-setup')
-        return null
-    }
+    useEffect(() => {
+        if (!currentUser) {
+            router.push('/login')
+        } else if (!currentCompany) {
+            router.push('/company-setup')
+        }
+    }, [currentUser, currentCompany, router])
 
     const handleAddEmployee = () => {
         router.push('/team/add')
+    }
+
+    // Don't render until we have user and company
+    if (!currentUser || !currentCompany) {
+        return null
     }
 
     return (
@@ -47,7 +78,13 @@ export default function EmployeesPage() {
             </div>
 
             <div className="bg-white rounded-3xl shadow-premium border border-slate-100 overflow-hidden">
-                <EmployeeTable employees={employees} />
+                {isLoading ? (
+                    <div className="p-20 flex items-center justify-center">
+                        <div className="text-slate-400 font-medium">Loading employees...</div>
+                    </div>
+                ) : (
+                    <EmployeeTable employees={rawApiResponse || []} onRefresh={fetchEmployees} />
+                )}
             </div>
         </div>
     )

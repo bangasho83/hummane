@@ -2,6 +2,7 @@
 
 import { useEffect, useState } from 'react'
 import { Calendar as CalendarIcon, Plus, Check, FileText } from 'lucide-react'
+import Link from 'next/link'
 import { useApp } from '@/lib/context/AppContext'
 import type { LeaveRecord } from '@/types'
 import { Button } from '@/components/ui/button'
@@ -436,8 +437,10 @@ export default function AttendancePage() {
                                     employees.map((emp) => (
                                         <TableRow key={emp.id} className="hover:bg-slate-50/30 border-slate-50">
                                             <TableCell className="sticky left-0 bg-white z-10 w-48 pl-8 py-4 border-r border-slate-100 shadow-[4px_0_8px_-4px_rgba(0,0,0,0.05)]">
-                                                <div className="font-bold text-slate-900 text-sm truncate max-w-[150px]">{emp.name}</div>
-                                                <div className="text-[10px] text-slate-400 font-bold uppercase truncate max-w-[150px]">{emp.department}</div>
+                                                <Link href={`/team/${emp.id}/attendance`} className="block group">
+                                                    <div className="font-bold text-slate-900 text-sm truncate max-w-[150px] group-hover:text-blue-600 transition-colors">{emp.name}</div>
+                                                    <div className="text-[10px] text-slate-400 font-bold uppercase truncate max-w-[150px]">{emp.department}</div>
+                                                </Link>
                                             </TableCell>
                                             {dates.map((date, i) => {
                                         const status = getAttendanceStatus(emp.id, date)
