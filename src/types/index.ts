@@ -105,6 +105,9 @@ export interface LeaveRecord {
     date: string
     type: string
     leaveTypeId?: string
+    leaveTypeName?: string
+    leaveTypeCode?: string
+    leaveTypeQuota?: number
     unit?: LeaveUnit
     amount?: number
     note: string
