@@ -201,7 +201,8 @@ export function AppProvider({ children }: { children: ReactNode }) {
         setEmployees(dataStore.getEmployeesByCompanyId(company.id))
         setDepartments(dataStore.getDepartmentsByCompanyId(company.id))
         setLeaves(dataStore.getLeavesByCompanyId(company.id))
-        setLeaveTypes(dataStore.getLeaveTypesByCompanyId(company.id))
+        // Leave types are loaded only from API, not localStorage
+        setLeaveTypes([])
         setHolidays(dataStore.getHolidaysByCompanyId(company.id))
         // Feedback cards are loaded only from API, not localStorage
         setFeedbackCards([])
@@ -318,6 +319,7 @@ export function AppProvider({ children }: { children: ReactNode }) {
             unit: (leaveType.unit || fallback.unit || 'Day') as LeaveType['unit'],
             quota: leaveType.quota ?? fallback.quota ?? 0,
             employmentType: (leaveType.employmentType || fallback.employmentType || 'Full-time') as LeaveType['employmentType'],
+            color: leaveType.color || fallback.color,
             createdAt: leaveType.createdAt || fallback.createdAt || now,
             updatedAt: leaveType.updatedAt || fallback.updatedAt
         }
@@ -1284,6 +1286,7 @@ export function AppProvider({ children }: { children: ReactNode }) {
                     subjectType,
                     subjectId: entry.subjectId,
                     subjectName: entry.subjectName,
+                    authorId: entry.authorId || undefined,
                     type: entry.type === 'Applicant' ? 'applicant' : 'performance',
                     answers: apiAnswers,
                     companyId: currentCompany.id
@@ -1441,6 +1444,7 @@ export function AppProvider({ children }: { children: ReactNode }) {
                 companyId: string
                 code?: string
                 employmentType?: string
+                color?: string
             } = {
                 name: leaveTypeData.name,
                 unit: leaveTypeData.unit,
@@ -1450,6 +1454,7 @@ export function AppProvider({ children }: { children: ReactNode }) {
 
             if (leaveTypeData.code) payload.code = leaveTypeData.code
             if (leaveTypeData.employmentType) payload.employmentType = leaveTypeData.employmentType
+            if (leaveTypeData.color) payload.color = leaveTypeData.color
 
             const apiLeaveType = await createLeaveTypeApi(payload, apiAccessToken)
             const normalized = normalizeLeaveType(apiLeaveType, currentCompany.id, leaveTypeData)
@@ -1488,6 +1493,7 @@ export function AppProvider({ children }: { children: ReactNode }) {
                 unit?: string
                 code?: string
                 employmentType?: string
+                color?: string
             } = {
                 companyId: currentCompany.id
             }
@@ -1497,6 +1503,7 @@ export function AppProvider({ children }: { children: ReactNode }) {
             if (leaveTypeData.unit) payload.unit = leaveTypeData.unit
             if (leaveTypeData.code) payload.code = leaveTypeData.code
             if (leaveTypeData.employmentType) payload.employmentType = leaveTypeData.employmentType
+            if (leaveTypeData.color) payload.color = leaveTypeData.color
 
             const apiLeaveType = await updateLeaveTypeApi(id, payload, apiAccessToken)
             const existing = leaveTypes.find(lt => lt.id === id)

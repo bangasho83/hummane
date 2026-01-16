@@ -16,8 +16,11 @@ import { cn } from '@/lib/utils'
 import { AttendanceTabs } from '@/features/attendance'
 import { uploadFileToStorage } from '@/lib/firebase/storage'
 
+const API_BASE_URL = process.env.NEXT_PUBLIC_API_BASE_URL || 'https://hummane-api.vercel.app'
+const DEFAULT_LEAVE_COLOR = '#ec4899'
+
 export default function AttendancePage() {
-    const { employees, leaves, addLeave, leaveTypes, refreshLeaveTypes } = useApp()
+    const { employees, leaves, addLeave, leaveTypes, refreshLeaveTypes, apiAccessToken } = useApp()
     const [isDialogOpen, setIsDialogOpen] = useState(false)
     const [selectedEmployee, setSelectedEmployee] = useState('')
     const [selectedType, setSelectedType] = useState<string>('')
@@ -30,6 +33,27 @@ export default function AttendancePage() {
     const [loading, setLoading] = useState(false)
     const [today, setToday] = useState<Date | null>(null)
     const [dates, setDates] = useState<Date[]>([])
+    const [apiDebug, setApiDebug] = useState<{ curl: string; response: string } | null>(null)
+
+    // Fetch leaves and capture API debug info
+    useEffect(() => {
+        const fetchDebug = async () => {
+            if (!apiAccessToken) return
+            const url = `${API_BASE_URL}/leaves`
+            const curlCmd = `curl -X GET "${url}" \\\n  -H "Authorization: Bearer ${apiAccessToken}"`
+            try {
+                const res = await fetch(url, {
+                    method: 'GET',
+                    headers: { Authorization: `Bearer ${apiAccessToken}` }
+                })
+                const data = await res.json()
+                setApiDebug({ curl: curlCmd, response: JSON.stringify(data, null, 2) })
+            } catch (err) {
+                setApiDebug({ curl: curlCmd, response: String(err) })
+            }
+        }
+        fetchDebug()
+    }, [apiAccessToken, leaves])
 
     // Build the date range on the client to avoid SSR/client drift
     useEffect(() => {
@@ -94,10 +118,13 @@ export default function AttendancePage() {
 
         if (leave) {
             const hasDocument = Boolean(leave.documents?.files?.length)
-            return { type: 'leave', label: 'L', color: 'bg-red-100 text-red-600', hasDocument }
+            // Find the leave type to get its color
+            const leaveType = leaveTypes.find(lt => lt.id === leave.leaveTypeId)
+            const leaveColor = leaveType?.color || DEFAULT_LEAVE_COLOR
+            return { type: 'leave', label: 'L', color: '', leaveColor, hasDocument }
         }
-        if (isWeekend(date)) return { type: 'weekend', label: '-', color: 'bg-slate-50 text-slate-300' }
-        return { type: 'present', label: 'P', color: 'text-green-600 bg-green-50' }
+        if (isWeekend(date)) return { type: 'weekend', label: '-', color: 'bg-slate-50 text-slate-300', leaveColor: undefined, hasDocument: false }
+        return { type: 'present', label: 'P', color: 'text-green-600 bg-green-50', leaveColor: undefined, hasDocument: false }
     }
 
     const handleAddLeave = async () => {
@@ -446,15 +473,21 @@ export default function AttendancePage() {
                                         const status = getAttendanceStatus(emp.id, date)
                                                 return (
                                                     <TableCell key={i} className="p-0 border-l border-slate-50 text-center">
-                                                        <div className={cn(
-                                                            "w-full h-12 flex items-center justify-center font-bold text-xs transition-colors",
-                                                            status.color
-                                                        )}>
+                                                        <div
+                                                            className={cn(
+                                                                "w-full h-12 flex items-center justify-center font-bold text-xs transition-colors",
+                                                                status.color
+                                                            )}
+                                                            style={status.leaveColor ? {
+                                                                backgroundColor: `${status.leaveColor}20`,
+                                                                color: status.leaveColor
+                                                            } : undefined}
+                                                        >
                                                             {status.type === 'leave' && (
                                                                 <div className="flex flex-col items-center leading-none">
                                                                     <span>L</span>
                                                                     {status.hasDocument && (
-                                                                        <FileText className="w-3 h-3 mt-0.5 text-red-500" />
+                                                                        <FileText className="w-3 h-3 mt-0.5" style={{ color: status.leaveColor }} />
                                                                     )}
                                                                 </div>
                                                             )}
@@ -476,6 +509,29 @@ export default function AttendancePage() {
                         </p>
                     </div>
                 </div>
+
+                {/* API Debug Section */}
+                {apiDebug && (
+                    <div className="mt-8 bg-slate-900 rounded-2xl overflow-hidden shadow-xl">
+                        <div className="p-4 border-b border-slate-700">
+                            <h3 className="text-sm font-bold text-slate-200 uppercase tracking-widest">API Debug</h3>
+                        </div>
+                        <div className="p-4 space-y-4">
+                            <div>
+                                <p className="text-xs font-bold text-slate-400 uppercase tracking-widest mb-2">cURL Command</p>
+                                <pre className="bg-slate-800 p-4 rounded-xl text-xs text-green-400 overflow-x-auto whitespace-pre-wrap break-all">
+                                    {apiDebug.curl}
+                                </pre>
+                            </div>
+                            <div>
+                                <p className="text-xs font-bold text-slate-400 uppercase tracking-widest mb-2">API Response</p>
+                                <pre className="bg-slate-800 p-4 rounded-xl text-xs text-blue-300 overflow-x-auto max-h-96 overflow-y-auto">
+                                    {apiDebug.response}
+                                </pre>
+                            </div>
+                        </div>
+                    </div>
+                )}
 
             </div>
 )

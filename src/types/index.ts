@@ -149,6 +149,7 @@ export interface LeaveType {
     unit: LeaveUnit
     quota: number
     employmentType: EmploymentType
+    color?: string
     createdAt: string
     updatedAt?: string
 }
@@ -254,6 +255,7 @@ export interface FeedbackEntry {
     subjectName?: string
     authorId?: string | null
     authorName?: string | null
+    authorEmployeeId?: string | null
     answers: FeedbackEntryAnswer[]
     createdAt: string
     updatedAt?: string

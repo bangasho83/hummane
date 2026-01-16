@@ -621,7 +621,7 @@ export const deleteRoleApi = async (roleId: string, accessToken: string): Promis
 }
 
 export const createLeaveTypeApi = async (
-  payload: { name: string; unit: string; quota: number; companyId: string; code?: string; employmentType?: string },
+  payload: { name: string; unit: string; quota: number; companyId: string; code?: string; employmentType?: string; color?: string },
   accessToken: string
 ): Promise<LeaveType> => {
   let response: Response
@@ -705,6 +705,7 @@ export const updateLeaveTypeApi = async (
     unit?: string
     code?: string
     employmentType?: string
+    color?: string
   },
   accessToken: string
 ): Promise<LeaveType> => {
@@ -1057,6 +1058,7 @@ export const createFeedbackEntryApi = async (
     subjectType: string
     subjectId?: string
     subjectName?: string
+    authorId?: string
     type?: string
     answers: {
       questionId: string

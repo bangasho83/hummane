@@ -91,7 +91,6 @@ export default function NewFeedbackPage() {
         }
         setSaving(true)
         const subject = subjects.find(s => s.id === subjectId)
-        const author = authors.find(a => a.id === authorId)
         const apiPayload = {
             cardId,
             subjectType: type === 'Applicant' ? 'Applicant' : 'Employee',
@@ -124,7 +123,6 @@ export default function NewFeedbackPage() {
                 subjectId,
                 subjectName: subject?.label,
                 authorId,
-                authorName: author?.label,
                 answers: answers.map(a => {
                     const question = selectedCard.questions.find(q => q.id === a.questionId)
                     const kind = question?.kind ?? 'score'

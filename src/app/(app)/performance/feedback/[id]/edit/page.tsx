@@ -67,18 +67,11 @@ export default function EditFeedbackPage() {
     const [subjectId, setSubjectId] = useState<string>('')
     const [answers, setAnswers] = useState<DraftAnswer[]>([])
 
-    // API Debug state
-    const [apiResponse, setApiResponse] = useState<string>('')
-    const [curlCommand, setCurlCommand] = useState<string>('')
-
     // Fetch from API
     useEffect(() => {
         if (!entryId || !apiAccessToken) return
 
         const url = `${API_BASE_URL}/feedback-entries/${encodeURIComponent(entryId)}`
-        const curl = `curl -X GET '${url}' \\
-  -H 'Authorization: Bearer ${apiAccessToken}'`
-        setCurlCommand(curl)
 
         fetch(url, {
             method: 'GET',
@@ -88,7 +81,6 @@ export default function EditFeedbackPage() {
         })
             .then(res => res.json())
             .then(data => {
-                setApiResponse(JSON.stringify(data, null, 2))
                 const entry = data?.data || data
                 setApiEntry(entry)
 
@@ -114,8 +106,7 @@ export default function EditFeedbackPage() {
                 }
                 setLoading(false)
             })
-            .catch(err => {
-                setApiResponse(`Error: ${err.message}`)
+            .catch(() => {
                 setLoading(false)
             })
     }, [entryId, apiAccessToken])
@@ -155,43 +146,48 @@ export default function EditFeedbackPage() {
             return
         }
         setSaving(true)
-        const subject = subjects.find(s => s.id === subjectId)
         try {
-            // Build answers array from questions with answers
-            const apiAnswers = questions.map((q, index) => {
-                const answer = answers.find(a => a.index === index)
-                const questionId = q.answer?.questionId || `q_${index}`
-                if (q.kind === 'comment') {
-                    return { questionId, answer: answer?.comment || '' }
-                } else if (q.kind === 'score') {
-                    return { questionId, answer: String(answer?.score || 0) }
-                }
-                return null
-            }).filter(Boolean)
+            // Build answers array - only score and comment questions
+            const apiAnswers = questions
+                .map((q, index) => {
+                    const answer = answers.find(a => a.index === index)
+                    const questionId = q.answer?.questionId || `q_${index}`
+                    if (q.kind === 'comment') {
+                        return { questionId, answer: answer?.comment || '' }
+                    } else if (q.kind === 'score') {
+                        return { questionId, answer: String(answer?.score || 0) }
+                    }
+                    return null
+                })
+                .filter((a): a is { questionId: string; answer: string } => a !== null)
 
-            const payload = {
-                type: type as 'Team Member' | 'Applicant',
-                subjectType: (type === 'Team Member' ? 'Employee' : 'Applicant') as 'Employee' | 'Applicant',
-                cardId: apiEntry.cardId,
-                subjectId,
-                subjectName: subject?.label,
-                answers: apiAnswers.filter((a): a is { questionId: string; answer: string } => a !== null)
+            // Build the actual API payload (only answers and companyId)
+            const apiPayload = {
+                answers: apiAnswers,
+                companyId: apiEntry.card.companyId
             }
 
-            // Print curl command to console
             const updateUrl = `${API_BASE_URL}/feedback-entries/${encodeURIComponent(apiEntry.id)}`
-            const curlCmd = `curl -X PATCH '${updateUrl}' \\
-  -H 'Authorization: Bearer ${apiAccessToken}' \\
-  -H 'Content-Type: application/json' \\
-  -d '${JSON.stringify(payload)}'`
-            console.log('=== SUBMIT FEEDBACK CURL ===')
-            console.log(curlCmd)
-            console.log('=== END CURL ===')
 
-            await updateFeedbackEntry(apiEntry.id, payload)
+            const response = await fetch(updateUrl, {
+                method: 'PUT',
+                headers: {
+                    'Content-Type': 'application/json',
+                    Authorization: `Bearer ${apiAccessToken}`,
+                },
+                body: JSON.stringify(apiPayload),
+            })
+
+            const data = await response.json().catch(() => null)
+
+            if (!response.ok) {
+                throw new Error(data?.message || 'Failed to update feedback entry')
+            }
+
             toast('Feedback updated', 'success')
             router.push('/performance/feedback')
         } catch (error) {
+            console.error('Update error:', error)
             toast('Failed to update feedback', 'error')
         } finally {
             setSaving(false)
@@ -324,19 +320,6 @@ export default function EditFeedbackPage() {
                     </div>
                 </CardContent>
             </Card>
-
-                {/* API Debug */}
-                <div className="space-y-4">
-                    <p className="text-xs font-bold text-slate-400 uppercase tracking-widest">Curl Command</p>
-                    <pre className="bg-slate-900 text-green-400 p-4 rounded-xl text-xs overflow-x-auto whitespace-pre-wrap">
-                        {curlCommand || 'No API access token available'}
-                    </pre>
-
-                    <p className="text-xs font-bold text-slate-400 uppercase tracking-widest">API Response</p>
-                    <pre className="bg-slate-900 text-blue-400 p-4 rounded-xl text-xs overflow-x-auto max-h-96 overflow-y-auto whitespace-pre-wrap">
-                        {apiResponse || 'Loading...'}
-                    </pre>
-                </div>
-            </div>
+        </div>
     )
 }

@@ -1,13 +1,13 @@
 'use client'
 
-import { useState, useMemo } from 'react'
+import { useState, useMemo, useEffect } from 'react'
 import { useApp } from '@/lib/context/AppContext'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select'
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table'
-import { Plus, Trash2, Leaf, Search, Pencil } from 'lucide-react'
+import { Plus, Trash2, Search, Pencil } from 'lucide-react'
 import { toast } from '@/components/ui/toast'
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from '@/components/ui/dialog'
 import { EMPLOYMENT_TYPES, LEAVE_UNITS, type EmploymentType, type LeaveType, type LeaveUnit } from '@/types'
@@ -18,18 +18,24 @@ type LeaveFormState = {
     unit: LeaveUnit
     quota: string
     employmentType: EmploymentType
+    color: string
 }
+
+const DEFAULT_LEAVE_COLOR = '#ec4899'
 
 const getDefaultLeaveForm = (): LeaveFormState => ({
     name: '',
     code: '',
     unit: LEAVE_UNITS[0],
     quota: '0',
-    employmentType: EMPLOYMENT_TYPES[1]
+    employmentType: EMPLOYMENT_TYPES[1],
+    color: DEFAULT_LEAVE_COLOR
 })
 
+const API_BASE_URL = process.env.NEXT_PUBLIC_API_BASE_URL || 'https://hummane-api.vercel.app'
+
 export function LeavesTab() {
-    const { leaveTypes, createLeaveType, updateLeaveType, deleteLeaveType } = useApp()
+    const { leaveTypes, createLeaveType, updateLeaveType, deleteLeaveType, apiAccessToken } = useApp()
     const [isAddOpen, setIsAddOpen] = useState(false)
     const [isEditOpen, setIsEditOpen] = useState(false)
     const [searchTerm, setSearchTerm] = useState('')
@@ -38,6 +44,27 @@ export function LeavesTab() {
     const [editing, setEditing] = useState<LeaveType | null>(null)
     const [loading, setLoading] = useState(false)
     const [editLoading, setEditLoading] = useState(false)
+    const [apiDebug, setApiDebug] = useState<{ curl: string; response: string } | null>(null)
+
+    // Fetch leave types and capture API debug info
+    useEffect(() => {
+        const fetchDebug = async () => {
+            if (!apiAccessToken) return
+            const url = `${API_BASE_URL}/leave-types`
+            const curlCmd = `curl -X GET "${url}" \\\n  -H "Authorization: Bearer ${apiAccessToken}"`
+            try {
+                const res = await fetch(url, {
+                    method: 'GET',
+                    headers: { Authorization: `Bearer ${apiAccessToken}` }
+                })
+                const data = await res.json()
+                setApiDebug({ curl: curlCmd, response: JSON.stringify(data, null, 2) })
+            } catch (err) {
+                setApiDebug({ curl: curlCmd, response: String(err) })
+            }
+        }
+        fetchDebug()
+    }, [apiAccessToken, leaveTypes])
 
     const filtered = useMemo(() => {
         return leaveTypes.filter(lt =>
@@ -55,7 +82,8 @@ export function LeavesTab() {
                 code: form.code,
                 unit: form.unit,
                 quota: parseFloat(form.quota) || 0,
-                employmentType: form.employmentType
+                employmentType: form.employmentType,
+                color: form.color
             })
             toast('Leave type added', 'success')
             setForm(getDefaultLeaveForm())
@@ -74,7 +102,8 @@ export function LeavesTab() {
             code: lt.code,
             unit: lt.unit,
             quota: String(lt.quota),
-            employmentType: lt.employmentType
+            employmentType: lt.employmentType,
+            color: lt.color || DEFAULT_LEAVE_COLOR
         })
         setIsEditOpen(true)
     }
@@ -89,7 +118,8 @@ export function LeavesTab() {
                 code: editForm.code,
                 unit: editForm.unit,
                 quota: parseFloat(editForm.quota) || 0,
-                employmentType: editForm.employmentType
+                employmentType: editForm.employmentType,
+                color: editForm.color
             })
             toast('Leave type updated', 'success')
             setIsEditOpen(false)
@@ -209,6 +239,23 @@ export function LeavesTab() {
                                     />
                                 </div>
                             </div>
+                            <div className="space-y-2">
+                                <Label className="text-sm font-bold text-slate-700 px-1">Color</Label>
+                                <div className="flex items-center gap-3">
+                                    <input
+                                        type="color"
+                                        value={form.color}
+                                        onChange={(e) => setForm(prev => ({ ...prev, color: e.target.value }))}
+                                        className="w-12 h-12 rounded-xl border border-slate-200 cursor-pointer p-1"
+                                    />
+                                    <Input
+                                        value={form.color}
+                                        onChange={(e) => setForm(prev => ({ ...prev, color: e.target.value }))}
+                                        placeholder="#3b82f6"
+                                        className="rounded-xl border-slate-200 h-12 flex-1 uppercase"
+                                    />
+                                </div>
+                            </div>
                             <div className="flex justify-end gap-3 mt-6">
                                 <Button type="button" variant="outline" onClick={() => setIsAddOpen(false)} className="rounded-xl font-bold border-slate-200 h-12 px-6">
                                     Cancel
@@ -306,6 +353,23 @@ export function LeavesTab() {
                                     />
                                 </div>
                             </div>
+                            <div className="space-y-2">
+                                <Label className="text-sm font-bold text-slate-700 px-1">Color</Label>
+                                <div className="flex items-center gap-3">
+                                    <input
+                                        type="color"
+                                        value={editForm.color}
+                                        onChange={(e) => setEditForm(prev => ({ ...prev, color: e.target.value }))}
+                                        className="w-12 h-12 rounded-xl border border-slate-200 cursor-pointer p-1"
+                                    />
+                                    <Input
+                                        value={editForm.color}
+                                        onChange={(e) => setEditForm(prev => ({ ...prev, color: e.target.value }))}
+                                        placeholder="#3b82f6"
+                                        className="rounded-xl border-slate-200 h-12 flex-1 uppercase"
+                                    />
+                                </div>
+                            </div>
                             <div className="flex justify-end gap-3 mt-6">
                                 <Button type="button" variant="outline" onClick={() => setIsEditOpen(false)} className="rounded-xl font-bold border-slate-200 h-12 px-6">
                                     Cancel
@@ -335,7 +399,8 @@ export function LeavesTab() {
                 <Table>
                     <TableHeader className="bg-slate-50/50">
                         <TableRow className="hover:bg-transparent border-slate-100">
-                            <TableHead className="pl-8 py-4 text-[10px] font-extrabold uppercase tracking-widest text-slate-400">Leave Name</TableHead>
+                            <TableHead className="pl-8 py-4 text-[10px] font-extrabold uppercase tracking-widest text-slate-400">Color</TableHead>
+                            <TableHead className="py-4 text-[10px] font-extrabold uppercase tracking-widest text-slate-400">Leave Name</TableHead>
                             <TableHead className="py-4 text-[10px] font-extrabold uppercase tracking-widest text-slate-400">Code</TableHead>
                             <TableHead className="py-4 text-[10px] font-extrabold uppercase tracking-widest text-slate-400">Unit</TableHead>
                             <TableHead className="py-4 text-[10px] font-extrabold uppercase tracking-widest text-slate-400">Employment Type</TableHead>
@@ -346,7 +411,7 @@ export function LeavesTab() {
                     <TableBody>
                         {filtered.length === 0 ? (
                             <TableRow>
-                                <TableCell colSpan={6} className="p-20 text-center text-slate-500">
+                                <TableCell colSpan={7} className="p-20 text-center text-slate-500">
                                     No leave types yet. Add your first one to get started.
                                 </TableCell>
                             </TableRow>
@@ -354,14 +419,15 @@ export function LeavesTab() {
                             filtered.map((lt) => (
                                 <TableRow key={lt.id} className="hover:bg-slate-50/50 group border-slate-50">
                                     <TableCell className="pl-8 py-5">
-                                        <div className="flex items-center gap-3">
-                                            <div className="w-10 h-10 rounded-2xl bg-emerald-50 text-emerald-600 flex items-center justify-center font-bold">
-                                                <Leaf className="w-5 h-5" />
-                                            </div>
-                                            <div>
-                                                <p className="font-bold text-slate-900 text-base">{lt.name}</p>
-                                                <p className="text-xs text-slate-400 font-medium">Created {new Date(lt.createdAt).toLocaleDateString()}</p>
-                                            </div>
+                                        <div
+                                            className="w-8 h-8 rounded-xl"
+                                            style={{ backgroundColor: lt.color || DEFAULT_LEAVE_COLOR }}
+                                        />
+                                    </TableCell>
+                                    <TableCell className="py-5">
+                                        <div>
+                                            <p className="font-bold text-slate-900 text-base">{lt.name}</p>
+                                            <p className="text-xs text-slate-400 font-medium">Created {new Date(lt.createdAt).toLocaleDateString()}</p>
                                         </div>
                                     </TableCell>
                                     <TableCell>
@@ -408,6 +474,29 @@ export function LeavesTab() {
                     </p>
                 </div>
             </div>
+
+            {/* API Debug Section */}
+            {apiDebug && (
+                <div className="mt-8 bg-slate-900 rounded-2xl overflow-hidden shadow-xl">
+                    <div className="p-4 border-b border-slate-700">
+                        <h3 className="text-sm font-bold text-slate-200 uppercase tracking-widest">API Debug</h3>
+                    </div>
+                    <div className="p-4 space-y-4">
+                        <div>
+                            <p className="text-xs font-bold text-slate-400 uppercase tracking-widest mb-2">cURL Command</p>
+                            <pre className="bg-slate-800 p-4 rounded-xl text-xs text-green-400 overflow-x-auto whitespace-pre-wrap break-all">
+                                {apiDebug.curl}
+                            </pre>
+                        </div>
+                        <div>
+                            <p className="text-xs font-bold text-slate-400 uppercase tracking-widest mb-2">API Response</p>
+                            <pre className="bg-slate-800 p-4 rounded-xl text-xs text-blue-300 overflow-x-auto max-h-96 overflow-y-auto">
+                                {apiDebug.response}
+                            </pre>
+                        </div>
+                    </div>
+                </div>
+            )}
         </div>
     )
 }
