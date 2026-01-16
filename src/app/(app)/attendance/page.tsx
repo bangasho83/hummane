@@ -1,7 +1,7 @@
 'use client'
 
 import { useEffect, useState } from 'react'
-import { Calendar as CalendarIcon, Plus, Check, FileText } from 'lucide-react'
+import { Calendar as CalendarIcon, Plus, Check } from 'lucide-react'
 import Link from 'next/link'
 import { useApp } from '@/lib/context/AppContext'
 import type { LeaveRecord } from '@/types'
@@ -9,6 +9,7 @@ import { Button } from '@/components/ui/button'
 import { Card, CardContent } from '@/components/ui/card'
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table'
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from '@/components/ui/dialog'
+import { HoverCard, HoverCardContent, HoverCardTrigger } from '@/components/ui/hover-card'
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select'
 import { Input } from '@/components/ui/input'
 import { toast } from '@/components/ui/toast'
@@ -99,32 +100,64 @@ export default function AttendancePage() {
         return `${year}-${month}-${day}`
     }
 
-    const normalizeDate = (value: string) => value.split('T')[0]
+    // Normalize date string to YYYY-MM-DD format, handling timezone offset
+    const normalizeDate = (value: string) => {
+        if (!value) return ''
+        // If it's already in YYYY-MM-DD format, return as is
+        if (/^\d{4}-\d{2}-\d{2}$/.test(value)) return value
+        // Parse the date and format it in local timezone
+        const date = new Date(value)
+        return formatDate(date)
+    }
 
     const isWeekend = (date: Date) => {
         const day = date.getDay()
         return day === 0 || day === 6
     }
 
-    const getAttendanceStatus = (employeeId: string, date: Date) => {
+    // Find all leaves for a specific employee on a specific date
+    const getLeavesForDate = (employeeId: string, date: Date): LeaveRecord[] => {
         const dateStr = formatDate(date)
-        const leave = leaves.find((l) => {
+        return leaves.filter((l) => {
             if (l.employeeId !== employeeId) return false
+            // Check leaveDays array first
             if (l.leaveDays && l.leaveDays.length > 0) {
                 return l.leaveDays.some(day => normalizeDate(day.date) === dateStr)
             }
+            // Check date range if startDate and endDate exist
+            if (l.startDate && l.endDate) {
+                const start = normalizeDate(l.startDate)
+                const end = normalizeDate(l.endDate)
+                return dateStr >= start && dateStr <= end
+            }
+            // Fall back to single date
             return normalizeDate(l.date) === dateStr
         })
+    }
 
-        if (leave) {
-            const hasDocument = Boolean(leave.documents?.files?.length)
+    const getAttendanceStatus = (employeeId: string, date: Date) => {
+        const leavesOnDate = getLeavesForDate(employeeId, date)
+
+        if (leavesOnDate.length > 0) {
+            const firstLeave = leavesOnDate[0]
+            const hasDocument = leavesOnDate.some(l => Boolean(l.documents?.files?.length))
             // Find the leave type to get its color
-            const leaveType = leaveTypes.find(lt => lt.id === leave.leaveTypeId)
+            const leaveType = leaveTypes.find(lt => lt.id === firstLeave.leaveTypeId)
             const leaveColor = leaveType?.color || DEFAULT_LEAVE_COLOR
-            return { type: 'leave', label: 'L', color: '', leaveColor, hasDocument }
+            return {
+                type: 'leave',
+                label: 'L',
+                color: '',
+                leaveColor,
+                hasDocument,
+                leave: firstLeave,
+                leaveType,
+                allLeaves: leavesOnDate,
+                leaveCount: leavesOnDate.length
+            }
         }
-        if (isWeekend(date)) return { type: 'weekend', label: '-', color: 'bg-slate-50 text-slate-300', leaveColor: undefined, hasDocument: false }
-        return { type: 'present', label: 'P', color: 'text-green-600 bg-green-50', leaveColor: undefined, hasDocument: false }
+        if (isWeekend(date)) return { type: 'weekend', label: '-', color: 'bg-slate-50 text-slate-300', leaveColor: undefined, hasDocument: false, leave: undefined, leaveType: undefined, allLeaves: [], leaveCount: 0 }
+        return { type: 'present', label: 'P', color: 'text-green-600 bg-green-50', leaveColor: undefined, hasDocument: false, leave: undefined, leaveType: undefined, allLeaves: [], leaveCount: 0 }
     }
 
     const handleAddLeave = async () => {
@@ -473,27 +506,104 @@ export default function AttendancePage() {
                                         const status = getAttendanceStatus(emp.id, date)
                                                 return (
                                                     <TableCell key={i} className="p-0 border-l border-slate-50 text-center">
-                                                        <div
-                                                            className={cn(
-                                                                "w-full h-12 flex items-center justify-center font-bold text-xs transition-colors",
-                                                                status.color
-                                                            )}
-                                                            style={status.leaveColor ? {
-                                                                backgroundColor: `${status.leaveColor}20`,
-                                                                color: status.leaveColor
-                                                            } : undefined}
-                                                        >
-                                                            {status.type === 'leave' && (
-                                                                <div className="flex flex-col items-center leading-none">
-                                                                    <span>L</span>
-                                                                    {status.hasDocument && (
-                                                                        <FileText className="w-3 h-3 mt-0.5" style={{ color: status.leaveColor }} />
-                                                                    )}
-                                                                </div>
-                                                            )}
-                                                            {status.type === 'present' && <Check className="w-3.5 h-3.5 opacity-50" />}
-                                                            {status.type === 'weekend' && '-'}
-                                                        </div>
+                                                        {status.type === 'leave' ? (
+                                                            <HoverCard openDelay={100} closeDelay={100}>
+                                                                <HoverCardTrigger asChild>
+                                                                    <div
+                                                                        className="w-full h-12 flex items-center justify-center font-bold text-xs transition-colors cursor-pointer hover:opacity-80 relative"
+                                                                        style={{
+                                                                            backgroundColor: `${status.leaveColor}20`,
+                                                                            color: status.leaveColor
+                                                                        }}
+                                                                    >
+                                                                        {/* Show stacked effect for multiple leaves */}
+                                                                        {status.leaveCount > 1 && (
+                                                                            <>
+                                                                                <div
+                                                                                    className="absolute inset-1 rounded-sm opacity-40"
+                                                                                    style={{ backgroundColor: status.leaveColor, transform: 'translate(2px, 2px)' }}
+                                                                                />
+                                                                                <div
+                                                                                    className="absolute inset-1 rounded-sm opacity-20"
+                                                                                    style={{ backgroundColor: status.leaveColor, transform: 'translate(4px, 4px)' }}
+                                                                                />
+                                                                            </>
+                                                                        )}
+                                                                        <div className="flex flex-col items-center leading-none relative z-10">
+                                                                            <span>{status.leaveCount > 1 ? 'L+' : 'L'}</span>
+                                                                        </div>
+                                                                    </div>
+                                                                </HoverCardTrigger>
+                                                                <HoverCardContent
+                                                                    className="w-auto p-0 border-0 shadow-2xl rounded-2xl overflow-hidden"
+                                                                    sideOffset={8}
+                                                                    align="center"
+                                                                >
+                                                                    <div className="bg-white px-4 py-3 min-w-[200px] max-w-[280px]">
+                                                                        {status.leaveCount > 1 && (
+                                                                            <div className="text-xs font-bold text-slate-400 uppercase tracking-wider mb-2">
+                                                                                {status.leaveCount} Leaves on this day
+                                                                            </div>
+                                                                        )}
+                                                                        {status.allLeaves.map((leave, idx) => {
+                                                                            const lt = leaveTypes.find(t => t.id === leave.leaveTypeId)
+                                                                            const color = lt?.color || DEFAULT_LEAVE_COLOR
+                                                                            return (
+                                                                                <div
+                                                                                    key={leave.id}
+                                                                                    className={cn(
+                                                                                        "py-2",
+                                                                                        idx > 0 && "border-t border-slate-100 mt-2"
+                                                                                    )}
+                                                                                >
+                                                                                    <div className="flex items-center gap-2">
+                                                                                        <div
+                                                                                            className="w-2 h-2 rounded-full shrink-0"
+                                                                                            style={{ backgroundColor: color }}
+                                                                                        />
+                                                                                        <div
+                                                                                            className="font-bold text-sm"
+                                                                                            style={{ color }}
+                                                                                        >
+                                                                                            {lt?.name || leave.type || 'Leave'}
+                                                                                        </div>
+                                                                                    </div>
+                                                                                    {leave.startDate && leave.endDate && leave.startDate !== leave.endDate ? (
+                                                                                        <div className="text-slate-500 text-xs mt-1 pl-4">
+                                                                                            📅 {new Date(leave.startDate).toLocaleDateString()} - {new Date(leave.endDate).toLocaleDateString()}
+                                                                                        </div>
+                                                                                    ) : (
+                                                                                        <div className="text-slate-500 text-xs mt-1 pl-4">
+                                                                                            📅 {leave.date ? new Date(leave.date).toLocaleDateString() : ''}
+                                                                                        </div>
+                                                                                    )}
+                                                                                    {leave.unit && leave.amount && (
+                                                                                        <div className="text-slate-500 text-xs mt-0.5 pl-4">
+                                                                                            ⏱️ {leave.amount} {leave.unit}{leave.amount > 1 ? 's' : ''}
+                                                                                        </div>
+                                                                                    )}
+                                                                                    {leave.note && (
+                                                                                        <div className="text-slate-400 text-xs mt-1 pl-4 truncate">
+                                                                                            💬 {leave.note}
+                                                                                        </div>
+                                                                                    )}
+                                                                                </div>
+                                                                            )
+                                                                        })}
+                                                                    </div>
+                                                                </HoverCardContent>
+                                                            </HoverCard>
+                                                        ) : (
+                                                            <div
+                                                                className={cn(
+                                                                    "w-full h-12 flex items-center justify-center font-bold text-xs transition-colors",
+                                                                    status.color
+                                                                )}
+                                                            >
+                                                                {status.type === 'present' && <Check className="w-3.5 h-3.5 opacity-50" />}
+                                                                {status.type === 'weekend' && '-'}
+                                                            </div>
+                                                        )}
                                                     </TableCell>
                                                 )
                                             })}
