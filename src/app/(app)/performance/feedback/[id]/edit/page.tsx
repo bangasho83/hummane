@@ -15,7 +15,7 @@ const API_BASE_URL = process.env.NEXT_PUBLIC_API_BASE_URL || 'https://hummane-ap
 
 // Types for the API card structure
 interface CardQuestion {
-    type: 'content' | 'score' | 'text'
+    kind: 'content' | 'score' | 'comment'  // API uses 'kind' and 'comment' for text
     prompt: string
     weight?: number
     answer?: {
@@ -102,9 +102,9 @@ export default function EditFeedbackPage() {
                     if (entry.card?.questions) {
                         const initialAnswers: DraftAnswer[] = entry.card.questions.map((q: CardQuestion, index: number) => {
                             const answerValue = q.answer?.answer || ''
-                            if (q.type === 'score') {
+                            if (q.kind === 'score') {
                                 return { index, score: parseInt(answerValue, 10) || 0 }
-                            } else if (q.type === 'text') {
+                            } else if (q.kind === 'comment') {
                                 return { index, score: 0, comment: answerValue }
                             }
                             return { index, score: 0 }
@@ -161,9 +161,9 @@ export default function EditFeedbackPage() {
             const apiAnswers = questions.map((q, index) => {
                 const answer = answers.find(a => a.index === index)
                 const questionId = q.answer?.questionId || `q_${index}`
-                if (q.type === 'text') {
+                if (q.kind === 'comment') {
                     return { questionId, answer: answer?.comment || '' }
-                } else if (q.type === 'score') {
+                } else if (q.kind === 'score') {
                     return { questionId, answer: String(answer?.score || 0) }
                 }
                 return null
@@ -251,7 +251,7 @@ export default function EditFeedbackPage() {
                         </div>
                         <div className="space-y-3">
                             {questions.map((q, index) => {
-                                if (q.type === 'content') {
+                                if (q.kind === 'content') {
                                     // Content block - section header
                                     return (
                                         <div key={index} className="pt-2">
@@ -263,7 +263,7 @@ export default function EditFeedbackPage() {
                                             </div>
                                         </div>
                                     )
-                                } else if (q.type === 'score') {
+                                } else if (q.kind === 'score') {
                                     // Score question
                                     const current = answers.find(a => a.index === index)?.score ?? 0
                                     return (
@@ -287,8 +287,8 @@ export default function EditFeedbackPage() {
                                             </div>
                                         </div>
                                     )
-                                } else if (q.type === 'text') {
-                                    // Comment/text question
+                                } else if (q.kind === 'comment') {
+                                    // Comment question
                                     const commentValue = answers.find(a => a.index === index)?.comment ?? ''
                                     return (
                                         <div key={index} className="rounded-2xl border border-slate-200 p-4 space-y-3">

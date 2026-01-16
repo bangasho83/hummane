@@ -15,7 +15,7 @@ const API_BASE_URL = process.env.NEXT_PUBLIC_API_BASE_URL || 'https://hummane-ap
 
 // Types for the API card structure
 interface CardQuestion {
-    type: 'content' | 'score' | 'text'  // API uses 'type' and 'text' for comments
+    kind: 'content' | 'score' | 'comment'  // API uses 'kind' and 'comment' for text
     prompt: string
     weight?: number
     answer?: {
@@ -52,8 +52,6 @@ export default function FeedbackDetailPage() {
 
     // API data state
     const [apiEntry, setApiEntry] = useState<ApiEntry | null>(null)
-    const [apiResponse, setApiResponse] = useState<string>('')
-    const [curlCommand, setCurlCommand] = useState<string>('')
     const [loading, setLoading] = useState(true)
 
     // Fetch from API
@@ -61,9 +59,6 @@ export default function FeedbackDetailPage() {
         if (!entryId || !apiAccessToken) return
 
         const url = `${API_BASE_URL}/feedback-entries/${encodeURIComponent(entryId)}`
-        const curl = `curl -X GET '${url}' \\
-  -H 'Authorization: Bearer ${apiAccessToken}'`
-        setCurlCommand(curl)
 
         fetch(url, {
             method: 'GET',
@@ -73,14 +68,12 @@ export default function FeedbackDetailPage() {
         })
             .then(res => res.json())
             .then(data => {
-                setApiResponse(JSON.stringify(data, null, 2))
                 // Extract entry from response (handle wrapped or direct response)
                 const entry = data?.data || data
                 setApiEntry(entry)
                 setLoading(false)
             })
-            .catch(err => {
-                setApiResponse(`Error: ${err.message}`)
+            .catch(() => {
                 setLoading(false)
             })
     }, [entryId, apiAccessToken])
@@ -104,10 +97,8 @@ export default function FeedbackDetailPage() {
     const card = apiEntry.card
     const questions = card.questions || []
 
-    // Filter questions by type (API uses 'type' not 'kind', and 'text' for comments)
-    const contentBlocks = questions.filter(q => q.type === 'content')
-    const scoreQuestions = questions.filter(q => q.type === 'score')
-    const commentQuestions = questions.filter(q => q.type === 'text')
+    // Filter questions by kind
+    const scoreQuestions = questions.filter(q => q.kind === 'score')
 
     // Calculate scores
     const getScore = (q: CardQuestion) => {
@@ -211,7 +202,7 @@ export default function FeedbackDetailPage() {
                 <CardContent className="p-6 space-y-4">
                     {/* Render questions in order from API */}
                     {questions.map((q, index) => {
-                        if (q.type === 'content') {
+                        if (q.kind === 'content') {
                             // Content block - section header
                             return (
                                 <div key={index} className="pt-2">
@@ -223,7 +214,7 @@ export default function FeedbackDetailPage() {
                                     </div>
                                 </div>
                             )
-                        } else if (q.type === 'score') {
+                        } else if (q.kind === 'score') {
                             // Score question
                             const score = getScore(q)
                             return (
@@ -247,8 +238,8 @@ export default function FeedbackDetailPage() {
                                     </div>
                                 </div>
                             )
-                        } else if (q.type === 'text') {
-                            // Comment/text question
+                        } else if (q.kind === 'comment') {
+                            // Comment question
                             return (
                                 <div key={index} className="rounded-2xl border border-slate-200 p-4 space-y-3">
                                     <p className="text-sm font-semibold text-slate-800">
@@ -264,19 +255,6 @@ export default function FeedbackDetailPage() {
                     })}
                 </CardContent>
             </Card>
-
-            {/* API Debug */}
-            <div className="space-y-4">
-                <p className="text-xs font-bold text-slate-400 uppercase tracking-widest">Curl Command</p>
-                <pre className="bg-slate-900 text-green-400 p-4 rounded-xl text-xs overflow-x-auto whitespace-pre-wrap">
-                    {curlCommand || 'No API access token available'}
-                </pre>
-
-                <p className="text-xs font-bold text-slate-400 uppercase tracking-widest">API Response</p>
-                <pre className="bg-slate-900 text-blue-400 p-4 rounded-xl text-xs overflow-x-auto max-h-96 overflow-y-auto whitespace-pre-wrap">
-                    {apiResponse || 'Loading...'}
-                </pre>
-            </div>
         </div>
     )
 }
