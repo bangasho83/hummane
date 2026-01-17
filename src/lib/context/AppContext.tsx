@@ -857,19 +857,23 @@ export function AppProvider({ children }: { children: ReactNode }) {
                     ? employees.find(emp => emp.name === employeeData.reportingManager)?.id
                     : undefined)
             const payload = {
-                employeeId: employeeData.employeeId,
+                employeeId: employeeData.employeeId || '',
                 companyId: currentCompany.id,
                 userId: employeeData.userId,
                 departmentId,
                 reportingManagerId,
                 roleId: employeeData.roleId,
-                name: employeeData.name,
-                email: employeeData.email,
-                startDate: employeeData.startDate,
-                employmentType: employeeData.employmentType,
+                name: employeeData.name || '',
+                email: employeeData.email || '',
+                startDate: employeeData.startDate || '',
+                employmentType: employeeData.employmentType || 'Full-time',
                 employmentMode: employeeData.employmentMode,
-                gender: employeeData.gender,
-                salary: employeeData.salary
+                gender: employeeData.gender || 'Prefer not to say',
+                salary: employeeData.salary,
+                // New fields for personal details
+                photoUrl: employeeData.photoUrl,
+                dob: employeeData.dob,
+                personalDetails: employeeData.personalDetails
             }
             const apiEmployee = await createEmployeeApi(payload, apiAccessToken)
             const normalized = normalizeEmployee(apiEmployee, currentCompany.id, employeeData)

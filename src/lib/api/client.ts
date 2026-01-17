@@ -213,9 +213,12 @@ export const createEmployeeApi = async (
     email: string
     startDate: string
     employmentType: string
-    employmentMode: string
+    employmentMode?: string
     gender: string
-    salary: number
+    salary?: number
+    photoUrl?: string
+    dob?: string
+    personalDetails?: EmployeePersonalDetails
   },
   accessToken: string
 ): Promise<Employee> => {

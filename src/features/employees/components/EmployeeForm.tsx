@@ -355,7 +355,8 @@ export function EmployeeForm({
                 reportingManager: managerName,
                 gender: formData.gender,
                 salary: parseFloat(formData.salary),
-                // Profile photo is sent independently on upload, not with form submission
+                // Profile photo URL - include if already uploaded
+                photoUrl: formData.profilePicture || undefined,
                 // Date fields - use dob for API
                 dob: formData.dateOfBirth || undefined,
                 jobConfirmationDate: formData.jobConfirmationDate || undefined,
@@ -371,6 +372,7 @@ export function EmployeeForm({
                 position: validated.position || '',
                 reportingManagerId,
                 // Include fields that aren't in the schema
+                photoUrl: employeeData.photoUrl,
                 dob: employeeData.dob,
                 jobConfirmationDate: employeeData.jobConfirmationDate,
                 personalDetails: employeeData.personalDetails
