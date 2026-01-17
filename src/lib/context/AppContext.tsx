@@ -517,7 +517,11 @@ export function AppProvider({ children }: { children: ReactNode }) {
             gender: (employee.gender || fallback.gender || 'Prefer not to say') as Employee['gender'],
             salary,
             createdAt: employee.createdAt || fallback.createdAt || now,
-            updatedAt: employee.updatedAt || fallback.updatedAt
+            updatedAt: employee.updatedAt || fallback.updatedAt,
+            // New fields for personal details (no fallback - use API data only)
+            photoUrl: employee.photoUrl,
+            dob: employee.dob,
+            personalDetails: employee.personalDetails
         }
     }
 
@@ -908,6 +912,9 @@ export function AppProvider({ children }: { children: ReactNode }) {
                 reportingManager?: string
                 gender?: Employee['gender']
                 salary?: number
+                // photoUrl is sent independently on upload, not here
+                dob?: string
+                personalDetails?: Employee['personalDetails']
             } = {
                 companyId: currentCompany.id
             }
@@ -928,6 +935,10 @@ export function AppProvider({ children }: { children: ReactNode }) {
             if (employeeData.reportingManager !== undefined) payload.reportingManager = employeeData.reportingManager
             if (employeeData.gender !== undefined) payload.gender = employeeData.gender
             if (employeeData.salary !== undefined) payload.salary = employeeData.salary
+            // Profile photo (photoUrl) is sent independently on upload, not with form submission
+            // New fields for personal details
+            if (employeeData.dob !== undefined) payload.dob = employeeData.dob
+            if (employeeData.personalDetails !== undefined) payload.personalDetails = employeeData.personalDetails
 
             const apiEmployee = await updateEmployeeApi(id, payload, apiAccessToken)
             const normalized = normalizeEmployee(apiEmployee, currentCompany.id, {

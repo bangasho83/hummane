@@ -1,10 +1,10 @@
 'use client'
 
-import { useState, useEffect } from 'react'
+import { useState, useEffect, useRef } from 'react'
 import { Input } from '@/components/ui/input'
 import { Button } from '@/components/ui/button'
 import { Label } from '@/components/ui/label'
-import { EMPLOYMENT_MODES, EMPLOYMENT_TYPES, GENDER_OPTIONS, type Employee, type EmployeeApi, type EmploymentMode, type EmploymentType, type Gender } from '@/types'
+import { BLOOD_GROUP_OPTIONS, EMPLOYMENT_MODES, EMPLOYMENT_TYPES, GENDER_OPTIONS, type BloodGroup, type Employee, type EmployeeApi, type EmployeePersonalDetails, type EmploymentMode, type EmploymentType, type Gender } from '@/types'
 import { useApp } from '@/lib/context/AppContext'
 import {
     Select,
@@ -16,6 +16,14 @@ import {
 import Link from 'next/link'
 import { employeeSchema } from '@/lib/validation/schemas'
 import { z } from 'zod'
+import { uploadProfilePicture } from '@/lib/firebase/storage'
+import { Camera, X } from 'lucide-react'
+
+export interface PhotoUploadDebugInfo {
+    curl: string
+    response: string
+    status: number
+}
 
 interface EmployeeFormProps {
     employee?: EmployeeApi | null
@@ -24,9 +32,11 @@ interface EmployeeFormProps {
     submitLabel?: string
     loading?: boolean
     onRoleChange?: (roleId: string) => void
+    onPhotoUploadDebug?: (info: PhotoUploadDebugInfo) => void
 }
 
 type EmployeeFormState = {
+    // Basic Info
     employeeId: string
     name: string
     email: string
@@ -38,6 +48,24 @@ type EmployeeFormState = {
     reportingManager: string
     gender: Gender
     salary: string
+    // Profile photo
+    profilePicture: string
+    // Date fields
+    dateOfBirth: string
+    jobConfirmationDate: string
+    // Additional Info fields (will be structured as JSON)
+    personalEmail: string
+    personalContact: string
+    nationalId: string
+    permanentAddress: string
+    temporaryAddress: string
+    emergencyContactRelation: string
+    emergencyContactName: string
+    emergencyContactNumber: string
+    bloodGroup: BloodGroup | ''
+    bankAccountTitle: string
+    bankName: string
+    accountNumber: string
 }
 
 const getDefaultFormData = (): EmployeeFormState => ({
@@ -51,7 +79,25 @@ const getDefaultFormData = (): EmployeeFormState => ({
     employmentMode: EMPLOYMENT_MODES[0],
     reportingManager: 'self',
     gender: GENDER_OPTIONS[0],
-    salary: ''
+    salary: '',
+    // Profile photo
+    profilePicture: '',
+    // Date fields
+    dateOfBirth: '',
+    jobConfirmationDate: '',
+    // Additional Info fields
+    personalEmail: '',
+    personalContact: '',
+    nationalId: '',
+    permanentAddress: '',
+    temporaryAddress: '',
+    emergencyContactRelation: '',
+    emergencyContactName: '',
+    emergencyContactNumber: '',
+    bloodGroup: '',
+    bankAccountTitle: '',
+    bankName: '',
+    accountNumber: ''
 })
 
 const toDateInputValue = (value?: string | null) => {
@@ -82,12 +128,16 @@ export function EmployeeForm({
     onCancel,
     submitLabel = 'Save Employee',
     loading = false,
-    onRoleChange
+    onRoleChange,
+    onPhotoUploadDebug
 }: EmployeeFormProps) {
-    const { departments, roles, employees } = useApp()
+    const { departments, roles, employees, apiAccessToken, currentCompany } = useApp()
     const [formData, setFormData] = useState<EmployeeFormState>(getDefaultFormData)
     const [errors, setErrors] = useState<Record<string, string>>({})
+    const [uploadingPhoto, setUploadingPhoto] = useState(false)
+    const fileInputRef = useRef<HTMLInputElement>(null)
     useEffect(() => {
+        console.log('EmployeeForm useEffect triggered - employee:', !!employee, 'deps.length:', departments.length, roles.length, employees.length)
         if (employee) {
             const departmentIdFromName = employee.departmentName || employee.department
                 ? departments.find(dept => dept.name === (employee.departmentName || employee.department))?.id
@@ -116,6 +166,14 @@ export function EmployeeForm({
                 ? managerId
                 : reportingManagerFromName || 'self'
 
+            // Extract from personalDetails if available, fallback to legacy fields
+            const personalDetails = employee.personalDetails || {}
+
+            // Debug: log what we're reading from employee
+            console.log('EmployeeForm - employee.personalDetails:', employee.personalDetails)
+            console.log('EmployeeForm - personalDetails.bloodGroup:', personalDetails.bloodGroup)
+            console.log('EmployeeForm - employee.bloodGroup:', employee.bloodGroup)
+
             setFormData({
                 employeeId: employee.employeeId || '',
                 name: employee.name || '',
@@ -127,9 +185,32 @@ export function EmployeeForm({
                 employmentMode: employmentModeValue as EmploymentMode,
                 reportingManager: reportingManagerValue,
                 gender: genderValue as Gender,
-                salary: employee.salary != null ? employee.salary.toString() : ''
+                salary: employee.salary != null ? employee.salary.toString() : '',
+                // Profile photo - use photoUrl from API if available, fallback to profilePicture
+                profilePicture: employee.photoUrl || employee.profilePicture || '',
+                // Date fields - prefer dob from API, fallback to dateOfBirth
+                dateOfBirth: toDateInputValue(employee.dob || employee.dateOfBirth),
+                jobConfirmationDate: toDateInputValue(employee.jobConfirmationDate),
+                // Personal Details - prefer personalDetails JSON, fallback to legacy fields
+                personalEmail: personalDetails.personalInfo?.email || employee.personalEmail || '',
+                personalContact: personalDetails.personalInfo?.number || employee.personalContact || '',
+                nationalId: personalDetails.nationalId || employee.cnicNumber || '',
+                permanentAddress: personalDetails.address?.permanentAddress || employee.permanentAddress || '',
+                temporaryAddress: personalDetails.address?.temporaryAddress || employee.temporaryAddress || '',
+                emergencyContactRelation: personalDetails.emergencyContact?.relation || '',
+                emergencyContactName: personalDetails.emergencyContact?.name || employee.emergencyContactName || '',
+                emergencyContactNumber: personalDetails.emergencyContact?.number || employee.emergencyContactNumber || '',
+                bloodGroup: (personalDetails.bloodGroup || employee.bloodGroup) as BloodGroup || '',
+                bankAccountTitle: personalDetails.bankAccount?.title || employee.bankAccountTitle || '',
+                bankName: personalDetails.bankAccount?.bankName || employee.bankName || '',
+                accountNumber: personalDetails.bankAccount?.accountNumber || employee.accountNumber || ''
             })
+
+            // Debug: log the bloodGroup value that was set
+            const bloodGroupValue = (personalDetails.bloodGroup || employee.bloodGroup) as BloodGroup || ''
+            console.log('EmployeeForm - bloodGroup value being set:', bloodGroupValue, 'type:', typeof bloodGroupValue)
         } else {
+            console.log('EmployeeForm - NO EMPLOYEE, resetting to default!')
             setFormData(getDefaultFormData())
         }
         setErrors({})
@@ -213,6 +294,53 @@ export function EmployeeForm({
                 || employee?.departmentName
                 || employee?.department
                 || ''
+            // Build personalDetails JSON structure (matches API)
+            const personalDetails: EmployeePersonalDetails = {}
+
+            // Personal Info
+            if (formData.personalEmail || formData.personalContact) {
+                personalDetails.personalInfo = {
+                    email: formData.personalEmail || undefined,
+                    number: formData.personalContact || undefined
+                }
+            }
+
+            // National ID
+            if (formData.nationalId) {
+                personalDetails.nationalId = formData.nationalId
+            }
+
+            // Address
+            if (formData.permanentAddress || formData.temporaryAddress) {
+                personalDetails.address = {
+                    permanentAddress: formData.permanentAddress || undefined,
+                    temporaryAddress: formData.temporaryAddress || undefined
+                }
+            }
+
+            // Emergency Contact
+            if (formData.emergencyContactRelation || formData.emergencyContactName || formData.emergencyContactNumber) {
+                personalDetails.emergencyContact = {
+                    relation: formData.emergencyContactRelation || undefined,
+                    name: formData.emergencyContactName || undefined,
+                    number: formData.emergencyContactNumber || undefined
+                }
+            }
+
+            // Blood Group
+            if (formData.bloodGroup) {
+                personalDetails.bloodGroup = formData.bloodGroup as BloodGroup
+            }
+
+            // Bank Account
+            if (formData.bankAccountTitle || formData.bankName || formData.accountNumber) {
+                personalDetails.bankAccount = {
+                    title: formData.bankAccountTitle || undefined,
+                    bankName: formData.bankName || undefined,
+                    accountNumber: formData.accountNumber || undefined
+                }
+            }
+
             const employeeData = {
                 employeeId: formData.employeeId,
                 name: formData.name,
@@ -226,7 +354,13 @@ export function EmployeeForm({
                 employmentMode: formData.employmentMode,
                 reportingManager: managerName,
                 gender: formData.gender,
-                salary: parseFloat(formData.salary)
+                salary: parseFloat(formData.salary),
+                // Profile photo is sent independently on upload, not with form submission
+                // Date fields - use dob for API
+                dob: formData.dateOfBirth || undefined,
+                jobConfirmationDate: formData.jobConfirmationDate || undefined,
+                // Personal Details as JSON (matches API structure)
+                personalDetails: Object.keys(personalDetails).length > 0 ? personalDetails : undefined
             }
             const reportingManagerId = formData.reportingManager === 'self' ? undefined : formData.reportingManager
 
@@ -235,7 +369,11 @@ export function EmployeeForm({
             await onSubmit({
                 ...validated,
                 position: validated.position || '',
-                reportingManagerId
+                reportingManagerId,
+                // Include fields that aren't in the schema
+                dob: employeeData.dob,
+                jobConfirmationDate: employeeData.jobConfirmationDate,
+                personalDetails: employeeData.personalDetails
             })
         } catch (error) {
             if (error instanceof z.ZodError) {
@@ -250,6 +388,9 @@ export function EmployeeForm({
             }
         }
     }
+
+    // Debug: log formData.bloodGroup on every render
+    console.log('EmployeeForm RENDER - formData.bloodGroup:', formData.bloodGroup)
 
     const handleChange = <K extends keyof EmployeeFormState>(field: K, value: EmployeeFormState[K]) => {
         setFormData(prev => ({ ...prev, [field]: value }))
@@ -270,283 +411,399 @@ export function EmployeeForm({
         }
     }
 
+    const handlePhotoUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
+        const file = e.target.files?.[0]
+        if (!file) return
+
+        // Validate file type
+        if (!file.type.startsWith('image/')) {
+            setErrors(prev => ({ ...prev, profilePicture: 'Please select an image file' }))
+            return
+        }
+
+        setUploadingPhoto(true)
+        try {
+            // uploadProfilePicture handles resizing (max 4096px) and size validation (max 5MB)
+            const url = await uploadProfilePicture(file, formData.employeeId || 'emp')
+            handleChange('profilePicture', url)
+
+            // If editing an existing employee, update photoUrl in database
+            if (employee?.id && apiAccessToken && currentCompany) {
+                const apiUrl = `https://hummane-api.vercel.app/employees/${encodeURIComponent(employee.id)}`
+                const payload = {
+                    photoUrl: url,
+                    companyId: currentCompany.id
+                }
+
+                // Build curl command for debug
+                const curlCommand = `curl -X PUT "${apiUrl}" \\
+  -H "Authorization: Bearer ${apiAccessToken}" \\
+  -H "Content-Type: application/json" \\
+  -d '${JSON.stringify(payload)}'`
+
+                const response = await fetch(apiUrl, {
+                    method: 'PUT',
+                    headers: {
+                        'Authorization': `Bearer ${apiAccessToken}`,
+                        'Content-Type': 'application/json'
+                    },
+                    body: JSON.stringify(payload)
+                })
+
+                const responseText = await response.text()
+
+                // Call debug callback if provided
+                if (onPhotoUploadDebug) {
+                    onPhotoUploadDebug({
+                        curl: curlCommand,
+                        response: responseText,
+                        status: response.status
+                    })
+                }
+
+                if (!response.ok) {
+                    console.error('Failed to update employee photo in database')
+                }
+            }
+
+            setErrors(prev => {
+                const newErrors = { ...prev }
+                delete newErrors.profilePicture
+                return newErrors
+            })
+        } catch (error) {
+            console.error('Failed to upload photo:', error)
+            const message = error instanceof Error ? error.message : 'Failed to upload photo'
+            setErrors(prev => ({ ...prev, profilePicture: message }))
+        } finally {
+            setUploadingPhoto(false)
+        }
+    }
+
+    const handleRemovePhoto = () => {
+        handleChange('profilePicture', '')
+        if (fileInputRef.current) {
+            fileInputRef.current.value = ''
+        }
+    }
+
+    const SectionHeader = ({ title }: { title: string }) => (
+        <div className="pb-2 mb-4 border-b border-slate-100">
+            <h3 className="text-sm font-bold text-slate-700 uppercase tracking-wide">{title}</h3>
+        </div>
+    )
+
     return (
-        <form onSubmit={handleSubmit} className="space-y-6">
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                <div className="space-y-2">
-                    <Label htmlFor="employeeId">Employee ID</Label>
-                    <Input
-                        id="employeeId"
-                        placeholder="EMP-00123"
-                        value={formData.employeeId}
-                        onChange={(e) => handleChange('employeeId', e.target.value)}
-                        required
-                        className={errors.employeeId ? 'border-red-500' : ''}
-                    />
-                    {errors.employeeId && (
-                        <p className="text-xs text-red-600 mt-1">{errors.employeeId}</p>
-                    )}
-                </div>
-                <div className="space-y-2">
-                    <Label htmlFor="employmentType">Employment Type</Label>
-                    <Select
-                        value={formData.employmentType}
-                        onValueChange={(value) => handleChange('employmentType', value as EmploymentType)}
-                        key={formData.employmentType}
-                    >
-                        <SelectTrigger id="employmentType" className="rounded-xl border-slate-200">
-                            <SelectValue placeholder="Select employment type" />
-                        </SelectTrigger>
-                        <SelectContent>
-                            {showMissingEmploymentType && (
-                                <SelectItem value={formData.employmentType}>
-                                    {formData.employmentType}
-                                </SelectItem>
+        <form onSubmit={handleSubmit} className="space-y-8">
+            {/* ═══════════════════════════════════════════════════════════════════════════
+                SECTION: Basic Information
+            ═══════════════════════════════════════════════════════════════════════════ */}
+            <div>
+                <SectionHeader title="Basic Information" />
+                <div className="flex flex-col-reverse md:flex-row gap-6">
+                    {/* Basic Fields */}
+                    <div className="flex-1 grid grid-cols-1 md:grid-cols-2 gap-4">
+                        <div className="space-y-2">
+                            <Label htmlFor="employeeId">Employee ID</Label>
+                            <Input
+                                id="employeeId"
+                                placeholder="EMP-00123"
+                                value={formData.employeeId}
+                                onChange={(e) => handleChange('employeeId', e.target.value)}
+                                required
+                                className={errors.employeeId ? 'border-red-500' : ''}
+                            />
+                            {errors.employeeId && <p className="text-xs text-red-600 mt-1">{errors.employeeId}</p>}
+                        </div>
+                        <div className="space-y-2">
+                            <Label htmlFor="name">Full Name</Label>
+                            <Input
+                                id="name"
+                                placeholder="Jane Smith"
+                                value={formData.name}
+                                onChange={(e) => handleChange('name', e.target.value)}
+                                required
+                                className={errors.name ? 'border-red-500' : ''}
+                            />
+                            {errors.name && <p className="text-xs text-red-600 mt-1">{errors.name}</p>}
+                        </div>
+                    </div>
+
+                    {/* Profile Picture */}
+                    <div className="flex flex-col items-center gap-2">
+                        <Label className="text-center">Profile Picture</Label>
+                        <div className="relative">
+                            <div className="w-28 h-28 rounded-full border-2 border-dashed border-slate-300 bg-slate-50 flex items-center justify-center overflow-hidden">
+                                {formData.profilePicture ? (
+                                    <img
+                                        src={formData.profilePicture}
+                                        alt="Profile"
+                                        className="w-full h-full object-cover"
+                                    />
+                                ) : (
+                                    <Camera className="w-8 h-8 text-slate-400" />
+                                )}
+                                {uploadingPhoto && (
+                                    <div className="absolute inset-0 bg-white/70 flex items-center justify-center">
+                                        <div className="w-6 h-6 border-2 border-blue-600 border-t-transparent rounded-full animate-spin" />
+                                    </div>
+                                )}
+                            </div>
+                            {formData.profilePicture && (
+                                <button
+                                    type="button"
+                                    onClick={handleRemovePhoto}
+                                    className="absolute -top-1 -right-1 w-6 h-6 bg-red-500 text-white rounded-full flex items-center justify-center hover:bg-red-600 transition-colors"
+                                >
+                                    <X className="w-4 h-4" />
+                                </button>
                             )}
-                            {EMPLOYMENT_TYPES.map((type) => (
-                                <SelectItem key={type} value={type}>
-                                    {type}
-                                </SelectItem>
-                            ))}
-                        </SelectContent>
-                    </Select>
-                    {errors.employmentType && (
-                        <p className="text-xs text-red-600 mt-1">{errors.employmentType}</p>
-                    )}
-                </div>
-                <div className="space-y-2">
-                    <Label htmlFor="employmentMode">Employment Mode</Label>
-                    <Select
-                        value={formData.employmentMode}
-                        onValueChange={(value) => handleChange('employmentMode', value as EmploymentMode)}
-                        key={formData.employmentMode}
-                    >
-                        <SelectTrigger id="employmentMode" className="rounded-xl border-slate-200">
-                            <SelectValue placeholder="Select employment mode" />
-                        </SelectTrigger>
-                        <SelectContent>
-                            {showMissingEmploymentMode && (
-                                <SelectItem value={formData.employmentMode}>
-                                    {formData.employmentMode}
-                                </SelectItem>
-                            )}
-                            {EMPLOYMENT_MODES.map((modeOption) => (
-                                <SelectItem key={modeOption} value={modeOption}>
-                                    {modeOption}
-                                </SelectItem>
-                            ))}
-                        </SelectContent>
-                    </Select>
-                    {errors.employmentMode && (
-                        <p className="text-xs text-red-600 mt-1">{errors.employmentMode}</p>
-                    )}
-                </div>
-            </div>
-
-            <div className="space-y-2">
-                <Label htmlFor="name">Full Name</Label>
-                <Input
-                    id="name"
-                    placeholder="Jane Smith"
-                    value={formData.name}
-                    onChange={(e) => handleChange('name', e.target.value)}
-                    required
-                    className={errors.name ? 'border-red-500' : ''}
-                />
-                {errors.name && (
-                    <p className="text-xs text-red-600 mt-1">{errors.name}</p>
-                )}
-            </div>
-
-            <div className="space-y-2">
-                <Label htmlFor="email">Email</Label>
-                <Input
-                    id="email"
-                    type="email"
-                    placeholder="jane@company.com"
-                    value={formData.email}
-                    onChange={(e) => handleChange('email', e.target.value)}
-                    required
-                    className={errors.email ? 'border-red-500' : ''}
-                />
-                {errors.email && (
-                    <p className="text-xs text-red-600 mt-1">{errors.email}</p>
-                )}
-            </div>
-
-            <div className="space-y-2">
-                <Label htmlFor="department">Department</Label>
-                {departments.length > 0 ? (
-                    <>
-                        <Select
-                            key={`${formData.departmentId}-${departments.length}`}
-                            value={formData.departmentId}
-                            onValueChange={(value) => handleChange('departmentId', value)}
+                        </div>
+                        <input
+                            ref={fileInputRef}
+                            type="file"
+                            accept="image/*"
+                            onChange={handlePhotoUpload}
+                            className="hidden"
+                            id="profilePictureInput"
+                        />
+                        <Button
+                            type="button"
+                            variant="outline"
+                            size="sm"
+                            onClick={() => fileInputRef.current?.click()}
+                            disabled={uploadingPhoto}
+                            className="text-xs"
                         >
-                            <SelectTrigger id="department" className={`rounded-xl border-slate-200 ${errors.department ? 'border-red-500' : ''}`}>
-                                <SelectValue placeholder="Select Department" />
+                            {formData.profilePicture ? 'Change Photo' : 'Upload Photo'}
+                        </Button>
+                        {errors.profilePicture && <p className="text-xs text-red-600">{errors.profilePicture}</p>}
+                    </div>
+                </div>
+            </div>
+
+            {/* ═══════════════════════════════════════════════════════════════════════════
+                SECTION: Employment Details
+            ═══════════════════════════════════════════════════════════════════════════ */}
+            <div>
+                <SectionHeader title="Employment Details" />
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                    <div className="space-y-2">
+                        <Label htmlFor="email">Work Email</Label>
+                        <Input
+                            id="email"
+                            type="email"
+                            placeholder="jane@company.com"
+                            value={formData.email}
+                            onChange={(e) => handleChange('email', e.target.value)}
+                            required
+                            className={errors.email ? 'border-red-500' : ''}
+                        />
+                        {errors.email && <p className="text-xs text-red-600 mt-1">{errors.email}</p>}
+                    </div>
+                    <div className="space-y-2">
+                        <Label htmlFor="department">Department</Label>
+                        {departments.length > 0 ? (
+                            <>
+                                <Select key={`${formData.departmentId}-${departments.length}`} value={formData.departmentId} onValueChange={(value) => handleChange('departmentId', value)}>
+                                    <SelectTrigger id="department" className={`rounded-xl border-slate-200 ${errors.department ? 'border-red-500' : ''}`}>
+                                        <SelectValue placeholder="Select Department" />
+                                    </SelectTrigger>
+                                    <SelectContent>
+                                        {departments.map((dept) => <SelectItem key={dept.id} value={dept.id}>{dept.name}</SelectItem>)}
+                                    </SelectContent>
+                                </Select>
+                                {errors.department && <p className="text-xs text-red-600 mt-1">{errors.department}</p>}
+                            </>
+                        ) : (
+                            <div className="text-sm p-3 bg-slate-50 border border-dashed border-slate-200 rounded-xl text-slate-500">
+                                No departments found. <Link href="/departments" className="text-blue-600 font-bold hover:underline">Create one</Link> first.
+                            </div>
+                        )}
+                    </div>
+                    <div className="space-y-2">
+                        <Label htmlFor="role">Role / Job Description</Label>
+                        {roles.length > 0 ? (
+                            <>
+                                <Select key={`${formData.roleId}-${roles.length}`} value={formData.roleId} onValueChange={(value) => handleChange('roleId', value)}>
+                                    <SelectTrigger id="role" className={`rounded-xl border-slate-200 ${errors.roleId ? 'border-red-500' : ''}`}>
+                                        <SelectValue placeholder="Select Role" />
+                                    </SelectTrigger>
+                                    <SelectContent>
+                                        {roles.map((role) => <SelectItem key={role.id} value={role.id}>{role.title}</SelectItem>)}
+                                    </SelectContent>
+                                </Select>
+                                {errors.roleId && <p className="text-xs text-red-600 mt-1">{errors.roleId}</p>}
+                            </>
+                        ) : (
+                            <div className="text-sm p-3 bg-slate-50 border border-dashed border-slate-200 rounded-xl text-slate-500">
+                                No roles defined. <Link href="/roles" className="text-blue-600 font-bold hover:underline">Create one</Link>.
+                            </div>
+                        )}
+                    </div>
+                    <div className="space-y-2">
+                        <Label htmlFor="employmentType">Employment Type</Label>
+                        <Select value={formData.employmentType} onValueChange={(value) => handleChange('employmentType', value as EmploymentType)} key={formData.employmentType}>
+                            <SelectTrigger id="employmentType" className="rounded-xl border-slate-200">
+                                <SelectValue placeholder="Select employment type" />
                             </SelectTrigger>
                             <SelectContent>
-                                {departments.map((dept) => (
-                                    <SelectItem key={dept.id} value={dept.id}>
-                                        {dept.name}
-                                    </SelectItem>
-                                ))}
+                                {showMissingEmploymentType && <SelectItem value={formData.employmentType}>{formData.employmentType}</SelectItem>}
+                                {EMPLOYMENT_TYPES.map((type) => <SelectItem key={type} value={type}>{type}</SelectItem>)}
                             </SelectContent>
                         </Select>
-                        {errors.department && (
-                            <p className="text-xs text-red-600 mt-1">{errors.department}</p>
-                        )}
-                    </>
-                ) : (
-                    <>
-                        <div className="text-sm p-3 bg-slate-50 border border-dashed border-slate-200 rounded-xl text-slate-500">
-                            No departments found. <Link href="/departments" className="text-blue-600 font-bold hover:underline">Create one</Link> first.
-                        </div>
-                        {errors.department && (
-                            <p className="text-xs text-red-600 mt-1">{errors.department}</p>
-                        )}
-                    </>
-                )}
-            </div>
-
-            <div className="space-y-2">
-                <Label htmlFor="role">Role / Job Description</Label>
-                {roles.length > 0 ? (
-                    <>
-                        <Select
-                            key={`${formData.roleId}-${roles.length}`}
-                            value={formData.roleId}
-                            onValueChange={(value) => handleChange('roleId', value)}
-                        >
-                            <SelectTrigger id="role" className={`rounded-xl border-slate-200 ${errors.roleId ? 'border-red-500' : ''}`}>
-                                <SelectValue placeholder="Select Role" />
+                    </div>
+                    <div className="space-y-2">
+                        <Label htmlFor="employmentMode">Employment Mode</Label>
+                        <Select value={formData.employmentMode} onValueChange={(value) => handleChange('employmentMode', value as EmploymentMode)} key={formData.employmentMode}>
+                            <SelectTrigger id="employmentMode" className="rounded-xl border-slate-200">
+                                <SelectValue placeholder="Select employment mode" />
                             </SelectTrigger>
                             <SelectContent>
-                                {roles.map((role) => (
-                                    <SelectItem key={role.id} value={role.id}>
-                                        {role.title}
-                                    </SelectItem>
-                                ))}
+                                {showMissingEmploymentMode && <SelectItem value={formData.employmentMode}>{formData.employmentMode}</SelectItem>}
+                                {EMPLOYMENT_MODES.map((m) => <SelectItem key={m} value={m}>{m}</SelectItem>)}
                             </SelectContent>
                         </Select>
-                        {errors.roleId && (
-                            <p className="text-xs text-red-600 mt-1">{errors.roleId}</p>
-                        )}
-                    </>
-                ) : (
-                    <>
-                        <div className="text-sm p-3 bg-slate-50 border border-dashed border-slate-200 rounded-xl text-slate-500">
-                            No roles defined. <Link href="/roles" className="text-blue-600 font-bold hover:underline">Create one</Link> to assign job descriptions.
-                        </div>
-                        {errors.roleId && (
-                            <p className="text-xs text-red-600 mt-1">{errors.roleId}</p>
-                        )}
-                    </>
-                )}
-            </div>
-
-            <div className="grid grid-cols-2 gap-4">
-                <div className="space-y-2">
-                    <Label htmlFor="startDate">Joining Date</Label>
-                    <Input
-                        id="startDate"
-                        type="date"
-                        value={formData.startDate}
-                        onChange={(e) => handleChange('startDate', e.target.value)}
-                        required
-                        className={errors.startDate ? 'border-red-500' : ''}
-                    />
-                    {errors.startDate && (
-                        <p className="text-xs text-red-600 mt-1">{errors.startDate}</p>
-                    )}
-                </div>
-                <div className="space-y-2">
-                    <Label htmlFor="reportingManager">Reporting Manager</Label>
-                    <Select
-                        value={formData.reportingManager || "self"}
-                        onValueChange={(value) => handleChange('reportingManager', value)}
-                        key={`${formData.reportingManager}-${employees.length}`}
-                    >
-                        <SelectTrigger id="reportingManager" className={`rounded-xl border-slate-200 ${errors.reportingManager ? 'border-red-500' : ''}`}>
-                            <SelectValue placeholder="Select Manager" />
-                        </SelectTrigger>
-                        <SelectContent>
-                            <SelectItem value="self">Self / This employee leads</SelectItem>
-                            {showMissingManager && (
-                                <SelectItem value={reportingManagerId as string}>
-                                    {missingManagerLabel}
-                                </SelectItem>
-                            )}
-                            {managerOptions.map((emp) => (
-                                <SelectItem key={emp.id} value={emp.id}>
-                                    {emp.name} [{emp.employeeId}]
-                                </SelectItem>
-                            ))}
-                        </SelectContent>
-                    </Select>
-                    {errors.reportingManager && (
-                        <p className="text-xs text-red-600 mt-1">{errors.reportingManager}</p>
-                    )}
+                    </div>
+                    <div className="space-y-2">
+                        <Label htmlFor="startDate">Joining Date</Label>
+                        <Input id="startDate" type="date" value={formData.startDate} onChange={(e) => handleChange('startDate', e.target.value)} required className={errors.startDate ? 'border-red-500' : ''} />
+                        {errors.startDate && <p className="text-xs text-red-600 mt-1">{errors.startDate}</p>}
+                    </div>
+                    <div className="space-y-2">
+                        <Label htmlFor="reportingManager">Reporting Manager</Label>
+                        <Select value={formData.reportingManager || "self"} onValueChange={(value) => handleChange('reportingManager', value)} key={`${formData.reportingManager}-${employees.length}`}>
+                            <SelectTrigger id="reportingManager" className={`rounded-xl border-slate-200 ${errors.reportingManager ? 'border-red-500' : ''}`}>
+                                <SelectValue placeholder="Select Manager" />
+                            </SelectTrigger>
+                            <SelectContent>
+                                <SelectItem value="self">Self / This employee leads</SelectItem>
+                                {showMissingManager && <SelectItem value={reportingManagerId as string}>{missingManagerLabel}</SelectItem>}
+                                {managerOptions.map((emp) => <SelectItem key={emp.id} value={emp.id}>{emp.name} [{emp.employeeId}]</SelectItem>)}
+                            </SelectContent>
+                        </Select>
+                    </div>
+                    <div className="space-y-2">
+                        <Label htmlFor="salary">Monthly Salary</Label>
+                        <Input id="salary" type="number" placeholder="50000" step="1" min="0" value={formData.salary} onChange={(e) => handleChange('salary', e.target.value)} required className={errors.salary ? 'border-red-500' : ''} />
+                        {errors.salary && <p className="text-xs text-red-600 mt-1">{errors.salary}</p>}
+                    </div>
                 </div>
             </div>
 
-            <div className="grid grid-cols-2 gap-4">
-                <div className="space-y-2">
-                    <Label htmlFor="gender">Gender</Label>
-                    <Select
-                        value={formData.gender}
-                        onValueChange={(value) => handleChange('gender', value as Gender)}
-                        key={formData.gender}
-                    >
-                        <SelectTrigger id="gender" className="rounded-xl border-slate-200">
-                            <SelectValue placeholder="Select gender" />
-                        </SelectTrigger>
-                        <SelectContent>
-                            {showMissingGender && (
-                                <SelectItem value={formData.gender}>
-                                    {formData.gender}
-                                </SelectItem>
-                            )}
-                            {GENDER_OPTIONS.map((gender) => (
-                                <SelectItem key={gender} value={gender}>
-                                    {gender}
-                                </SelectItem>
-                            ))}
-                        </SelectContent>
-                    </Select>
-                    {errors.gender && (
-                        <p className="text-xs text-red-600 mt-1">{errors.gender}</p>
-                    )}
+            {/* ═══════════════════════════════════════════════════════════════════════════
+                SECTION: Personal Details
+            ═══════════════════════════════════════════════════════════════════════════ */}
+            <div>
+                <SectionHeader title="Personal Details" />
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                    <div className="space-y-2">
+                        <Label htmlFor="personalEmail">Personal Email</Label>
+                        <Input id="personalEmail" type="email" placeholder="jane.personal@email.com" value={formData.personalEmail} onChange={(e) => handleChange('personalEmail', e.target.value)} />
+                    </div>
+                    <div className="space-y-2">
+                        <Label htmlFor="personalContact">Personal Contact</Label>
+                        <Input id="personalContact" type="tel" placeholder="+92 300 1234567" value={formData.personalContact} onChange={(e) => handleChange('personalContact', e.target.value)} />
+                    </div>
+                    <div className="space-y-2">
+                        <Label htmlFor="nationalId">National ID</Label>
+                        <Input id="nationalId" placeholder="12345-1234567-1" value={formData.nationalId} onChange={(e) => handleChange('nationalId', e.target.value)} />
+                    </div>
+                    <div className="space-y-2">
+                        <Label htmlFor="dateOfBirth">Date of Birth</Label>
+                        <Input id="dateOfBirth" type="date" value={formData.dateOfBirth} onChange={(e) => handleChange('dateOfBirth', e.target.value)} />
+                    </div>
+                    <div className="space-y-2">
+                        <Label htmlFor="gender">Gender</Label>
+                        <Select value={formData.gender} onValueChange={(value) => handleChange('gender', value as Gender)} key={formData.gender}>
+                            <SelectTrigger id="gender" className="rounded-xl border-slate-200">
+                                <SelectValue placeholder="Select gender" />
+                            </SelectTrigger>
+                            <SelectContent>
+                                {showMissingGender && <SelectItem value={formData.gender}>{formData.gender}</SelectItem>}
+                                {GENDER_OPTIONS.map((gender) => <SelectItem key={gender} value={gender}>{gender}</SelectItem>)}
+                            </SelectContent>
+                        </Select>
+                        {errors.gender && <p className="text-xs text-red-600 mt-1">{errors.gender}</p>}
+                    </div>
+                    <div className="space-y-2">
+                        <Label htmlFor="bloodGroup">Blood Group</Label>
+                        <Select value={formData.bloodGroup || employee?.personalDetails?.bloodGroup || ''} onValueChange={(value) => handleChange('bloodGroup', value as BloodGroup)}>
+                            <SelectTrigger id="bloodGroup" className="rounded-xl border-slate-200">
+                                <SelectValue placeholder="Select blood group" />
+                            </SelectTrigger>
+                            <SelectContent>
+                                {BLOOD_GROUP_OPTIONS.map((bg) => <SelectItem key={bg} value={bg}>{bg}</SelectItem>)}
+                            </SelectContent>
+                        </Select>
+                    </div>
                 </div>
             </div>
 
-            <div className="grid grid-cols-2 gap-4">
-                <div className="space-y-2">
-                    <Label htmlFor="salary">Monthly Salary</Label>
-                    <Input
-                        id="salary"
-                        type="number"
-                        placeholder="8000"
-                        step="1"
-                        min="0"
-                        value={formData.salary}
-                        onChange={(e) => handleChange('salary', e.target.value)}
-                        required
-                        className={errors.salary ? 'border-red-500' : ''}
-                    />
-                    {errors.salary && (
-                        <p className="text-xs text-red-600 mt-1">{errors.salary}</p>
-                    )}
+            {/* ═══════════════════════════════════════════════════════════════════════════
+                SECTION: Address Information
+            ═══════════════════════════════════════════════════════════════════════════ */}
+            <div>
+                <SectionHeader title="Address Information" />
+                <div className="grid grid-cols-1 gap-4">
+                    <div className="space-y-2">
+                        <Label htmlFor="permanentAddress">Permanent Address</Label>
+                        <Input id="permanentAddress" placeholder="House #, Street, City, Country" value={formData.permanentAddress} onChange={(e) => handleChange('permanentAddress', e.target.value)} />
+                    </div>
+                    <div className="space-y-2">
+                        <Label htmlFor="temporaryAddress">Temporary / Current Address</Label>
+                        <Input id="temporaryAddress" placeholder="House #, Street, City, Country" value={formData.temporaryAddress} onChange={(e) => handleChange('temporaryAddress', e.target.value)} />
+                    </div>
                 </div>
             </div>
 
-            <div className="flex justify-end gap-3 pt-4">
-                <Button
-                    type="button"
-                    variant="outline"
-                    onClick={onCancel}
-                >
+            {/* ═══════════════════════════════════════════════════════════════════════════
+                SECTION: Emergency Contact
+            ═══════════════════════════════════════════════════════════════════════════ */}
+            <div>
+                <SectionHeader title="Emergency Contact" />
+                <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+                    <div className="space-y-2">
+                        <Label htmlFor="emergencyContactRelation">Relation</Label>
+                        <Input id="emergencyContactRelation" placeholder="Spouse, Parent, etc." value={formData.emergencyContactRelation} onChange={(e) => handleChange('emergencyContactRelation', e.target.value)} />
+                    </div>
+                    <div className="space-y-2">
+                        <Label htmlFor="emergencyContactName">Name</Label>
+                        <Input id="emergencyContactName" placeholder="John Doe" value={formData.emergencyContactName} onChange={(e) => handleChange('emergencyContactName', e.target.value)} />
+                    </div>
+                    <div className="space-y-2">
+                        <Label htmlFor="emergencyContactNumber">Number</Label>
+                        <Input id="emergencyContactNumber" type="tel" placeholder="+92 300 1234567" value={formData.emergencyContactNumber} onChange={(e) => handleChange('emergencyContactNumber', e.target.value)} />
+                    </div>
+                </div>
+            </div>
+
+            {/* ═══════════════════════════════════════════════════════════════════════════
+                SECTION: Banking Details
+            ═══════════════════════════════════════════════════════════════════════════ */}
+            <div>
+                <SectionHeader title="Banking Details" />
+                <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+                    <div className="space-y-2">
+                        <Label htmlFor="bankAccountTitle">Account Title</Label>
+                        <Input id="bankAccountTitle" placeholder="Jane Smith" value={formData.bankAccountTitle} onChange={(e) => handleChange('bankAccountTitle', e.target.value)} />
+                    </div>
+                    <div className="space-y-2">
+                        <Label htmlFor="bankName">Bank Name</Label>
+                        <Input id="bankName" placeholder="HBL, Meezan, etc." value={formData.bankName} onChange={(e) => handleChange('bankName', e.target.value)} />
+                    </div>
+                    <div className="space-y-2">
+                        <Label htmlFor="accountNumber">Account Number / IBAN</Label>
+                        <Input id="accountNumber" placeholder="PK00XXXX0000000000000000" value={formData.accountNumber} onChange={(e) => handleChange('accountNumber', e.target.value)} />
+                    </div>
+                </div>
+            </div>
+
+            {/* ═══════════════════════════════════════════════════════════════════════════
+                SECTION: Form Actions
+            ═══════════════════════════════════════════════════════════════════════════ */}
+            <div className="flex justify-end gap-3 pt-6 border-t border-slate-100">
+                <Button type="button" variant="outline" onClick={onCancel}>
                     Cancel
                 </Button>
                 <Button type="submit" disabled={loading}>

@@ -1,4 +1,4 @@
-import type { Company, Department, Role, LeaveType, LeaveRecord, Holiday, Job, Applicant, Employee, EmployeeApi, EmployeeDocument, FeedbackCard, FeedbackEntry } from '@/types'
+import type { Company, Department, Role, LeaveType, LeaveRecord, Holiday, Job, Applicant, Employee, EmployeeApi, EmployeeDocument, EmployeePersonalDetails, FeedbackCard, FeedbackEntry } from '@/types'
 
 export type ApiUser = {
   id: string
@@ -316,6 +316,10 @@ export const updateEmployeeApi = async (
     reportingManager?: string
     gender?: string
     salary?: number
+    // New fields
+    photoUrl?: string
+    dob?: string
+    personalDetails?: EmployeePersonalDetails
   },
   accessToken: string
 ): Promise<Employee> => {

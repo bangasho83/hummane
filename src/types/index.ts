@@ -38,6 +38,33 @@ export interface Company {
     createdAt: string
 }
 
+export const BLOOD_GROUP_OPTIONS = ['A+', 'A-', 'B+', 'B-', 'AB+', 'AB-', 'O+', 'O-'] as const
+export type BloodGroup = typeof BLOOD_GROUP_OPTIONS[number]
+
+// Personal Details JSON structure for employee (matches API)
+export interface EmployeePersonalDetails {
+    personalInfo?: {
+        email?: string
+        number?: string
+    }
+    nationalId?: string
+    address?: {
+        permanentAddress?: string
+        temporaryAddress?: string
+    }
+    emergencyContact?: {
+        relation?: string
+        name?: string
+        number?: string
+    }
+    bloodGroup?: BloodGroup
+    bankAccount?: {
+        title?: string
+        bankName?: string
+        accountNumber?: string
+    }
+}
+
 export interface Employee {
     id: string
     employeeId: string
@@ -61,6 +88,27 @@ export interface Employee {
     salary: number
     createdAt: string
     updatedAt?: string
+    // Profile photo
+    profilePicture?: string
+    photoUrl?: string
+    // Date fields
+    dob?: string
+    dateOfBirth?: string  // legacy alias
+    jobConfirmationDate?: string
+    // Personal details as JSON (matches API)
+    personalDetails?: EmployeePersonalDetails
+    // Legacy fields (kept for backward compatibility)
+    personalEmail?: string
+    personalContact?: string
+    cnicNumber?: string
+    permanentAddress?: string
+    temporaryAddress?: string
+    emergencyContactName?: string
+    emergencyContactNumber?: string
+    bloodGroup?: BloodGroup
+    bankAccountTitle?: string
+    bankName?: string
+    accountNumber?: string
 }
 
 export interface EmployeeApi {
@@ -74,6 +122,7 @@ export interface EmployeeApi {
     roleName?: string | null
     reportingManagerId?: string | null
     reportingManager?: string | null
+    reportingManagerName?: string | null
     name?: string | null
     email?: string | null
     position?: string | null
@@ -85,6 +134,27 @@ export interface EmployeeApi {
     salary?: number | null
     createdAt?: string
     updatedAt?: string
+    // Profile photo
+    profilePicture?: string | null
+    photoUrl?: string | null
+    // Date fields
+    dob?: string | null
+    dateOfBirth?: string | null  // legacy alias
+    jobConfirmationDate?: string | null
+    // Personal details as JSON (matches API)
+    personalDetails?: EmployeePersonalDetails | null
+    // Legacy fields (for backward compatibility)
+    personalEmail?: string | null
+    personalContact?: string | null
+    cnicNumber?: string | null
+    permanentAddress?: string | null
+    temporaryAddress?: string | null
+    emergencyContactName?: string | null
+    emergencyContactNumber?: string | null
+    bloodGroup?: BloodGroup | null
+    bankAccountTitle?: string | null
+    bankName?: string | null
+    accountNumber?: string | null
 }
 
 export interface Department {

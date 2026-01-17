@@ -66,10 +66,25 @@ export default function AddEmployeePage() {
                         />
                     </CardContent>
                 </Card>
-                <JobDescriptionPreview
-                    title={selectedRole?.title || 'Job Description'}
-                    description={selectedRole?.description}
-                />
+                <div className="space-y-6">
+                    {/* Career Timeline */}
+                    <Card className="border border-slate-100 shadow-premium rounded-3xl bg-white overflow-hidden">
+                        <CardContent className="p-6">
+                            <p className="text-xs font-extrabold uppercase tracking-widest text-slate-400 mb-3">Career Timeline</p>
+                            <div className="space-y-2 text-sm">
+                                <p className="text-slate-600"><span className="text-slate-400">Jan 2023</span> — Intern — Internship [Rs. 25,000]</p>
+                                <p className="text-slate-600"><span className="text-slate-400">Apr 2023</span> — Junior Developer — Full-time [Rs. 60,000]</p>
+                                <p className="text-slate-600"><span className="text-slate-400">Jan 2024</span> — Senior Developer — Full-time [Rs. 120,000]</p>
+                                <p className="text-slate-700 font-medium"><span className="text-slate-400">Aug 2024</span> — Team Lead — Full-time [Rs. 180,000]</p>
+                            </div>
+                        </CardContent>
+                    </Card>
+
+                    <JobDescriptionPreview
+                        title={selectedRole?.title || 'Job Description'}
+                        description={selectedRole?.description}
+                    />
+                </div>
             </div>
         </div>
     )

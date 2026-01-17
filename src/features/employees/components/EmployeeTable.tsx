@@ -6,7 +6,7 @@ import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@
 import { Input } from '@/components/ui/input'
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select'
 import { Button } from '@/components/ui/button'
-import { Pencil, Trash2, Search, Users } from 'lucide-react'
+import { Pencil, Trash2, Search, Users, User } from 'lucide-react'
 import type { Employee } from '@/types'
 import { formatCurrency } from '@/lib/utils'
 import { useApp } from '@/lib/context/AppContext'
@@ -143,8 +143,8 @@ export function EmployeeTable({ employees, onRefresh }: EmployeeTableProps) {
                     <TableHeader className="bg-slate-50/50">
                         <TableRow className="hover:bg-transparent border-slate-100">
                             <TableHead className="pl-8 py-4 text-[10px] font-extrabold uppercase tracking-widest text-slate-400">Employee ID</TableHead>
+                            <TableHead className="py-4 text-[10px] font-extrabold uppercase tracking-widest text-slate-400">Photo</TableHead>
                             <TableHead className="py-4 text-[10px] font-extrabold uppercase tracking-widest text-slate-400">Employee</TableHead>
-                            <TableHead className="py-4 text-[10px] font-extrabold uppercase tracking-widest text-slate-400">Role</TableHead>
                             <TableHead className="py-4 text-[10px] font-extrabold uppercase tracking-widest text-slate-400">Department</TableHead>
                             <TableHead className="py-4 text-[10px] font-extrabold uppercase tracking-widest text-slate-400">Manager</TableHead>
                             <TableHead className="py-4 text-[10px] font-extrabold uppercase tracking-widest text-slate-400">Employment</TableHead>
@@ -188,13 +188,23 @@ export function EmployeeTable({ employees, onRefresh }: EmployeeTableProps) {
                                         <span className="text-xs font-bold text-slate-500 uppercase tracking-wide">{employee.employeeId}</span>
                                     </TableCell>
                                     <TableCell>
-                                        <Link href={`/team/${employee.id}`} className="group">
-                                            <p className="font-bold text-slate-900 text-base group-hover:text-blue-600 transition-colors">{employee.name}</p>
-                                            <p className="text-xs text-slate-400 font-medium">{employee.email}</p>
-                                        </Link>
+                                        {employee.photoUrl ? (
+                                            <img
+                                                src={employee.photoUrl}
+                                                alt={employee.name}
+                                                className="w-10 h-10 rounded-full object-cover"
+                                            />
+                                        ) : (
+                                            <div className="w-10 h-10 rounded-full bg-slate-100 flex items-center justify-center">
+                                                <User className="w-5 h-5 text-slate-400" />
+                                            </div>
+                                        )}
                                     </TableCell>
                                     <TableCell>
-                                        <span className="text-sm font-medium text-slate-500">{employee.roleName || employee.position || '—'}</span>
+                                        <Link href={`/team/${employee.id}`} className="group">
+                                            <p className="font-bold text-slate-900 text-base group-hover:text-blue-600 transition-colors">{employee.name}</p>
+                                            <p className="text-xs text-slate-400 font-medium">{employee.roleName || employee.position || '—'}</p>
+                                        </Link>
                                     </TableCell>
                                     <TableCell>
                                         <Badge className="bg-blue-50 text-blue-600 hover:bg-blue-100 border-none px-4 py-1.5 rounded-full font-bold">

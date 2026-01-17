@@ -6,6 +6,7 @@ import { useApp } from '@/lib/context/AppContext'
 import { Button } from '@/components/ui/button'
 import { Plus } from 'lucide-react'
 import { EmployeeTable } from '@/features/employees'
+import { Card, CardContent } from '@/components/ui/card'
 import type { Employee } from '@/types'
 
 const API_BASE_URL = process.env.NEXT_PUBLIC_API_BASE_URL || 'https://hummane-api.vercel.app'
@@ -20,9 +21,11 @@ export default function EmployeesPage() {
         if (!apiAccessToken) return
         setIsLoading(true)
         try {
-            const res = await fetch(`${API_BASE_URL}/employees`, {
+            const apiUrl = `${API_BASE_URL}/employees`
+            const res = await fetch(apiUrl, {
                 headers: { Authorization: `Bearer ${apiAccessToken}` }
             })
+
             if (res.ok) {
                 const data = await res.json()
                 setRawApiResponse(data)
@@ -86,6 +89,7 @@ export default function EmployeesPage() {
                     <EmployeeTable employees={rawApiResponse || []} onRefresh={fetchEmployees} />
                 )}
             </div>
+
         </div>
     )
 }
