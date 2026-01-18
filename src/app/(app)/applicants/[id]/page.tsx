@@ -1,37 +1,56 @@
 'use client'
 
-import { useEffect, useMemo, useState } from 'react'
+import { useEffect, useMemo, useState, useCallback } from 'react'
 import { useRouter, useParams } from 'next/navigation'
-import { ArrowLeft, Mail, Phone, Briefcase, DollarSign, Calendar, FileText, Linkedin, ExternalLink, Edit } from 'lucide-react'
+import Link from 'next/link'
+import { ArrowLeft, Mail, Phone, Briefcase, Calendar, FileText, Linkedin, ExternalLink, Clock } from 'lucide-react'
 import { useApp } from '@/lib/context/AppContext'
 import { Button } from '@/components/ui/button'
-import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from '@/components/ui/dialog'
-import { Label } from '@/components/ui/label'
-import { Input } from '@/components/ui/input'
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select'
-import { toast } from '@/components/ui/toast'
-import { APPLICANT_STATUSES, type Applicant, type ApplicantStatus, type FeedbackCard } from '@/types'
+import { type Applicant, type ApplicantStatus, type FeedbackCard } from '@/types'
 import { Progress } from '@/components/ui/progress'
-
-const applicantStatusOptions: ApplicantStatus[] = [...APPLICANT_STATUSES]
+import { fetchApplicantApi } from '@/lib/api/client'
 
 export default function ApplicantDetailPage() {
     const router = useRouter()
     const params = useParams()
-    const { applicants, jobs, updateApplicant, feedbackEntries, feedbackCards } = useApp()
+    const { applicants, feedbackEntries, feedbackCards, apiAccessToken, currentCompany } = useApp()
     const [applicant, setApplicant] = useState<Applicant | null>(null)
-    const [isEditOpen, setIsEditOpen] = useState(false)
-    const [loading, setLoading] = useState(false)
-    const [editData, setEditData] = useState<Partial<Applicant>>({})
+    const [pageLoading, setPageLoading] = useState(true)
     const [activeTab, setActiveTab] = useState<'details' | 'feedback'>('details')
 
-    useEffect(() => {
-        const found = applicants.find(a => a.id === params.id)
-        if (found) {
-            setApplicant(found)
-            setEditData(found)
+    const fetchApplicantFromApi = useCallback(async () => {
+        if (!apiAccessToken || !params.id) return null
+
+        try {
+            const apiApplicant = await fetchApplicantApi(params.id as string, apiAccessToken)
+            return apiApplicant
+        } catch (error) {
+            console.error('Error fetching applicant from API:', error)
+            return null
         }
-    }, [params.id, applicants])
+    }, [apiAccessToken, params.id])
+
+    useEffect(() => {
+        const loadApplicant = async () => {
+            setPageLoading(true)
+            // First try to fetch from API
+            if (apiAccessToken) {
+                const apiApplicant = await fetchApplicantFromApi()
+                if (apiApplicant) {
+                    setApplicant(apiApplicant)
+                    setPageLoading(false)
+                    return
+                }
+            }
+            // Fallback to context data
+            const found = applicants.find(a => a.id === params.id)
+            if (found) {
+                setApplicant(found)
+            }
+            setPageLoading(false)
+        }
+        loadApplicant()
+    }, [params.id, applicants, apiAccessToken, fetchApplicantFromApi])
 
     const applicantFeedback = useMemo(
         () => feedbackEntries.filter(e => e.type === 'Applicant' && e.subjectId === applicant?.id),
@@ -41,6 +60,15 @@ export default function ApplicantDetailPage() {
         () => new Map(feedbackCards.map(card => [card.id, card])),
         [feedbackCards]
     )
+
+    if (pageLoading) {
+        return (
+            <div className="text-center py-16">
+                <div className="inline-block h-8 w-8 animate-spin rounded-full border-4 border-solid border-blue-600 border-r-transparent"></div>
+                <p className="mt-4 text-slate-500">Loading applicant details...</p>
+            </div>
+        )
+    }
 
     if (!applicant) {
         return (
@@ -53,20 +81,6 @@ export default function ApplicantDetailPage() {
         )
     }
 
-    const handleUpdate = async (e: React.FormEvent) => {
-        e.preventDefault()
-        setLoading(true)
-        try {
-            await updateApplicant(applicant.id, editData)
-            setIsEditOpen(false)
-            toast('Applicant updated successfully', 'success')
-        } catch (error) {
-            toast('Failed to update applicant', 'error')
-        } finally {
-            setLoading(false)
-        }
-    }
-
     const getStatusColor = (status: ApplicantStatus) => {
         switch (status) {
             case 'new': return 'bg-blue-100 text-blue-700'
@@ -77,12 +91,6 @@ export default function ApplicantDetailPage() {
             case 'hired': return 'bg-emerald-100 text-emerald-700'
             default: return 'bg-slate-100 text-slate-700'
         }
-    }
-
-    const getJobTitle = (jobId?: string) => {
-        if (!jobId) return 'Not linked to any job'
-        const job = jobs.find(j => j.id === jobId)
-        return job?.title || 'Unknown job'
     }
 
     const documentFiles = applicant.documents?.files && applicant.documents.files.length > 0
@@ -120,207 +128,6 @@ export default function ApplicantDetailPage() {
                         Applicant Details
                     </p>
                 </div>
-                <Dialog open={isEditOpen} onOpenChange={setIsEditOpen}>
-                    <DialogTrigger asChild>
-                        <Button className="bg-blue-600 hover:bg-blue-700 text-white rounded-2xl font-bold shadow-lg shadow-blue-500/20 px-6 py-6 h-auto">
-                            <Edit className="w-5 h-5 mr-2" />
-                            Edit Details
-                        </Button>
-                    </DialogTrigger>
-                    <DialogContent className="sm:max-w-2xl rounded-3xl bg-white border-slate-200 max-h-[90vh] overflow-y-auto">
-                        <DialogHeader>
-                            <DialogTitle className="text-2xl font-bold text-slate-900">Edit Applicant</DialogTitle>
-                        </DialogHeader>
-                        <form onSubmit={handleUpdate} className="space-y-6 py-4">
-                            <div>
-                                <h3 className="text-sm font-extrabold text-slate-700 uppercase tracking-widest mb-4">Personal Information</h3>
-                                <div className="space-y-4">
-                                    <div className="space-y-2">
-                                        <Label className="text-sm font-bold text-slate-700 px-1">Full Name</Label>
-                                        <Input
-                                            className="rounded-xl border-slate-200 h-12"
-                                            value={editData.fullName || ''}
-                                            onChange={e => setEditData({ ...editData, fullName: e.target.value })}
-                                        />
-                                    </div>
-                                    <div className="grid grid-cols-2 gap-4">
-                                        <div className="space-y-2">
-                                            <Label className="text-sm font-bold text-slate-700 px-1">Email</Label>
-                                            <Input
-                                                type="email"
-                                                className="rounded-xl border-slate-200 h-12"
-                                                value={editData.email || ''}
-                                                onChange={e => setEditData({ ...editData, email: e.target.value })}
-                                            />
-                                        </div>
-                                        <div className="space-y-2">
-                                            <Label className="text-sm font-bold text-slate-700 px-1">Phone</Label>
-                                            <Input
-                                                className="rounded-xl border-slate-200 h-12"
-                                                value={editData.phone || ''}
-                                                onChange={e => setEditData({ ...editData, phone: e.target.value })}
-                                            />
-                                        </div>
-                                    </div>
-                                </div>
-                            </div>
-
-                            <div>
-                                <h3 className="text-sm font-extrabold text-slate-700 uppercase tracking-widest mb-4">Professional Information</h3>
-                                <div className="space-y-4">
-                                    <div className="space-y-2">
-                                        <Label className="text-sm font-bold text-slate-700 px-1">Position Applied</Label>
-                                        <Input
-                                            className="rounded-xl border-slate-200 h-12"
-                                            value={editData.positionApplied || ''}
-                                            onChange={e => setEditData({ ...editData, positionApplied: e.target.value })}
-                                        />
-                                    </div>
-                                    <div className="grid grid-cols-3 gap-4">
-                                        <div className="space-y-2">
-                                            <Label className="text-sm font-bold text-slate-700 px-1">Years of Experience</Label>
-                                            <Input
-                                                type="number"
-                                                className="rounded-xl border-slate-200 h-12"
-                                                value={editData.yearsOfExperience || ''}
-                                                min={0}
-                                                step={0.1}
-                                                inputMode="numeric"
-                                                onKeyDown={(e) => {
-                                                    if (e.key === '-' || e.key === '+' || e.key.toLowerCase() === 'e') {
-                                                        e.preventDefault()
-                                                    }
-                                                }}
-                                                onChange={e => {
-                                                    const raw = e.target.value
-                                                    if (raw === '') {
-                                                        setEditData({ ...editData, yearsOfExperience: 0 })
-                                                        return
-                                                    }
-                                                    const parsed = Number.parseFloat(raw)
-                                                    setEditData({
-                                                        ...editData,
-                                                        yearsOfExperience: Number.isFinite(parsed) && parsed >= 0
-                                                            ? Number.parseFloat(parsed.toFixed(1))
-                                                            : 0
-                                                    })
-                                                }}
-                                            />
-                                        </div>
-                                        <div className="space-y-2">
-                                            <Label className="text-sm font-bold text-slate-700 px-1">Current Salary</Label>
-                                            <Input
-                                                type="number"
-                                                className="rounded-xl border-slate-200 h-12"
-                                                value={editData.currentSalary || ''}
-                                                min={0}
-                                                step={1}
-                                                inputMode="numeric"
-                                                pattern="[0-9]*"
-                                                onKeyDown={(e) => {
-                                                    if (e.key === '-' || e.key === '+' || e.key.toLowerCase() === 'e' || e.key === '.') {
-                                                        e.preventDefault()
-                                                    }
-                                                }}
-                                                onChange={e => {
-                                                    const raw = e.target.value
-                                                    if (raw === '') {
-                                                        setEditData({ ...editData, currentSalary: 0 })
-                                                        return
-                                                    }
-                                                    const parsed = Number.parseInt(raw, 10)
-                                                    setEditData({
-                                                        ...editData,
-                                                        currentSalary: Number.isFinite(parsed) && parsed >= 0 ? parsed : 0
-                                                    })
-                                                }}
-                                            />
-                                        </div>
-                                        <div className="space-y-2">
-                                            <Label className="text-sm font-bold text-slate-700 px-1">Expected Salary</Label>
-                                            <Input
-                                                type="number"
-                                                className="rounded-xl border-slate-200 h-12"
-                                                value={editData.expectedSalary || ''}
-                                                min={0}
-                                                step={1}
-                                                inputMode="numeric"
-                                                pattern="[0-9]*"
-                                                onKeyDown={(e) => {
-                                                    if (e.key === '-' || e.key === '+' || e.key.toLowerCase() === 'e' || e.key === '.') {
-                                                        e.preventDefault()
-                                                    }
-                                                }}
-                                                onChange={e => {
-                                                    const raw = e.target.value
-                                                    if (raw === '') {
-                                                        setEditData({ ...editData, expectedSalary: 0 })
-                                                        return
-                                                    }
-                                                    const parsed = Number.parseInt(raw, 10)
-                                                    setEditData({
-                                                        ...editData,
-                                                        expectedSalary: Number.isFinite(parsed) && parsed >= 0 ? parsed : 0
-                                                    })
-                                                }}
-                                            />
-                                        </div>
-                                    </div>
-                                    <div className="space-y-2">
-                                        <Label className="text-sm font-bold text-slate-700 px-1">Notice Period</Label>
-                                        <Input
-                                            className="rounded-xl border-slate-200 h-12"
-                                            value={editData.noticePeriod || ''}
-                                            onChange={e => setEditData({ ...editData, noticePeriod: e.target.value })}
-                                        />
-                                    </div>
-                                </div>
-                            </div>
-
-                            <div>
-                                <h3 className="text-sm font-extrabold text-slate-700 uppercase tracking-widest mb-4">Application Status</h3>
-                                <div className="space-y-4">
-                                    <div className="space-y-2">
-                                        <Label className="text-sm font-bold text-slate-700 px-1">Current Status</Label>
-                                        <Select
-                                            value={editData.status}
-                                            onValueChange={(value) => setEditData({ ...editData, status: value as ApplicantStatus })}
-                                        >
-                                            <SelectTrigger className="rounded-xl border-slate-200 h-12">
-                                                <SelectValue />
-                                            </SelectTrigger>
-                                            <SelectContent>
-                                                {applicantStatusOptions.map((status) => (
-                                                    <SelectItem key={status} value={status}>
-                                                        {status.charAt(0).toUpperCase() + status.slice(1)}
-                                                    </SelectItem>
-                                                ))}
-                                            </SelectContent>
-                                        </Select>
-                                    </div>
-                                </div>
-                            </div>
-
-                            <div className="flex gap-3 pt-4">
-                                <Button
-                                    type="button"
-                                    variant="outline"
-                                    onClick={() => setIsEditOpen(false)}
-                                    className="flex-1 rounded-xl h-12 font-bold"
-                                >
-                                    Cancel
-                                </Button>
-                                <Button
-                                    type="submit"
-                                    disabled={loading}
-                                    className="flex-1 bg-blue-600 hover:bg-blue-700 text-white rounded-xl h-12 font-bold"
-                                >
-                                    {loading ? 'Updating...' : 'Update Applicant'}
-                                </Button>
-                            </div>
-                        </form>
-                    </DialogContent>
-                </Dialog>
             </div>
 
             {applicantFeedback.length > 0 && (
@@ -379,41 +186,88 @@ export default function ApplicantDetailPage() {
                                     </div>
                                     <div>
                                         <p className="text-xs font-bold text-slate-500 uppercase tracking-wider">Position Applied</p>
-                                        <p className="text-slate-900 font-medium">{applicant.positionApplied}</p>
+                                        {applicant.jobId ? (
+                                            <Link
+                                                href={`/applicants?jobId=${applicant.jobId}`}
+                                                className="text-blue-600 hover:text-blue-800 font-medium hover:underline"
+                                            >
+                                                {applicant.positionApplied || 'Not specified'}
+                                            </Link>
+                                        ) : (
+                                            <p className="text-slate-900 font-medium">{applicant.positionApplied || 'Not specified'}</p>
+                                        )}
                                     </div>
                                 </div>
-                                <div className="flex items-center gap-3">
-                                    <div className="w-10 h-10 rounded-xl bg-blue-50 flex items-center justify-center">
-                                        <Briefcase className="w-5 h-5 text-blue-600" />
-                                    </div>
-                                    <div>
-                                        <p className="text-xs font-bold text-slate-500 uppercase tracking-wider">Linked Job Opening</p>
-                                        <p className="text-slate-900 font-medium">{getJobTitle(applicant.jobId)}</p>
-                                    </div>
-                                </div>
-                                <div className="grid grid-cols-3 gap-4 pt-2">
+                                <div className="grid grid-cols-3 gap-4">
                                     <div>
                                         <p className="text-xs font-bold text-slate-500 uppercase tracking-wider mb-1">Experience</p>
-                                        <p className="text-slate-900 font-bold text-lg">{applicant.yearsOfExperience} {applicant.yearsOfExperience === 1 ? 'year' : 'years'}</p>
+                                        <p className="text-slate-900 font-bold text-lg">
+                                            {applicant.yearsOfExperience !== undefined && applicant.yearsOfExperience !== null
+                                                ? `${applicant.yearsOfExperience} ${applicant.yearsOfExperience === 1 ? 'year' : 'years'}`
+                                                : 'N/A'}
+                                        </p>
                                     </div>
                                     <div>
                                         <p className="text-xs font-bold text-slate-500 uppercase tracking-wider mb-1">Current Salary</p>
-                                        <p className="text-slate-900 font-bold text-lg">{applicant.currentSalary || 'N/A'}</p>
+                                        <p className="text-slate-900 font-bold text-lg">
+                                            {applicant.currentSalary
+                                                ? applicant.currentSalary.toLocaleString()
+                                                : 'N/A'}
+                                        </p>
                                     </div>
                                     <div>
                                         <p className="text-xs font-bold text-slate-500 uppercase tracking-wider mb-1">Expected Salary</p>
-                                        <p className="text-slate-900 font-bold text-lg">{applicant.expectedSalary || 'N/A'}</p>
+                                        <p className="text-slate-900 font-bold text-lg">
+                                            {applicant.expectedSalary
+                                                ? applicant.expectedSalary.toLocaleString()
+                                                : 'N/A'}
+                                        </p>
                                     </div>
                                 </div>
-                                <div className="pt-2">
-                                    <p className="text-xs font-bold text-slate-500 uppercase tracking-wider mb-1">Notice Period</p>
-                                    <p className="text-slate-900 font-medium">{applicant.noticePeriod || 'Not specified'}</p>
+                                <div className="flex items-center gap-3 pt-2">
+                                    <div className="w-10 h-10 rounded-xl bg-blue-50 flex items-center justify-center">
+                                        <Clock className="w-5 h-5 text-blue-600" />
+                                    </div>
+                                    <div>
+                                        <p className="text-xs font-bold text-slate-500 uppercase tracking-wider">Notice Period</p>
+                                        <p className="text-slate-900 font-medium">{applicant.noticePeriod || 'Not specified'}</p>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+
+                    <div className="space-y-6">
+                        <div className="bg-white rounded-3xl shadow-sm border border-slate-200 p-6">
+                            <h2 className="text-sm font-extrabold text-slate-700 uppercase tracking-widest mb-6">Application Status</h2>
+                            <div className="space-y-4">
+                                <div>
+                                    <p className="text-xs font-bold text-slate-500 uppercase tracking-wider mb-2">Current Status</p>
+                                    <span className={`inline-flex items-center px-4 py-2 rounded-full text-sm font-bold ${getStatusColor(applicant.status)}`}>
+                                        {applicant.status.charAt(0).toUpperCase() + applicant.status.slice(1)}
+                                    </span>
+                                </div>
+                                <div className="pt-4 border-t border-slate-100 space-y-4">
+                                    <div className="flex items-center gap-3">
+                                        <div className="w-10 h-10 rounded-xl bg-blue-50 flex items-center justify-center">
+                                            <Calendar className="w-5 h-5 text-blue-600" />
+                                        </div>
+                                        <div>
+                                            <p className="text-xs font-bold text-slate-500 uppercase tracking-wider">Applied Date</p>
+                                            <p className="text-slate-900 font-medium">
+                                                {applicant.appliedDate
+                                                    ? new Date(applicant.appliedDate).toLocaleDateString('en-US', { year: 'numeric', month: 'long', day: 'numeric' })
+                                                    : 'Not specified'}
+                                            </p>
+                                        </div>
+                                    </div>
                                 </div>
                             </div>
                         </div>
 
+                        {/* Documents & Links */}
                         <div className="bg-white rounded-3xl shadow-sm border border-slate-200 p-6">
-                            <h2 className="text-sm font-extrabold text-slate-700 uppercase tracking-widest mb-6">Documents & Links</h2>
+                            <h2 className="text-sm font-extrabold text-slate-700 uppercase tracking-widest mb-4">Documents & Links</h2>
                             <div className="space-y-3">
                                 {documentFiles.length > 0 ? (
                                     documentFiles.map((url) => {
@@ -476,31 +330,6 @@ export default function ApplicantDetailPage() {
                                         </div>
                                     </div>
                                 )}
-                            </div>
-                        </div>
-                    </div>
-
-                    <div className="space-y-6">
-                        <div className="bg-white rounded-3xl shadow-sm border border-slate-200 p-6">
-                            <h2 className="text-sm font-extrabold text-slate-700 uppercase tracking-widest mb-6">Application Status</h2>
-                            <div className="space-y-4">
-                                <div>
-                                    <p className="text-xs font-bold text-slate-500 uppercase tracking-wider mb-2">Current Status</p>
-                                    <span className={`inline-flex items-center px-4 py-2 rounded-full text-sm font-bold ${getStatusColor(applicant.status)}`}>
-                                        {applicant.status.charAt(0).toUpperCase() + applicant.status.slice(1)}
-                                    </span>
-                                </div>
-                                <div className="pt-4 border-t border-slate-100">
-                                    <div className="flex items-center gap-3">
-                                        <div className="w-10 h-10 rounded-xl bg-blue-50 flex items-center justify-center">
-                                            <Calendar className="w-5 h-5 text-blue-600" />
-                                        </div>
-                                        <div>
-                                            <p className="text-xs font-bold text-slate-500 uppercase tracking-wider">Applied Date</p>
-                                            <p className="text-slate-900 font-medium">{new Date(applicant.appliedDate).toLocaleDateString('en-US', { year: 'numeric', month: 'long', day: 'numeric' })}</p>
-                                        </div>
-                                    </div>
-                                </div>
                             </div>
                         </div>
                     </div>

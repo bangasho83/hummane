@@ -236,8 +236,10 @@ export interface Job {
     id: string
     companyId: string
     title: string
-    roleId?: string
-    departmentId?: string
+    roleId?: string | null
+    roleName?: string | null
+    departmentId?: string | null
+    departmentName?: string | null
     department?: string
     employmentType?: EmploymentType
     employmentMode?: EmploymentMode
@@ -252,6 +254,7 @@ export interface Job {
     }
     experience: string
     status: JobStatus
+    applicantCount?: number
     createdAt: string
     updatedAt?: string
 }

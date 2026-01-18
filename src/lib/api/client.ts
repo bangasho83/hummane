@@ -1308,12 +1308,24 @@ export const createJobApi = async (
     employmentType?: string
     employmentMode?: string
     departmentId?: string
+    roleId?: string
+    city?: string
+    country?: string
     salaryFrom?: number
     salaryTo?: number
+    experience?: string
     companyId: string
   },
   accessToken: string
 ): Promise<Job> => {
+  const bodyJson = JSON.stringify(payload, null, 2)
+  console.info(
+    `Create Job curl:\n` +
+      `curl -X POST "${JOBS_PATH}" \\\n` +
+      `  -H "Authorization: Bearer ${accessToken}" \\\n` +
+      `  -H "Content-Type: application/json" \\\n` +
+      `  -d '${bodyJson}'`
+  )
   let response: Response
   try {
     response = await fetch(JOBS_PATH, {
@@ -1335,6 +1347,7 @@ export const createJobApi = async (
   }
 
   const data = await response.json().catch(() => null)
+  console.info('Create Job response:', JSON.stringify(data, null, 2))
   return (data?.data || data?.job || data) as Job
 }
 
@@ -1395,14 +1408,27 @@ export const updateJobApi = async (
     employmentType?: string
     employmentMode?: string
     departmentId?: string
+    roleId?: string
+    city?: string
+    country?: string
     salaryFrom?: number
     salaryTo?: number
+    experience?: string
   },
   accessToken: string
 ): Promise<Job> => {
+  const url = `${JOBS_PATH}/${encodeURIComponent(jobId)}`
+  const bodyJson = JSON.stringify(payload, null, 2)
+  console.info(
+    `Update Job curl:\n` +
+      `curl -X PUT "${url}" \\\n` +
+      `  -H "Authorization: Bearer ${accessToken}" \\\n` +
+      `  -H "Content-Type: application/json" \\\n` +
+      `  -d '${bodyJson}'`
+  )
   let response: Response
   try {
-    response = await fetch(`${JOBS_PATH}/${encodeURIComponent(jobId)}`, {
+    response = await fetch(url, {
       method: 'PUT',
       headers: {
         'Content-Type': 'application/json',
@@ -1421,6 +1447,7 @@ export const updateJobApi = async (
   }
 
   const data = await response.json().catch(() => null)
+  console.info('Update Job response:', JSON.stringify(data, null, 2))
   const job = (data?.data || data?.job || data) as Job | null
   if (!job || typeof job !== 'object') {
     return {
@@ -1501,10 +1528,16 @@ export const createApplicantApi = async (
   return (data?.data || data?.applicant || data) as Applicant
 }
 
-export const fetchApplicantsApi = async (accessToken: string): Promise<Applicant[]> => {
+export const fetchApplicantsApi = async (accessToken: string, jobId?: string): Promise<Applicant[]> => {
+  const url = jobId ? `${APPLICANTS_PATH}?jobId=${encodeURIComponent(jobId)}` : APPLICANTS_PATH
+  console.info(
+    `Applicants fetch curl:\n` +
+      `curl -X GET "${url}" \\\n` +
+      `  -H "Authorization: Bearer ${accessToken}"`
+  )
   let response: Response
   try {
-    response = await fetch(APPLICANTS_PATH, {
+    response = await fetch(url, {
       method: 'GET',
       headers: {
         Authorization: `Bearer ${accessToken}`,
@@ -1521,6 +1554,7 @@ export const fetchApplicantsApi = async (accessToken: string): Promise<Applicant
   }
 
   const data = await response.json().catch(() => null)
+  console.info('Applicants fetch response:', JSON.stringify(data, null, 2))
   const list = data?.data || data?.applicants || data
   return Array.isArray(list) ? (list as Applicant[]) : []
 }

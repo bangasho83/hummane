@@ -1,7 +1,7 @@
 'use client'
 
 import { useEffect, useMemo, useRef, useState } from 'react'
-import { useRouter } from 'next/navigation'
+import { useRouter, useSearchParams } from 'next/navigation'
 import { Plus, Trash2, Users, Search, Briefcase } from 'lucide-react'
 import { useApp } from '@/lib/context/AppContext'
 import { Button } from '@/components/ui/button'
@@ -18,15 +18,15 @@ const applicantStatusOptions: ApplicantStatus[] = [...APPLICANT_STATUSES]
 
 const createEmptyApplicant = (
     appliedDate: string
-): Omit<Applicant, 'id' | 'companyId' | 'createdAt' | 'updatedAt'> => ({
+): Omit<Applicant, 'id' | 'companyId' | 'createdAt' | 'updatedAt'> & { yearsOfExperience: number | ''; currentSalary: number | ''; expectedSalary: number | '' } => ({
     fullName: '',
     email: '',
     phone: '',
     positionApplied: '',
     jobId: '',
-    yearsOfExperience: 0,
-    currentSalary: 0,
-    expectedSalary: 0,
+    yearsOfExperience: '',
+    currentSalary: '',
+    expectedSalary: '',
     noticePeriod: '',
     resumeFile: undefined,
     linkedinUrl: '',
@@ -36,7 +36,9 @@ const createEmptyApplicant = (
 
 export default function ApplicantsPage() {
     const router = useRouter()
-    const { applicants, jobs, roles, createApplicant, deleteApplicant } = useApp()
+    const searchParams = useSearchParams()
+    const jobIdParam = searchParams.get('jobId')
+    const { applicants, jobs, roles, createApplicant, deleteApplicant, refreshApplicants } = useApp()
     const [isAddOpen, setIsAddOpen] = useState(false)
     const [loading, setLoading] = useState(false)
     const [searchTerm, setSearchTerm] = useState('')
@@ -52,6 +54,15 @@ export default function ApplicantsPage() {
         setTodayDate(today)
         setNewApplicant(prev => ({ ...prev, appliedDate: today }))
     }, [])
+
+    // Fetch applicants filtered by jobId when URL param changes
+    useEffect(() => {
+        if (jobIdParam) {
+            void refreshApplicants(jobIdParam)
+        } else {
+            void refreshApplicants()
+        }
+    }, [jobIdParam, refreshApplicants])
 
     const departments = useMemo(() => {
         const unique = [...new Set(jobs.map(job => job.department).filter(Boolean) as string[])]
@@ -106,19 +117,23 @@ export default function ApplicantsPage() {
             toast('Please fill in all required fields', 'error')
             return
         }
-        if (newApplicant.yearsOfExperience < 0 || !Number.isFinite(newApplicant.yearsOfExperience)) {
+        const yearsExp = newApplicant.yearsOfExperience === '' ? 0 : newApplicant.yearsOfExperience
+        const currSalary = newApplicant.currentSalary === '' ? 0 : newApplicant.currentSalary
+        const expSalary = newApplicant.expectedSalary === '' ? 0 : newApplicant.expectedSalary
+
+        if (yearsExp < 0 || !Number.isFinite(yearsExp)) {
             toast('Years of experience must be a non-negative number', 'error')
             return
         }
-        if (Number.parseFloat(newApplicant.yearsOfExperience.toFixed(1)) !== newApplicant.yearsOfExperience) {
+        if (Number.parseFloat(yearsExp.toFixed(1)) !== yearsExp) {
             toast('Years of experience can have at most one decimal place', 'error')
             return
         }
-        if (!Number.isInteger(newApplicant.currentSalary) || newApplicant.currentSalary < 0) {
+        if (!Number.isInteger(currSalary) || currSalary < 0) {
             toast('Current salary must be a non-negative whole number', 'error')
             return
         }
-        if (!Number.isInteger(newApplicant.expectedSalary) || newApplicant.expectedSalary < 0) {
+        if (!Number.isInteger(expSalary) || expSalary < 0) {
             toast('Expected salary must be a non-negative whole number', 'error')
             return
         }
@@ -136,6 +151,9 @@ export default function ApplicantsPage() {
             }
             await createApplicant({
                 ...newApplicant,
+                yearsOfExperience: yearsExp,
+                currentSalary: currSalary,
+                expectedSalary: expSalary,
                 resumeFile: resumePayload
             })
             const appliedDate = todayDate || new Date().toISOString().split('T')[0]
@@ -295,7 +313,7 @@ export default function ApplicantsPage() {
                                                 onChange={e => {
                                                     const raw = e.target.value
                                                     if (raw === '') {
-                                                        setNewApplicant({ ...newApplicant, yearsOfExperience: 0 })
+                                                        setNewApplicant({ ...newApplicant, yearsOfExperience: '' })
                                                         return
                                                     }
                                                     const parsed = Number.parseFloat(raw)
@@ -303,7 +321,7 @@ export default function ApplicantsPage() {
                                                         ...newApplicant,
                                                         yearsOfExperience: Number.isFinite(parsed) && parsed >= 0
                                                             ? Number.parseFloat(parsed.toFixed(1))
-                                                            : 0
+                                                            : ''
                                                     })
                                                 }}
                                             />
@@ -327,13 +345,13 @@ export default function ApplicantsPage() {
                                                 onChange={e => {
                                                     const raw = e.target.value
                                                     if (raw === '') {
-                                                        setNewApplicant({ ...newApplicant, currentSalary: 0 })
+                                                        setNewApplicant({ ...newApplicant, currentSalary: '' })
                                                         return
                                                     }
                                                     const parsed = Number.parseInt(raw, 10)
                                                     setNewApplicant({
                                                         ...newApplicant,
-                                                        currentSalary: Number.isFinite(parsed) && parsed >= 0 ? parsed : 0
+                                                        currentSalary: Number.isFinite(parsed) && parsed >= 0 ? parsed : ''
                                                     })
                                                 }}
                                             />
@@ -344,7 +362,7 @@ export default function ApplicantsPage() {
                                                 type="number"
                                                 placeholder="90000"
                                                 className="rounded-xl border-slate-200 h-12 [appearance:textfield] [&::-webkit-outer-spin-button]:appearance-none [&::-webkit-inner-spin-button]:appearance-none"
-                                                value={newApplicant.expectedSalary || ''}
+                                                value={newApplicant.expectedSalary}
                                                 min={0}
                                                 step={1}
                                                 inputMode="numeric"
@@ -357,13 +375,13 @@ export default function ApplicantsPage() {
                                                 onChange={e => {
                                                     const raw = e.target.value
                                                     if (raw === '') {
-                                                        setNewApplicant({ ...newApplicant, expectedSalary: 0 })
+                                                        setNewApplicant({ ...newApplicant, expectedSalary: '' })
                                                         return
                                                     }
                                                     const parsed = Number.parseInt(raw, 10)
                                                     setNewApplicant({
                                                         ...newApplicant,
-                                                        expectedSalary: Number.isFinite(parsed) && parsed >= 0 ? parsed : 0
+                                                        expectedSalary: Number.isFinite(parsed) && parsed >= 0 ? parsed : ''
                                                     })
                                                 }}
                                             />

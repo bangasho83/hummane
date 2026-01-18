@@ -42,7 +42,7 @@ export function JobForm({ mode, job }: JobFormProps) {
     const [form, setForm] = useState<JobFormState>({
         title: job?.title || '',
         roleId: job?.roleId || '',
-        department: job?.department || '',
+        department: job?.departmentName || job?.department || '',
         employmentType: job?.employmentType ?? EMPLOYMENT_TYPES[1],
         employmentMode: job?.employmentMode ?? EMPLOYMENT_MODES[0],
         location: {
@@ -59,7 +59,7 @@ export function JobForm({ mode, job }: JobFormProps) {
             setForm({
                 title: job.title,
                 roleId: job.roleId || '',
-                department: job.department || '',
+                department: job.departmentName || job.department || '',
                 employmentType: job.employmentType ?? EMPLOYMENT_TYPES[1],
                 employmentMode: job.employmentMode ?? EMPLOYMENT_MODES[0],
                 location: {
@@ -131,7 +131,14 @@ export function JobForm({ mode, job }: JobFormProps) {
                         </Select>
                     </div>
                     <div className="space-y-2">
-                        <Label className="text-sm font-bold text-slate-700 px-1">Department</Label>
+                        <Label className="text-sm font-bold text-slate-700 px-1">
+                            Department
+                            {form.department && (
+                                <span className="ml-2 text-xs font-normal text-slate-400">
+                                    (ID: {departments.find(d => d.name === form.department)?.id || 'N/A'})
+                                </span>
+                            )}
+                        </Label>
                         {departments.length > 0 ? (
                             <Select
                                 value={form.department || 'none'}

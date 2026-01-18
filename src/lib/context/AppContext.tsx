@@ -129,7 +129,7 @@ interface AppContextType {
     createApplicant: (applicantData: Omit<Applicant, 'id' | 'companyId' | 'createdAt'>) => Promise<Applicant>
     updateApplicant: (id: string, applicantData: Partial<Omit<Applicant, 'id' | 'companyId' | 'createdAt'>>) => Promise<Applicant | null>
     deleteApplicant: (id: string) => Promise<void>
-    refreshApplicants: () => Promise<void>
+    refreshApplicants: (jobId?: string) => Promise<void>
 }
 
 const AppContext = createContext<AppContextType | undefined>(undefined)
@@ -208,7 +208,8 @@ export function AppProvider({ children }: { children: ReactNode }) {
         setFeedbackCards([])
         setFeedbackEntries([])
         setRoles(dataStore.getRolesByCompanyId(company.id))
-        setJobs(dataStore.getJobsByCompanyId(company.id))
+        // Jobs are loaded only from API, not localStorage
+        setJobs([])
         setApplicants(dataStore.getApplicantsByCompanyId(company.id))
     }
 
@@ -325,30 +326,38 @@ export function AppProvider({ children }: { children: ReactNode }) {
         }
     }
 
-    const normalizeJob = (job: Partial<Job>, companyId: string, fallback: Partial<Job> = {}): Job => {
+    const normalizeJob = (job: Partial<Job> & { city?: string; country?: string; salaryFrom?: number; salaryTo?: number }, companyId: string): Job => {
         const now = new Date().toISOString()
         const id =
             job.id ||
-            fallback.id ||
             (typeof crypto !== 'undefined' && 'randomUUID' in crypto ? crypto.randomUUID() : `job_${Date.now()}`)
 
-        const salary = job.salary || fallback.salary || { min: 0, max: 0, currency: currentCompany?.currency || 'USD' }
+        // Map API fields: city/country -> location, salaryFrom/salaryTo -> salary
+        const location = job.location ?? (job.city || job.country ? { city: job.city || '', country: job.country || '' } : undefined)
+        const salary = job.salary ?? {
+            min: job.salaryFrom ?? 0,
+            max: job.salaryTo ?? 0,
+            currency: currentCompany?.currency || 'USD'
+        }
 
         return {
             id,
-            companyId: job.companyId || fallback.companyId || companyId,
-            title: job.title || fallback.title || 'Job',
-            roleId: job.roleId ?? fallback.roleId,
-            departmentId: job.departmentId ?? fallback.departmentId,
-            department: job.department ?? fallback.department,
-            employmentType: job.employmentType ?? fallback.employmentType,
-            employmentMode: job.employmentMode ?? fallback.employmentMode,
-            location: job.location ?? fallback.location,
+            companyId: job.companyId || companyId,
+            title: job.title || 'Job',
+            roleId: job.roleId,
+            roleName: job.roleName,
+            departmentId: job.departmentId,
+            departmentName: job.departmentName,
+            department: job.department,
+            employmentType: job.employmentType,
+            employmentMode: job.employmentMode,
+            location,
             salary,
-            experience: job.experience ?? fallback.experience ?? '',
-            status: (job.status || fallback.status || 'open') as Job['status'],
-            createdAt: job.createdAt || fallback.createdAt || now,
-            updatedAt: job.updatedAt || fallback.updatedAt
+            experience: job.experience ?? '',
+            status: (job.status || 'open') as Job['status'],
+            applicantCount: job.applicantCount,
+            createdAt: job.createdAt || now,
+            updatedAt: job.updatedAt
         }
     }
 
@@ -1707,13 +1716,17 @@ export function AppProvider({ children }: { children: ReactNode }) {
                     employmentType: jobData.employmentType,
                     employmentMode: jobData.employmentMode,
                     departmentId,
+                    roleId: jobData.roleId || undefined,
+                    city: jobData.location?.city,
+                    country: jobData.location?.country,
                     salaryFrom: jobData.salary?.min,
                     salaryTo: jobData.salary?.max,
+                    experience: jobData.experience,
                     companyId: currentCompany.id
                 },
                 apiAccessToken
             )
-            const normalized = normalizeJob(apiJob, currentCompany.id, jobData)
+            const normalized = normalizeJob(apiJob, currentCompany.id)
             setJobs(prev => [...prev, normalized])
             return normalized
         } catch (error) {
@@ -1737,8 +1750,12 @@ export function AppProvider({ children }: { children: ReactNode }) {
                 employmentType?: string
                 employmentMode?: string
                 departmentId?: string
+                roleId?: string
+                city?: string
+                country?: string
                 salaryFrom?: number
                 salaryTo?: number
+                experience?: string
             } = {
                 companyId: currentCompany.id
             }
@@ -1747,17 +1764,15 @@ export function AppProvider({ children }: { children: ReactNode }) {
             if (jobData.employmentType) payload.employmentType = jobData.employmentType
             if (jobData.employmentMode) payload.employmentMode = jobData.employmentMode
             if (departmentId) payload.departmentId = departmentId
+            if (jobData.roleId) payload.roleId = jobData.roleId
+            if (jobData.location?.city) payload.city = jobData.location.city
+            if (jobData.location?.country) payload.country = jobData.location.country
             if (jobData.salary?.min !== undefined) payload.salaryFrom = jobData.salary.min
             if (jobData.salary?.max !== undefined) payload.salaryTo = jobData.salary.max
+            if (jobData.experience) payload.experience = jobData.experience
 
             const apiJob = await updateJobApi(id, payload, apiAccessToken)
-            const existing = jobs.find(job => job.id === id)
-            const normalized = normalizeJob(apiJob, currentCompany.id, {
-                ...(existing || {}),
-                ...jobData,
-                id,
-                companyId: currentCompany.id
-            })
+            const normalized = normalizeJob(apiJob, currentCompany.id)
             setJobs(prev => prev.map(job => job.id === id ? normalized : job))
             return normalized
         } catch (error) {
@@ -1886,11 +1901,11 @@ export function AppProvider({ children }: { children: ReactNode }) {
         }
     }
 
-    const refreshApplicants = async () => {
+    const refreshApplicants = async (jobId?: string) => {
         try {
             if (!currentCompany) return
             if (!apiAccessToken) return
-            const apiApplicants = await fetchApplicantsApi(apiAccessToken)
+            const apiApplicants = await fetchApplicantsApi(apiAccessToken, jobId)
             const normalized = apiApplicants.map(applicant => normalizeApplicant(applicant, currentCompany.id))
             setApplicants(normalized)
         } catch (error) {

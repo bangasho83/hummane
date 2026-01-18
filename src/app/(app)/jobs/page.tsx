@@ -13,36 +13,28 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@
 
 export default function JobsPage() {
     const router = useRouter()
-    const { jobs, roles, currentCompany, deleteJob } = useApp()
+    const { jobs, currentCompany, deleteJob } = useApp()
     const [searchTerm, setSearchTerm] = useState('')
 
     const [departmentFilter, setDepartmentFilter] = useState('all')
     const [roleFilter, setRoleFilter] = useState('all')
 
-    const departments = useMemo(() => {
-        const unique = [...new Set(jobs.map(job => job.department).filter(Boolean) as string[])]
+    const departmentNames = useMemo(() => {
+        const unique = [...new Set(jobs.map(job => job.departmentName).filter(Boolean) as string[])]
         return unique.sort()
     }, [jobs])
 
-    const rolesById = useMemo(() => {
-        const map = new Map<string, string>()
-        roles.forEach(role => map.set(role.id, role.title))
-        return map
-    }, [roles])
-
-    const roleOptions = useMemo(() => {
-        const ids = [...new Set(jobs.map(job => job.roleId).filter(Boolean) as string[])]
-        return ids
-            .map(id => ({ id, title: rolesById.get(id) || 'Unknown role' }))
-            .sort((a, b) => a.title.localeCompare(b.title))
-    }, [jobs, rolesById])
+    const roleNames = useMemo(() => {
+        const unique = [...new Set(jobs.map(job => job.roleName).filter(Boolean) as string[])]
+        return unique.sort()
+    }, [jobs])
 
     const filteredJobs = jobs.filter(job => {
         const matchesSearch =
             job.title.toLowerCase().includes(searchTerm.toLowerCase()) ||
             job.experience?.toLowerCase().includes(searchTerm.toLowerCase())
-        const matchesDepartment = departmentFilter === 'all' || job.department === departmentFilter
-        const matchesRole = roleFilter === 'all' || job.roleId === roleFilter
+        const matchesDepartment = departmentFilter === 'all' || job.departmentName === departmentFilter
+        const matchesRole = roleFilter === 'all' || job.roleName === roleFilter
         return matchesSearch && matchesDepartment && matchesRole
     })
 
@@ -65,11 +57,7 @@ export default function JobsPage() {
         }
     }
 
-    const getRoleTitle = (roleId?: string) => {
-        if (!roleId) return 'No role assigned'
-        const role = roles.find(r => r.id === roleId)
-        return role?.title || 'Unknown role'
-    }
+
 
     return (
         <div className="animate-in fade-in duration-500 slide-in-from-bottom-4">
@@ -112,8 +100,8 @@ export default function JobsPage() {
                                 </SelectTrigger>
                                 <SelectContent>
                                     <SelectItem value="all">All Departments</SelectItem>
-                                    {departments.map((dept) => (
-                                        <SelectItem key={dept} value={dept}>{dept}</SelectItem>
+                                    {departmentNames.map((deptName) => (
+                                        <SelectItem key={deptName} value={deptName}>{deptName}</SelectItem>
                                     ))}
                                 </SelectContent>
                             </Select>
@@ -123,8 +111,8 @@ export default function JobsPage() {
                                 </SelectTrigger>
                                 <SelectContent>
                                     <SelectItem value="all">All Roles</SelectItem>
-                                    {roleOptions.map((role) => (
-                                        <SelectItem key={role.id} value={role.id}>{role.title}</SelectItem>
+                                    {roleNames.map((roleName) => (
+                                        <SelectItem key={roleName} value={roleName}>{roleName}</SelectItem>
                                     ))}
                                 </SelectContent>
                             </Select>
@@ -163,8 +151,10 @@ export default function JobsPage() {
                                 <TableHead className="pl-8 py-4 text-[10px] font-extrabold uppercase tracking-widest text-slate-400">Job Title</TableHead>
                                 <TableHead className="py-4 text-[10px] font-extrabold uppercase tracking-widest text-slate-400">Role</TableHead>
                                 <TableHead className="py-4 text-[10px] font-extrabold uppercase tracking-widest text-slate-400">Department</TableHead>
+                                <TableHead className="py-4 text-[10px] font-extrabold uppercase tracking-widest text-slate-400">Type</TableHead>
+                                <TableHead className="py-4 text-[10px] font-extrabold uppercase tracking-widest text-slate-400">Mode</TableHead>
                                 <TableHead className="py-4 text-[10px] font-extrabold uppercase tracking-widest text-slate-400">Salary Range</TableHead>
-                                <TableHead className="py-4 text-[10px] font-extrabold uppercase tracking-widest text-slate-400">Experience</TableHead>
+                                <TableHead className="py-4 text-[10px] font-extrabold uppercase tracking-widest text-slate-400">Applicants</TableHead>
                                 <TableHead className="py-4 text-[10px] font-extrabold uppercase tracking-widest text-slate-400">Status</TableHead>
                                 <TableHead className="text-right pr-8 py-4 text-[10px] font-extrabold uppercase tracking-widest text-slate-400">Actions</TableHead>
                             </TableRow>
@@ -176,11 +166,17 @@ export default function JobsPage() {
                                     <TableCell className="text-slate-600">
                                         <div className="flex items-center gap-2">
                                             <Briefcase className="w-4 h-4 text-slate-400" />
-                                            {getRoleTitle(job.roleId)}
+                                            {job.roleName || '—'}
                                         </div>
                                     </TableCell>
                                     <TableCell className="text-slate-600">
-                                        {job.department || '—'}
+                                        {job.departmentName || '—'}
+                                    </TableCell>
+                                    <TableCell className="text-slate-600">
+                                        {job.employmentType || '—'}
+                                    </TableCell>
+                                    <TableCell className="text-slate-600">
+                                        {job.employmentMode || '—'}
                                     </TableCell>
                                     <TableCell className="text-slate-600">
                                         {job.salary.min > 0 || job.salary.max > 0
@@ -188,7 +184,14 @@ export default function JobsPage() {
                                             : 'Not specified'
                                         }
                                     </TableCell>
-                                    <TableCell className="text-slate-600">{job.experience}</TableCell>
+                                    <TableCell className="text-slate-600">
+                                        <Link
+                                            href={`/applicants?jobId=${job.id}`}
+                                            className="text-blue-600 hover:text-blue-800 hover:underline font-medium"
+                                        >
+                                            {job.applicantCount ?? 0}
+                                        </Link>
+                                    </TableCell>
                                     <TableCell>
                                         <span className={`inline-flex items-center px-3 py-1 rounded-full text-xs font-bold ${
                                             job.status === 'open'
