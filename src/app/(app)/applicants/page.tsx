@@ -16,9 +16,13 @@ import { uploadFileToStorage } from '@/lib/firebase/storage'
 
 const applicantStatusOptions: ApplicantStatus[] = [...APPLICANT_STATUSES]
 
-const createEmptyApplicant = (
-    appliedDate: string
-): Omit<Applicant, 'id' | 'companyId' | 'createdAt' | 'updatedAt'> & { yearsOfExperience: number | ''; currentSalary: number | ''; expectedSalary: number | '' } => ({
+type ApplicantFormData = Omit<Applicant, 'id' | 'companyId' | 'createdAt' | 'updatedAt' | 'yearsOfExperience' | 'currentSalary' | 'expectedSalary'> & {
+    yearsOfExperience: number | ''
+    currentSalary: number | ''
+    expectedSalary: number | ''
+}
+
+const createEmptyApplicant = (appliedDate: string): ApplicantFormData => ({
     fullName: '',
     email: '',
     phone: '',
@@ -43,7 +47,7 @@ export default function ApplicantsPage() {
     const [loading, setLoading] = useState(false)
     const [searchTerm, setSearchTerm] = useState('')
     const [todayDate, setTodayDate] = useState('')
-    const [newApplicant, setNewApplicant] = useState(() => createEmptyApplicant(''))
+    const [newApplicant, setNewApplicant] = useState<ApplicantFormData>(() => createEmptyApplicant(''))
     const [departmentFilter, setDepartmentFilter] = useState('all')
     const [roleFilter, setRoleFilter] = useState('all')
     const [resumeFile, setResumeFile] = useState<File | null>(null)
@@ -601,7 +605,7 @@ export default function ApplicantsPage() {
                                             {job ? (
                                                 <div className="flex items-center gap-2">
                                                     <Briefcase className="w-4 h-4 text-slate-400" />
-                                                    {getRoleTitle(job.roleId)}
+                                                    {getRoleTitle(job.roleId ?? undefined)}
                                                 </div>
                                             ) : '—'}
                                         </TableCell>

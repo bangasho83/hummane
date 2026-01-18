@@ -136,7 +136,7 @@ export default function ApplicantsProgressPage() {
                                                         <p className="text-xs text-slate-500 mt-1">{applicant.positionApplied}</p>
                                                         <div className="flex items-center gap-2 mt-3 text-xs text-slate-500">
                                                             <Briefcase className="w-3.5 h-3.5 text-slate-400" />
-                                                            <span>{job ? getRoleTitle(job.roleId) : '—'}</span>
+                                                            <span>{job ? getRoleTitle(job.roleId ?? undefined) : '—'}</span>
                                                         </div>
                                                     </button>
     )
