@@ -4,7 +4,7 @@ import { useEffect, useState } from 'react'
 import { useParams, useRouter } from 'next/navigation'
 import { useApp } from '@/lib/context/AppContext'
 import { DOCUMENT_KINDS } from '@/types'
-import type { Employee, EmployeeDocument, DocumentKind } from '@/types'
+import type { Employee, EmployeeDocument, DocumentKind, EmployeeApi } from '@/types'
 import { Card, CardContent } from '@/components/ui/card'
 import { Badge } from '@/components/ui/badge'
 import { formatCurrency, formatDate } from '@/lib/utils'
@@ -14,19 +14,25 @@ import { Label } from '@/components/ui/label'
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select'
 import { Input } from '@/components/ui/input'
 import { toast } from '@/components/ui/toast'
-import { ArrowLeft } from 'lucide-react'
+import { ArrowLeft, Copy, Check } from 'lucide-react'
 import Link from 'next/link'
 import { uploadFileToStorage } from '@/lib/firebase/storage'
+import { fetchEmployeeApi } from '@/lib/api/client'
+
+const API_BASE_URL = process.env.NEXT_PUBLIC_API_BASE_URL || 'https://hummane-api.vercel.app'
 
 export default function EmployeeProfilePage() {
     const params = useParams()
     const router = useRouter()
-    const { employees, currentCompany, addDocument, deleteDocument, getDocuments } = useApp()
+    const { employees, currentCompany, addDocument, deleteDocument, getDocuments, apiAccessToken } = useApp()
     const [employee, setEmployee] = useState<Employee | null>(null)
     const [docs, setDocs] = useState<EmployeeDocument[]>([])
     const [isDocDialogOpen, setIsDocDialogOpen] = useState(false)
     const [docType, setDocType] = useState<DocumentKind>(DOCUMENT_KINDS[0])
     const [docFile, setDocFile] = useState<File | null>(null)
+    const [apiResponse, setApiResponse] = useState<EmployeeApi | null>(null)
+    const [copiedCurl, setCopiedCurl] = useState(false)
+    const [copiedResponse, setCopiedResponse] = useState(false)
     const employeeId = params.id as string
 
     useEffect(() => {
@@ -38,6 +44,27 @@ export default function EmployeeProfilePage() {
             setEmployee(emp || null)
         }
     }, [employees, employeeId, router])
+
+    useEffect(() => {
+        let isActive = true
+
+        const loadApiResponse = async () => {
+            if (!apiAccessToken || !employeeId) return
+            try {
+                const response = await fetchEmployeeApi(employeeId, apiAccessToken)
+                if (isActive) {
+                    setApiResponse(response)
+                }
+            } catch (error) {
+                console.error('Failed to fetch API response:', error)
+            }
+        }
+
+        void loadApiResponse()
+        return () => {
+            isActive = false
+        }
+    }, [employeeId, apiAccessToken])
 
     useEffect(() => {
         let isActive = true
@@ -58,6 +85,21 @@ export default function EmployeeProfilePage() {
             isActive = false
         }
     }, [employee?.id])
+
+    const curlCommand = `curl -X GET "${API_BASE_URL}/employees/${employeeId}" \\
+  -H "Authorization: Bearer ${apiAccessToken || '<ACCESS_TOKEN>'}"`
+
+    const handleCopyCurl = async () => {
+        await navigator.clipboard.writeText(curlCommand)
+        setCopiedCurl(true)
+        setTimeout(() => setCopiedCurl(false), 2000)
+    }
+
+    const handleCopyResponse = async () => {
+        await navigator.clipboard.writeText(JSON.stringify(apiResponse, null, 2))
+        setCopiedResponse(true)
+        setTimeout(() => setCopiedResponse(false), 2000)
+    }
 
     const handleDocUpload = async () => {
         if (!docFile) {
@@ -231,6 +273,50 @@ export default function EmployeeProfilePage() {
                                 ))}
                             </div>
                         )}
+                    </CardContent>
+                </Card>
+
+                {/* API Debug Section */}
+                <Card className="border border-slate-100 shadow-premium rounded-3xl bg-white">
+                    <CardContent className="p-6 space-y-4">
+                        <p className="text-sm font-bold text-slate-700">API Debug</p>
+
+                        <div className="space-y-2">
+                            <div className="flex items-center justify-between">
+                                <p className="text-xs font-extrabold text-slate-400 uppercase tracking-wide">cURL Command</p>
+                                <Button
+                                    variant="ghost"
+                                    size="sm"
+                                    onClick={handleCopyCurl}
+                                    className="h-8 px-2 text-slate-500 hover:text-slate-700"
+                                >
+                                    {copiedCurl ? <Check className="w-4 h-4 text-green-500" /> : <Copy className="w-4 h-4" />}
+                                    <span className="ml-1 text-xs">{copiedCurl ? 'Copied!' : 'Copy'}</span>
+                                </Button>
+                            </div>
+                            <pre className="bg-slate-900 text-slate-100 p-4 rounded-xl text-xs overflow-x-auto whitespace-pre-wrap break-all font-mono">
+                                {curlCommand}
+                            </pre>
+                        </div>
+
+                        <div className="space-y-2">
+                            <div className="flex items-center justify-between">
+                                <p className="text-xs font-extrabold text-slate-400 uppercase tracking-wide">API Response</p>
+                                <Button
+                                    variant="ghost"
+                                    size="sm"
+                                    onClick={handleCopyResponse}
+                                    className="h-8 px-2 text-slate-500 hover:text-slate-700"
+                                    disabled={!apiResponse}
+                                >
+                                    {copiedResponse ? <Check className="w-4 h-4 text-green-500" /> : <Copy className="w-4 h-4" />}
+                                    <span className="ml-1 text-xs">{copiedResponse ? 'Copied!' : 'Copy'}</span>
+                                </Button>
+                            </div>
+                            <pre className="bg-slate-900 text-slate-100 p-4 rounded-xl text-xs overflow-x-auto max-h-96 font-mono">
+                                {apiResponse ? JSON.stringify(apiResponse, null, 2) : 'Loading...'}
+                            </pre>
+                        </div>
                     </CardContent>
                 </Card>
             </div>
