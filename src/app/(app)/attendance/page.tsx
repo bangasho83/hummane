@@ -17,11 +17,10 @@ import { cn } from '@/lib/utils'
 import { AttendanceTabs } from '@/features/attendance'
 import { uploadFileToStorage } from '@/lib/firebase/storage'
 
-const API_BASE_URL = process.env.NEXT_PUBLIC_API_BASE_URL || 'https://hummane-api.vercel.app'
 const DEFAULT_LEAVE_COLOR = '#ec4899'
 
 export default function AttendancePage() {
-    const { employees, leaves, addLeave, leaveTypes, refreshLeaveTypes, apiAccessToken } = useApp()
+    const { employees, leaves, addLeave, leaveTypes, refreshLeaveTypes } = useApp()
     const [isDialogOpen, setIsDialogOpen] = useState(false)
     const [selectedEmployee, setSelectedEmployee] = useState('')
     const [selectedType, setSelectedType] = useState<string>('')
@@ -34,28 +33,6 @@ export default function AttendancePage() {
     const [loading, setLoading] = useState(false)
     const [today, setToday] = useState<Date | null>(null)
     const [dates, setDates] = useState<Date[]>([])
-    const [apiDebug, setApiDebug] = useState<{ curl: string; response: string } | null>(null)
-
-    // Fetch leaves and capture API debug info
-    useEffect(() => {
-        const fetchDebug = async () => {
-            if (!apiAccessToken) return
-            const url = `${API_BASE_URL}/leaves`
-            const curlCmd = `curl -X GET "${url}" \\\n  -H "Authorization: Bearer ${apiAccessToken}"`
-            try {
-                const res = await fetch(url, {
-                    method: 'GET',
-                    headers: { Authorization: `Bearer ${apiAccessToken}` }
-                })
-                const data = await res.json()
-                setApiDebug({ curl: curlCmd, response: JSON.stringify(data, null, 2) })
-            } catch (err) {
-                setApiDebug({ curl: curlCmd, response: String(err) })
-            }
-        }
-        fetchDebug()
-    }, [apiAccessToken, leaves])
-
     // Build the date range on the client to avoid SSR/client drift
     useEffect(() => {
         const current = new Date()
@@ -619,29 +596,6 @@ export default function AttendancePage() {
                         </p>
                     </div>
                 </div>
-
-                {/* API Debug Section */}
-                {apiDebug && (
-                    <div className="mt-8 bg-slate-900 rounded-2xl overflow-hidden shadow-xl">
-                        <div className="p-4 border-b border-slate-700">
-                            <h3 className="text-sm font-bold text-slate-200 uppercase tracking-widest">API Debug</h3>
-                        </div>
-                        <div className="p-4 space-y-4">
-                            <div>
-                                <p className="text-xs font-bold text-slate-400 uppercase tracking-widest mb-2">cURL Command</p>
-                                <pre className="bg-slate-800 p-4 rounded-xl text-xs text-green-400 overflow-x-auto whitespace-pre-wrap break-all">
-                                    {apiDebug.curl}
-                                </pre>
-                            </div>
-                            <div>
-                                <p className="text-xs font-bold text-slate-400 uppercase tracking-widest mb-2">API Response</p>
-                                <pre className="bg-slate-800 p-4 rounded-xl text-xs text-blue-300 overflow-x-auto max-h-96 overflow-y-auto">
-                                    {apiDebug.response}
-                                </pre>
-                            </div>
-                        </div>
-                    </div>
-                )}
 
             </div>
 )
