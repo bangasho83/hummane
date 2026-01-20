@@ -14,12 +14,13 @@ import { LogOut } from 'lucide-react'
 
 export default function CompanySetupPage() {
     const router = useRouter()
-    const { currentUser, currentCompany, createCompany, logout } = useApp()
+    const { currentUser, currentCompany, createCompany, logout, isHydrating } = useApp()
     const [companyName, setCompanyName] = useState('')
     const [industry, setIndustry] = useState('')
     const [size, setSize] = useState<CompanySize | ''>('')
     const [loading, setLoading] = useState(false)
     useEffect(() => {
+        if (isHydrating) return
         if (!currentUser) {
             router.push('/login')
             return
@@ -27,9 +28,9 @@ export default function CompanySetupPage() {
         if (currentCompany) {
             router.push('/dashboard')
         }
-    }, [currentCompany, currentUser, router])
+    }, [currentCompany, currentUser, router, isHydrating])
 
-    if (!currentUser || currentCompany) {
+    if (isHydrating || !currentUser || currentCompany) {
         return null
     }
 

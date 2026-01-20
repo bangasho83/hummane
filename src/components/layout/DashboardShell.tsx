@@ -12,16 +12,18 @@ interface DashboardShellProps {
 }
 
 export function DashboardShell({ children }: DashboardShellProps) {
-    const { currentUser, currentCompany } = useApp()
+    const { currentUser, currentCompany, isHydrating } = useApp()
     const router = useRouter()
     const pathname = usePathname()
 
     useEffect(() => {
+        // Wait for hydration to complete before redirecting
+        if (isHydrating) return
         if (!currentUser) return
         if (currentCompany) return
         if (pathname === '/company-setup') return
         router.push('/company-setup')
-    }, [currentUser, currentCompany, pathname, router])
+    }, [currentUser, currentCompany, pathname, router, isHydrating])
 
     return (
         <div className="flex min-h-screen bg-slate-50/50">

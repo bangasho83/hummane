@@ -3,12 +3,11 @@
 import { useState, useEffect } from 'react'
 import { useRouter, useParams } from 'next/navigation'
 import { useApp } from '@/lib/context/AppContext'
-import { EmployeeForm, JobDescriptionPreview, type PhotoUploadDebugInfo } from '@/features/employees'
+import { EmployeeForm, JobDescriptionPreview } from '@/features/employees'
 import { toast } from '@/components/ui/toast'
 import { ArrowLeft } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 import type { EmployeeApi } from '@/types'
-import { Card, CardContent } from '@/components/ui/card'
 
 const API_URL = 'https://hummane-api.vercel.app'
 
@@ -21,7 +20,6 @@ export default function EditEmployeePage() {
     const [loadingEmployee, setLoadingEmployee] = useState(true)
     const [loadingLists, setLoadingLists] = useState(true)
     const [selectedRoleId, setSelectedRoleId] = useState('')
-    const [photoDebugInfo, setPhotoDebugInfo] = useState<PhotoUploadDebugInfo | null>(null)
     const employeeId = params.id as string
 
     // Redirect if not logged in or no company (these checks are typically handled by DashboardShell or a parent layout)
@@ -209,7 +207,6 @@ export default function EditEmployeePage() {
                                 submitLabel="Update Employee Info"
                                 loading={loading}
                                 onRoleChange={setSelectedRoleId}
-                                onPhotoUploadDebug={setPhotoDebugInfo}
                             />
                         ) : (
                             <div className="py-12 text-center text-slate-400">Loading form...</div>
@@ -236,46 +233,6 @@ export default function EditEmployeePage() {
                     />
                 </div>
             </div>
-
-            {/* Photo Upload Debug Info */}
-            {photoDebugInfo && (
-                <Card className="border border-slate-100 shadow-premium rounded-3xl bg-white overflow-hidden mt-6">
-                    <CardContent className="p-6">
-                        <p className="text-xs font-extrabold uppercase tracking-widest text-slate-400 mb-4">Photo Upload API Debug</p>
-
-                        <div className="space-y-4">
-                            <div>
-                                <p className="text-sm font-bold text-slate-700 mb-2">CURL Command:</p>
-                                <pre className="bg-slate-900 text-green-400 p-4 rounded-xl text-xs overflow-x-auto whitespace-pre-wrap break-all">
-                                    {photoDebugInfo.curl}
-                                </pre>
-                            </div>
-
-                            <div>
-                                <p className="text-sm font-bold text-slate-700 mb-2">
-                                    API Response
-                                    <span className={`ml-2 px-2 py-0.5 rounded text-xs font-medium ${
-                                        photoDebugInfo.status >= 200 && photoDebugInfo.status < 300
-                                            ? 'bg-green-100 text-green-700'
-                                            : 'bg-red-100 text-red-700'
-                                    }`}>
-                                        Status: {photoDebugInfo.status}
-                                    </span>
-                                </p>
-                                <pre className="bg-slate-100 text-slate-800 p-4 rounded-xl text-xs overflow-x-auto whitespace-pre-wrap break-all">
-                                    {(() => {
-                                        try {
-                                            return JSON.stringify(JSON.parse(photoDebugInfo.response), null, 2)
-                                        } catch {
-                                            return photoDebugInfo.response
-                                        }
-                                    })()}
-                                </pre>
-                            </div>
-                        </div>
-                    </CardContent>
-                </Card>
-            )}
 
         </div>
     )

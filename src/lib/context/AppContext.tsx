@@ -130,6 +130,7 @@ interface AppContextType {
     updateApplicant: (id: string, applicantData: Partial<Omit<Applicant, 'id' | 'companyId' | 'createdAt'>>) => Promise<Applicant | null>
     deleteApplicant: (id: string) => Promise<void>
     refreshApplicants: (jobId?: string) => Promise<void>
+    isHydrating: boolean
 }
 
 const AppContext = createContext<AppContextType | undefined>(undefined)
@@ -148,6 +149,7 @@ export function AppProvider({ children }: { children: ReactNode }) {
     const [jobs, setJobs] = useState<Job[]>([])
     const [applicants, setApplicants] = useState<Applicant[]>([])
     const [mounted, setMounted] = useState(false)
+    const [isHydrating, setIsHydrating] = useState(true)
     const [apiAccessToken, setApiAccessToken] = useState<string | null>(null)
     const [apiUser, setApiUser] = useState<ApiUser | null>(null)
     const [authLoginResponse, setAuthLoginResponse] = useState<AuthLoginResponse | null>(null)
@@ -1117,8 +1119,17 @@ export function AppProvider({ children }: { children: ReactNode }) {
     }, [apiAccessToken, currentCompany?.id, currentUser])
 
     useEffect(() => {
-        if (!apiAccessToken || !apiCompanyId || !currentUser) return
-        if (currentCompany?.id === apiCompanyId) return
+        if (!apiAccessToken || !apiCompanyId || !currentUser) {
+            // No API session to hydrate from, stop hydrating
+            if (mounted && !apiAccessToken) {
+                setIsHydrating(false)
+            }
+            return
+        }
+        if (currentCompany?.id === apiCompanyId) {
+            setIsHydrating(false)
+            return
+        }
         const hydrateCompany = async () => {
             try {
                 const apiCompany = await fetchCompanyApi(apiCompanyId, apiAccessToken)
@@ -1130,10 +1141,12 @@ export function AppProvider({ children }: { children: ReactNode }) {
                 setCurrentCompany(normalizedCompany)
             } catch (error) {
                 console.error('Hydrate company error:', error)
+            } finally {
+                setIsHydrating(false)
             }
         }
         void hydrateCompany()
-    }, [apiAccessToken, apiCompanyId, currentCompany?.id, currentUser])
+    }, [apiAccessToken, apiCompanyId, currentCompany?.id, currentUser, mounted])
 
     const createHoliday = async (holiday: Omit<Holiday, 'id' | 'companyId' | 'createdAt'>) => {
         try {
@@ -1985,7 +1998,8 @@ export function AppProvider({ children }: { children: ReactNode }) {
                 createApplicant,
                 updateApplicant,
                 deleteApplicant,
-                refreshApplicants
+                refreshApplicants,
+                isHydrating
             }}
         >
             {children}

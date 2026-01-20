@@ -13,7 +13,7 @@ import { Chrome } from 'lucide-react'
 
 export default function SignupPage() {
     const router = useRouter()
-    const { signup, loginWithGoogle, currentUser, currentCompany } = useApp()
+    const { signup, loginWithGoogle, currentUser, currentCompany, isHydrating } = useApp()
     const [name, setName] = useState('')
     const [email, setEmail] = useState('')
     const [password, setPassword] = useState('')
@@ -21,9 +21,10 @@ export default function SignupPage() {
     const [googleLoading, setGoogleLoading] = useState(false)
 
     useEffect(() => {
+        if (isHydrating) return
         if (!currentUser) return
         router.push(currentCompany ? '/dashboard' : '/company-setup')
-    }, [currentCompany, currentUser, router])
+    }, [currentCompany, currentUser, router, isHydrating])
 
     if (currentUser) {
         return null

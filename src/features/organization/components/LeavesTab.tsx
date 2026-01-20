@@ -32,10 +32,8 @@ const getDefaultLeaveForm = (): LeaveFormState => ({
     color: DEFAULT_LEAVE_COLOR
 })
 
-const API_BASE_URL = process.env.NEXT_PUBLIC_API_BASE_URL || 'https://hummane-api.vercel.app'
-
 export function LeavesTab() {
-    const { leaveTypes, createLeaveType, updateLeaveType, deleteLeaveType, apiAccessToken } = useApp()
+    const { leaveTypes, createLeaveType, updateLeaveType, deleteLeaveType } = useApp()
     const [isAddOpen, setIsAddOpen] = useState(false)
     const [isEditOpen, setIsEditOpen] = useState(false)
     const [searchTerm, setSearchTerm] = useState('')
@@ -44,27 +42,6 @@ export function LeavesTab() {
     const [editing, setEditing] = useState<LeaveType | null>(null)
     const [loading, setLoading] = useState(false)
     const [editLoading, setEditLoading] = useState(false)
-    const [apiDebug, setApiDebug] = useState<{ curl: string; response: string } | null>(null)
-
-    // Fetch leave types and capture API debug info
-    useEffect(() => {
-        const fetchDebug = async () => {
-            if (!apiAccessToken) return
-            const url = `${API_BASE_URL}/leave-types`
-            const curlCmd = `curl -X GET "${url}" \\\n  -H "Authorization: Bearer ${apiAccessToken}"`
-            try {
-                const res = await fetch(url, {
-                    method: 'GET',
-                    headers: { Authorization: `Bearer ${apiAccessToken}` }
-                })
-                const data = await res.json()
-                setApiDebug({ curl: curlCmd, response: JSON.stringify(data, null, 2) })
-            } catch (err) {
-                setApiDebug({ curl: curlCmd, response: String(err) })
-            }
-        }
-        fetchDebug()
-    }, [apiAccessToken, leaveTypes])
 
     const filtered = useMemo(() => {
         return leaveTypes.filter(lt =>
@@ -474,29 +451,6 @@ export function LeavesTab() {
                     </p>
                 </div>
             </div>
-
-            {/* API Debug Section */}
-            {apiDebug && (
-                <div className="mt-8 bg-slate-900 rounded-2xl overflow-hidden shadow-xl">
-                    <div className="p-4 border-b border-slate-700">
-                        <h3 className="text-sm font-bold text-slate-200 uppercase tracking-widest">API Debug</h3>
-                    </div>
-                    <div className="p-4 space-y-4">
-                        <div>
-                            <p className="text-xs font-bold text-slate-400 uppercase tracking-widest mb-2">cURL Command</p>
-                            <pre className="bg-slate-800 p-4 rounded-xl text-xs text-green-400 overflow-x-auto whitespace-pre-wrap break-all">
-                                {apiDebug.curl}
-                            </pre>
-                        </div>
-                        <div>
-                            <p className="text-xs font-bold text-slate-400 uppercase tracking-widest mb-2">API Response</p>
-                            <pre className="bg-slate-800 p-4 rounded-xl text-xs text-blue-300 overflow-x-auto max-h-96 overflow-y-auto">
-                                {apiDebug.response}
-                            </pre>
-                        </div>
-                    </div>
-                </div>
-            )}
         </div>
     )
 }

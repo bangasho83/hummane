@@ -6,9 +6,11 @@ import { useApp } from '@/lib/context/AppContext'
 
 export default function HomePage() {
   const router = useRouter()
-  const { currentUser, currentCompany } = useApp()
+  const { currentUser, currentCompany, isHydrating } = useApp()
 
   useEffect(() => {
+    // Wait for hydration to complete before redirecting
+    if (isHydrating) return
     if (currentUser) {
       if (currentCompany) {
         router.push('/dashboard')
@@ -18,7 +20,7 @@ export default function HomePage() {
     } else {
       router.push('/login')
     }
-  }, [currentUser, currentCompany, router])
+  }, [currentUser, currentCompany, router, isHydrating])
 
   return (
     <div className="min-h-screen flex items-center justify-center bg-gradient-to-br from-slate-50 to-slate-100">
