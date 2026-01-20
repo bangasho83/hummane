@@ -93,10 +93,18 @@ export default function ApplicantDetailPage() {
         }
     }
 
+    // Handle resumeFile as either a string URL (from API) or an object with dataUrl
+    const getResumeUrl = (): string | null => {
+        if (!applicant.resumeFile) return null
+        if (typeof applicant.resumeFile === 'string') return applicant.resumeFile
+        if (typeof applicant.resumeFile === 'object' && applicant.resumeFile.dataUrl) return applicant.resumeFile.dataUrl
+        return null
+    }
+
     const documentFiles = applicant.documents?.files && applicant.documents.files.length > 0
         ? applicant.documents.files
-        : applicant.resumeFile?.dataUrl
-            ? [applicant.resumeFile.dataUrl]
+        : getResumeUrl()
+            ? [getResumeUrl()!]
             : []
 
     return (

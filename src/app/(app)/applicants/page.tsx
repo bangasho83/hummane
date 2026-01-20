@@ -578,7 +578,6 @@ export default function ApplicantsPage() {
                             <TableRow className="hover:bg-transparent border-slate-100">
                                 <TableHead className="pl-8 py-4 text-[10px] font-extrabold uppercase tracking-widest text-slate-400">Name</TableHead>
                                 <TableHead className="py-4 text-[10px] font-extrabold uppercase tracking-widest text-slate-400">Position</TableHead>
-                                <TableHead className="py-4 text-[10px] font-extrabold uppercase tracking-widest text-slate-400">Role</TableHead>
                                 <TableHead className="py-4 text-[10px] font-extrabold uppercase tracking-widest text-slate-400">Department</TableHead>
                                 <TableHead className="py-4 text-[10px] font-extrabold uppercase tracking-widest text-slate-400">Experience</TableHead>
                                 <TableHead className="py-4 text-[10px] font-extrabold uppercase tracking-widest text-slate-400">Expected Salary</TableHead>
@@ -603,14 +602,6 @@ export default function ApplicantsPage() {
                                     >
                                         <TableCell className="pl-8 py-5 font-bold text-slate-900">{applicant.fullName}</TableCell>
                                         <TableCell className="text-slate-600">{applicant.positionApplied}</TableCell>
-                                        <TableCell className="text-slate-600">
-                                            {job ? (
-                                                <div className="flex items-center gap-2">
-                                                    <Briefcase className="w-4 h-4 text-slate-400" />
-                                                    {getRoleTitle(job.roleId ?? undefined)}
-                                                </div>
-                                            ) : '—'}
-                                        </TableCell>
                                         <TableCell className="text-slate-600">{applicant.departmentName || job?.department || '—'}</TableCell>
                                         <TableCell className="text-slate-600">{applicant.yearsOfExperience} {applicant.yearsOfExperience === 1 ? 'year' : 'years'}</TableCell>
                                         <TableCell className="text-slate-600">{applicant.expectedSalary || 'Not specified'}</TableCell>
