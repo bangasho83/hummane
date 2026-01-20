@@ -6,7 +6,7 @@ import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@
 import { Input } from '@/components/ui/input'
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select'
 import { Button } from '@/components/ui/button'
-import { Pencil, Trash2, Search, Users, User } from 'lucide-react'
+import { Pencil, Trash2, Search, Users, User, ArrowUpDown, ArrowUp, ArrowDown } from 'lucide-react'
 import type { Employee } from '@/types'
 import { formatCurrency } from '@/lib/utils'
 import { useApp } from '@/lib/context/AppContext'
@@ -20,12 +20,17 @@ interface EmployeeTableProps {
     onRefresh?: () => void
 }
 
+type SortColumn = 'employeeId' | 'name' | 'department' | 'manager' | 'employment' | 'salary' | null
+type SortDirection = 'asc' | 'desc'
+
 export function EmployeeTable({ employees, onRefresh }: EmployeeTableProps) {
     const router = useRouter()
     const { deleteEmployee, currentCompany } = useApp()
     const [searchTerm, setSearchTerm] = useState('')
     const [departmentFilter, setDepartmentFilter] = useState<string>('all')
     const [positionFilter, setPositionFilter] = useState<string>('all')
+    const [sortColumn, setSortColumn] = useState<SortColumn>(null)
+    const [sortDirection, setSortDirection] = useState<SortDirection>('asc')
 
     // Get unique departments and positions
     const departments = useMemo(() => {
@@ -42,9 +47,31 @@ export function EmployeeTable({ employees, onRefresh }: EmployeeTableProps) {
         return unique.sort()
     }, [employees])
 
-    // Filter employees
+    // Handle sort column click
+    const handleSort = (column: SortColumn) => {
+        if (sortColumn === column) {
+            // Toggle direction if same column
+            setSortDirection(prev => prev === 'asc' ? 'desc' : 'asc')
+        } else {
+            // Set new column with ascending direction
+            setSortColumn(column)
+            setSortDirection('asc')
+        }
+    }
+
+    // Get sort icon for a column
+    const getSortIcon = (column: SortColumn) => {
+        if (sortColumn !== column) {
+            return <ArrowUpDown className="w-3 h-3 ml-1 opacity-0 group-hover:opacity-50 transition-opacity" />
+        }
+        return sortDirection === 'asc'
+            ? <ArrowUp className="w-3 h-3 ml-1 text-blue-600" />
+            : <ArrowDown className="w-3 h-3 ml-1 text-blue-600" />
+    }
+
+    // Filter and sort employees
     const filteredEmployees = useMemo(() => {
-        return employees.filter(emp => {
+        let result = employees.filter(emp => {
             const departmentName = emp.departmentName || emp.department || ''
             const roleName = emp.roleName || emp.position || ''
             const matchesSearch =
@@ -59,7 +86,48 @@ export function EmployeeTable({ employees, onRefresh }: EmployeeTableProps) {
 
             return matchesSearch && matchesDepartment && matchesPosition
         })
-    }, [employees, searchTerm, departmentFilter, positionFilter])
+
+        // Apply sorting
+        if (sortColumn) {
+            result = [...result].sort((a, b) => {
+                let aValue: string | number = ''
+                let bValue: string | number = ''
+
+                switch (sortColumn) {
+                    case 'employeeId':
+                        aValue = a.employeeId.toLowerCase()
+                        bValue = b.employeeId.toLowerCase()
+                        break
+                    case 'name':
+                        aValue = a.name.toLowerCase()
+                        bValue = b.name.toLowerCase()
+                        break
+                    case 'department':
+                        aValue = (a.departmentName || a.department || '').toLowerCase()
+                        bValue = (b.departmentName || b.department || '').toLowerCase()
+                        break
+                    case 'manager':
+                        aValue = (a.reportingManagerName || a.reportingManager || '').toLowerCase()
+                        bValue = (b.reportingManagerName || b.reportingManager || '').toLowerCase()
+                        break
+                    case 'employment':
+                        aValue = (a.employmentType || '').toLowerCase()
+                        bValue = (b.employmentType || '').toLowerCase()
+                        break
+                    case 'salary':
+                        aValue = a.salary || 0
+                        bValue = b.salary || 0
+                        break
+                }
+
+                if (aValue < bValue) return sortDirection === 'asc' ? -1 : 1
+                if (aValue > bValue) return sortDirection === 'asc' ? 1 : -1
+                return 0
+            })
+        }
+
+        return result
+    }, [employees, searchTerm, departmentFilter, positionFilter, sortColumn, sortDirection])
 
     const handleDelete = async (employee: Employee) => {
         if (confirm(`Are you sure you want to delete ${employee.name}? This action cannot be undone.`)) {
@@ -142,13 +210,43 @@ export function EmployeeTable({ employees, onRefresh }: EmployeeTableProps) {
                 <Table>
                     <TableHeader className="bg-slate-50/50">
                         <TableRow className="hover:bg-transparent border-slate-100">
-                            <TableHead className="pl-8 py-4 text-[10px] font-extrabold uppercase tracking-widest text-slate-400">Employee ID</TableHead>
+                            <TableHead
+                                className="pl-8 py-4 text-[10px] font-extrabold uppercase tracking-widest text-slate-400 cursor-pointer hover:text-slate-600 transition-colors group"
+                                onClick={() => handleSort('employeeId')}
+                            >
+                                <span className="flex items-center">Employee ID{getSortIcon('employeeId')}</span>
+                            </TableHead>
                             <TableHead className="py-4 text-[10px] font-extrabold uppercase tracking-widest text-slate-400">Photo</TableHead>
-                            <TableHead className="py-4 text-[10px] font-extrabold uppercase tracking-widest text-slate-400">Employee</TableHead>
-                            <TableHead className="py-4 text-[10px] font-extrabold uppercase tracking-widest text-slate-400">Department</TableHead>
-                            <TableHead className="py-4 text-[10px] font-extrabold uppercase tracking-widest text-slate-400">Manager</TableHead>
-                            <TableHead className="py-4 text-[10px] font-extrabold uppercase tracking-widest text-slate-400">Employment</TableHead>
-                            <TableHead className="text-right py-4 text-[10px] font-extrabold uppercase tracking-widest text-slate-400">Monthly Salary</TableHead>
+                            <TableHead
+                                className="py-4 text-[10px] font-extrabold uppercase tracking-widest text-slate-400 cursor-pointer hover:text-slate-600 transition-colors group"
+                                onClick={() => handleSort('name')}
+                            >
+                                <span className="flex items-center">Employee{getSortIcon('name')}</span>
+                            </TableHead>
+                            <TableHead
+                                className="py-4 text-[10px] font-extrabold uppercase tracking-widest text-slate-400 cursor-pointer hover:text-slate-600 transition-colors group"
+                                onClick={() => handleSort('department')}
+                            >
+                                <span className="flex items-center">Department{getSortIcon('department')}</span>
+                            </TableHead>
+                            <TableHead
+                                className="py-4 text-[10px] font-extrabold uppercase tracking-widest text-slate-400 cursor-pointer hover:text-slate-600 transition-colors group"
+                                onClick={() => handleSort('manager')}
+                            >
+                                <span className="flex items-center">Manager{getSortIcon('manager')}</span>
+                            </TableHead>
+                            <TableHead
+                                className="py-4 text-[10px] font-extrabold uppercase tracking-widest text-slate-400 cursor-pointer hover:text-slate-600 transition-colors group"
+                                onClick={() => handleSort('employment')}
+                            >
+                                <span className="flex items-center">Employment{getSortIcon('employment')}</span>
+                            </TableHead>
+                            <TableHead
+                                className="text-right py-4 text-[10px] font-extrabold uppercase tracking-widest text-slate-400 cursor-pointer hover:text-slate-600 transition-colors group"
+                                onClick={() => handleSort('salary')}
+                            >
+                                <span className="flex items-center justify-end">Monthly Salary{getSortIcon('salary')}</span>
+                            </TableHead>
                             <TableHead className="text-right pr-8 py-4 text-[10px] font-extrabold uppercase tracking-widest text-slate-400">Actions</TableHead>
                         </TableRow>
                     </TableHeader>

@@ -16,7 +16,7 @@ import { Input } from '@/components/ui/input'
 import { toast } from '@/components/ui/toast'
 import { ArrowLeft, Pencil } from 'lucide-react'
 import Link from 'next/link'
-import { uploadFileToStorage } from '@/lib/firebase/storage'
+import { uploadFileToStorage, uploadProfilePicture } from '@/lib/firebase/storage'
 
 const API_URL = 'https://hummane-api.vercel.app'
 
@@ -30,8 +30,6 @@ export default function EmployeeProfilePage() {
     const [docType, setDocType] = useState<DocumentKind>(DOCUMENT_KINDS[0])
     const [docName, setDocName] = useState('')
     const [docFile, setDocFile] = useState<File | null>(null)
-    const [apiResponse, setApiResponse] = useState<unknown>(null)
-    const [curlCommand, setCurlCommand] = useState<string>('')
     const [isPhotoDialogOpen, setIsPhotoDialogOpen] = useState(false)
     const [photoFile, setPhotoFile] = useState<File | null>(null)
     const [photoUploading, setPhotoUploading] = useState(false)
@@ -67,29 +65,7 @@ export default function EmployeeProfilePage() {
         }
     }, [employee?.id])
 
-    useEffect(() => {
-        if (!apiAccessToken || !employeeId) return
 
-        const curl = `curl -X GET "${API_URL}/employees/${employeeId}" \\
-  -H "Authorization: Bearer $TOKEN"`
-        setCurlCommand(curl)
-
-        const fetchEmployee = async () => {
-            try {
-                const response = await fetch(`${API_URL}/employees/${employeeId}`, {
-                    headers: {
-                        Authorization: `Bearer ${apiAccessToken}`
-                    }
-                })
-                const data = await response.json()
-                setApiResponse(data)
-            } catch (error) {
-                setApiResponse({ error: String(error) })
-            }
-        }
-
-        void fetchEmployee()
-    }, [apiAccessToken, employeeId])
 
     const handleDocUpload = async () => {
         if (!docName.trim()) {
@@ -132,18 +108,22 @@ export default function EmployeeProfilePage() {
         if (!photoFile || !employee) return
         setPhotoUploading(true)
         try {
-            const url = await uploadFileToStorage(photoFile, 'profile-photos', employeeId)
-            // Update employee with new photo URL via API
-            const response = await fetch(`${API_URL}/employees/${employeeId}`, {
-                method: 'PATCH',
+            // Use uploadProfilePicture which handles resizing and uploads to team/profile/
+            const url = await uploadProfilePicture(photoFile, employeeId)
+            // Update employee with new photo URL via API using PUT method
+            const response = await fetch(`${API_URL}/employees/${encodeURIComponent(employeeId)}`, {
+                method: 'PUT',
                 headers: {
                     'Content-Type': 'application/json',
                     ...(apiAccessToken ? { Authorization: `Bearer ${apiAccessToken}` } : {})
                 },
-                body: JSON.stringify({ profilePicture: url })
+                body: JSON.stringify({
+                    photoUrl: url,
+                    companyId: currentCompany?.id
+                })
             })
             if (!response.ok) throw new Error('Failed to update profile photo')
-            setEmployee({ ...employee, profilePicture: url })
+            setEmployee({ ...employee, profilePicture: url, photoUrl: url })
             setIsPhotoDialogOpen(false)
             setPhotoFile(null)
             toast('Profile photo updated', 'success')
@@ -425,23 +405,7 @@ export default function EmployeeProfilePage() {
                 </div>
             </div>
 
-            {/* API Debug Section */}
-            <Card className="border border-slate-100 shadow-premium rounded-3xl bg-white mt-6">
-                <CardContent className="p-6 space-y-4">
-                    <div>
-                        <p className="text-sm font-bold text-slate-700 mb-2">API Curl Command</p>
-                        <pre className="bg-slate-900 text-green-400 text-xs p-4 rounded-xl overflow-x-auto whitespace-pre-wrap">
-                            {curlCommand || 'Loading...'}
-                        </pre>
-                    </div>
-                    <div>
-                        <p className="text-sm font-bold text-slate-700 mb-2">API Response</p>
-                        <pre className="bg-slate-900 text-slate-100 text-xs p-4 rounded-xl overflow-x-auto max-h-96 overflow-y-auto">
-                            {apiResponse ? JSON.stringify(apiResponse, null, 2) : 'Loading...'}
-                        </pre>
-                    </div>
-                </CardContent>
-            </Card>
+
         </div>
     )
 }
