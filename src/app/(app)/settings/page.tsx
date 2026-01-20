@@ -208,9 +208,23 @@ export default function SettingsPage() {
                                 </p>
                                 <div className="bg-slate-900 rounded-2xl p-4 overflow-x-auto">
                                     <pre className="text-sm text-slate-100 font-mono whitespace-pre-wrap">
-{`curl -X GET "https://hummane-api.vercel.app/public/jobs" \\
+{`# Get all jobs
+curl -X GET "https://hummane-api.vercel.app/public/jobs" \\
+  -H "x-api-key: YOUR_API_KEY"
+
+# Get a specific job by ID
+curl -X GET "https://hummane-api.vercel.app/public/jobs?jobId=YOUR_JOB_ID" \\
   -H "x-api-key: YOUR_API_KEY"`}
                                     </pre>
+                                </div>
+                                <div className="space-y-3">
+                                    <p className="text-sm font-bold text-slate-700">Query Parameters:</p>
+                                    <div className="bg-slate-50 border border-slate-200 rounded-2xl p-4">
+                                        <div className="flex gap-3 text-sm">
+                                            <code className="text-blue-600 font-mono font-bold shrink-0">jobId</code>
+                                            <span className="text-slate-600">Optional. Filter by specific job UUID to get details for a single job.</span>
+                                        </div>
+                                    </div>
                                 </div>
                                 <div className="space-y-2">
                                     <p className="text-sm font-bold text-slate-700">Example Response:</p>
