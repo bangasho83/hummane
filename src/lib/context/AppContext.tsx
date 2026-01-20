@@ -570,6 +570,8 @@ export function AppProvider({ children }: { children: ReactNode }) {
             phone: applicant.phone ?? fallback.phone ?? '',
             positionApplied: applicant.positionApplied ?? fallback.positionApplied ?? '',
             jobId: applicant.jobId ?? fallback.jobId,
+            departmentId: applicant.departmentId ?? fallback.departmentId,
+            departmentName: applicant.departmentName ?? fallback.departmentName,
             yearsOfExperience: applicant.yearsOfExperience ?? fallback.yearsOfExperience ?? 0,
             currentSalary: applicant.currentSalary ?? fallback.currentSalary ?? 0,
             expectedSalary: applicant.expectedSalary ?? fallback.expectedSalary ?? 0,
@@ -1926,10 +1928,7 @@ export function AppProvider({ children }: { children: ReactNode }) {
         }
     }
 
-    useEffect(() => {
-        if (!currentCompany || !apiAccessToken) return
-        void refreshApplicants()
-    }, [currentCompany?.id, apiAccessToken])
+    // Applicants are fetched on-demand when visiting the applicants page, not on login
 
     if (!mounted) {
         return null // Prevent SSR mismatch

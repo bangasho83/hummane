@@ -6,6 +6,7 @@ import { Plus, Trash2, Users, Search, Briefcase } from 'lucide-react'
 import { useApp } from '@/lib/context/AppContext'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
+
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from '@/components/ui/dialog'
 import { toast } from '@/components/ui/toast'
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table'
@@ -42,7 +43,7 @@ export default function ApplicantsPage() {
     const router = useRouter()
     const searchParams = useSearchParams()
     const jobIdParam = searchParams.get('jobId')
-    const { applicants, jobs, roles, createApplicant, deleteApplicant, refreshApplicants } = useApp()
+    const { applicants, jobs, roles, createApplicant, deleteApplicant, refreshApplicants, apiAccessToken } = useApp()
     const [isAddOpen, setIsAddOpen] = useState(false)
     const [loading, setLoading] = useState(false)
     const [searchTerm, setSearchTerm] = useState('')
@@ -59,14 +60,15 @@ export default function ApplicantsPage() {
         setNewApplicant(prev => ({ ...prev, appliedDate: today }))
     }, [])
 
-    // Fetch applicants filtered by jobId when URL param changes
+    // Fetch applicants when page loads or jobId filter changes
     useEffect(() => {
         if (jobIdParam) {
             void refreshApplicants(jobIdParam)
         } else {
             void refreshApplicants()
         }
-    }, [jobIdParam, refreshApplicants])
+        // eslint-disable-next-line react-hooks/exhaustive-deps
+    }, [jobIdParam])
 
     const departments = useMemo(() => {
         const unique = [...new Set(jobs.map(job => job.department).filter(Boolean) as string[])]
@@ -588,7 +590,7 @@ export default function ApplicantsPage() {
                         <TableBody>
                             {filteredApplicants.map((applicant) => {
                                 const job = getApplicantJob(applicant)
-                                        return (
+                                return (
                                     <TableRow
                                         key={applicant.id}
                                         className="hover:bg-slate-50/50 group border-slate-50 cursor-pointer"
@@ -609,7 +611,7 @@ export default function ApplicantsPage() {
                                                 </div>
                                             ) : '—'}
                                         </TableCell>
-                                        <TableCell className="text-slate-600">{job?.department || '—'}</TableCell>
+                                        <TableCell className="text-slate-600">{applicant.departmentName || job?.department || '—'}</TableCell>
                                         <TableCell className="text-slate-600">{applicant.yearsOfExperience} {applicant.yearsOfExperience === 1 ? 'year' : 'years'}</TableCell>
                                         <TableCell className="text-slate-600">{applicant.expectedSalary || 'Not specified'}</TableCell>
                                         <TableCell>
@@ -632,12 +634,12 @@ export default function ApplicantsPage() {
                                             </Button>
                                         </TableCell>
                                     </TableRow>
-    )
-                                })}
+                                )
+                            })}
                             </TableBody>
                         </Table>
                     )}
                 </div>
-            </div>
-)
+        </div>
+    )
 }

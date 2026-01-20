@@ -3,7 +3,7 @@
 import { useEffect, useMemo, useState, useCallback } from 'react'
 import { useRouter, useParams } from 'next/navigation'
 import Link from 'next/link'
-import { ArrowLeft, Mail, Phone, Briefcase, Calendar, FileText, Linkedin, ExternalLink, Clock } from 'lucide-react'
+import { ArrowLeft, Mail, Phone, Briefcase, Calendar, FileText, Linkedin, ExternalLink, Clock, Building2 } from 'lucide-react'
 import { useApp } from '@/lib/context/AppContext'
 import { Button } from '@/components/ui/button'
 import { type Applicant, type ApplicantStatus, type FeedbackCard } from '@/types'
@@ -180,22 +180,33 @@ export default function ApplicantDetailPage() {
                         <div className="bg-white rounded-3xl shadow-sm border border-slate-200 p-6">
                             <h2 className="text-sm font-extrabold text-slate-700 uppercase tracking-widest mb-6">Professional Information</h2>
                             <div className="space-y-4">
-                                <div className="flex items-center gap-3">
-                                    <div className="w-10 h-10 rounded-xl bg-blue-50 flex items-center justify-center">
-                                        <Briefcase className="w-5 h-5 text-blue-600" />
+                                <div className="grid grid-cols-2 gap-4">
+                                    <div className="flex items-center gap-3">
+                                        <div className="w-10 h-10 rounded-xl bg-blue-50 flex items-center justify-center">
+                                            <Briefcase className="w-5 h-5 text-blue-600" />
+                                        </div>
+                                        <div>
+                                            <p className="text-xs font-bold text-slate-500 uppercase tracking-wider">Position Applied</p>
+                                            {applicant.jobId ? (
+                                                <Link
+                                                    href={`/applicants?jobId=${applicant.jobId}`}
+                                                    className="text-blue-600 hover:text-blue-800 font-medium hover:underline"
+                                                >
+                                                    {applicant.positionApplied || 'Not specified'}
+                                                </Link>
+                                            ) : (
+                                                <p className="text-slate-900 font-medium">{applicant.positionApplied || 'Not specified'}</p>
+                                            )}
+                                        </div>
                                     </div>
-                                    <div>
-                                        <p className="text-xs font-bold text-slate-500 uppercase tracking-wider">Position Applied</p>
-                                        {applicant.jobId ? (
-                                            <Link
-                                                href={`/applicants?jobId=${applicant.jobId}`}
-                                                className="text-blue-600 hover:text-blue-800 font-medium hover:underline"
-                                            >
-                                                {applicant.positionApplied || 'Not specified'}
-                                            </Link>
-                                        ) : (
-                                            <p className="text-slate-900 font-medium">{applicant.positionApplied || 'Not specified'}</p>
-                                        )}
+                                    <div className="flex items-center gap-3">
+                                        <div className="w-10 h-10 rounded-xl bg-blue-50 flex items-center justify-center">
+                                            <Building2 className="w-5 h-5 text-blue-600" />
+                                        </div>
+                                        <div>
+                                            <p className="text-xs font-bold text-slate-500 uppercase tracking-wider">Department</p>
+                                            <p className="text-slate-900 font-medium">{applicant.departmentName || 'Not specified'}</p>
+                                        </div>
                                     </div>
                                 </div>
                                 <div className="grid grid-cols-3 gap-4">

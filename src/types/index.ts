@@ -267,6 +267,8 @@ export interface Applicant {
     email: string
     phone: string
     positionApplied: string
+    departmentId?: string
+    departmentName?: string
     yearsOfExperience: number
     currentSalary: number
     expectedSalary: number

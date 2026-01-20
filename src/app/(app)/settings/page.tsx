@@ -204,7 +204,7 @@ export default function SettingsPage() {
                                     <h3 className="text-lg font-bold text-slate-900">Fetch Job Listings</h3>
                                 </div>
                                 <p className="text-sm text-slate-600">
-                                    Retrieve all open job positions to display on your careers page.
+                                    Retrieve all open job positions to display on your careers page. Use query parameters to filter results.
                                 </p>
                                 <div className="bg-slate-900 rounded-2xl p-4 overflow-x-auto">
                                     <pre className="text-sm text-slate-100 font-mono whitespace-pre-wrap">
@@ -212,17 +212,37 @@ export default function SettingsPage() {
 curl -X GET "https://hummane-api.vercel.app/public/jobs" \\
   -H "x-api-key: YOUR_API_KEY"
 
-# Get a specific job by ID
-curl -X GET "https://hummane-api.vercel.app/public/jobs?jobId=YOUR_JOB_ID" \\
+# Get jobs with filters
+curl -X GET "https://hummane-api.vercel.app/public/jobs?jobId=YOUR_JOB_ID&city=London&country=United%20Kingdom&employmentMode=Remote&employmentType=Full-time&departmentId=YOUR_DEPARTMENT_ID" \\
   -H "x-api-key: YOUR_API_KEY"`}
                                     </pre>
                                 </div>
                                 <div className="space-y-3">
                                     <p className="text-sm font-bold text-slate-700">Query Parameters:</p>
-                                    <div className="bg-slate-50 border border-slate-200 rounded-2xl p-4">
+                                    <div className="bg-slate-50 border border-slate-200 rounded-2xl p-4 space-y-3">
                                         <div className="flex gap-3 text-sm">
-                                            <code className="text-blue-600 font-mono font-bold shrink-0">jobId</code>
-                                            <span className="text-slate-600">Optional. Filter by specific job UUID to get details for a single job.</span>
+                                            <code className="text-blue-600 font-mono font-bold shrink-0 w-32">jobId</code>
+                                            <span className="text-slate-600">Filter for a specific job UUID</span>
+                                        </div>
+                                        <div className="flex gap-3 text-sm">
+                                            <code className="text-blue-600 font-mono font-bold shrink-0 w-32">city</code>
+                                            <span className="text-slate-600">Filter by city name (e.g., London)</span>
+                                        </div>
+                                        <div className="flex gap-3 text-sm">
+                                            <code className="text-blue-600 font-mono font-bold shrink-0 w-32">country</code>
+                                            <span className="text-slate-600">Filter by country name (e.g., United Kingdom)</span>
+                                        </div>
+                                        <div className="flex gap-3 text-sm">
+                                            <code className="text-blue-600 font-mono font-bold shrink-0 w-32">employmentMode</code>
+                                            <span className="text-slate-600">Filter by mode: Remote, Onsite, or Hybrid</span>
+                                        </div>
+                                        <div className="flex gap-3 text-sm">
+                                            <code className="text-blue-600 font-mono font-bold shrink-0 w-32">employmentType</code>
+                                            <span className="text-slate-600">Filter by type: Full-time, Contract, Part-time, Intern</span>
+                                        </div>
+                                        <div className="flex gap-3 text-sm">
+                                            <code className="text-blue-600 font-mono font-bold shrink-0 w-32">departmentId</code>
+                                            <span className="text-slate-600">Filter for jobs in a specific department UUID</span>
                                         </div>
                                     </div>
                                 </div>
@@ -260,67 +280,89 @@ curl -X GET "https://hummane-api.vercel.app/public/jobs?jobId=YOUR_JOB_ID" \\
                                     <h3 className="text-lg font-bold text-slate-900">Submit Applicant</h3>
                                 </div>
                                 <p className="text-sm text-slate-600">
-                                    Submit a new applicant from your public careers page or external job boards.
+                                    Submit a new applicant from your public careers page or external job boards. Uses multipart form data to support file uploads.
                                 </p>
                                 <div className="bg-slate-900 rounded-2xl p-4 overflow-x-auto">
                                     <pre className="text-sm text-slate-100 font-mono whitespace-pre-wrap">
 {`curl -X POST "https://hummane-api.vercel.app/public/applicants" \\
   -H "x-api-key: YOUR_API_KEY" \\
-  -H "Content-Type: application/json" \\
-  -d '{
-    "jobId": "YOUR_JOB_UUID",
-    "fullName": "John Smith",
-    "email": "john.smith@example.com",
-    "phone": "+1234567890",
-    "appliedDate": "2026-01-20",
-    "status": "new",
-    "yearsOfExperience": 5,
-    "currentSalary": 75000,
-    "expectedSalary": 90000,
-    "documents": {
-      "files": [
-        "https://example.com/resume.pdf",
-        "https://example.com/cover-letter.pdf"
-      ]
-    }
-  }'`}
+  -F "jobId=YOUR_JOB_UUID" \\
+  -F "fullName=Jane Smith" \\
+  -F "email=jane.smith@example.com" \\
+  -F "phone=+12025550123" \\
+  -F "positionApplied=Senior Lead Developer" \\
+  -F "yearsOfExperience=8.5" \\
+  -F "currentSalary=110000" \\
+  -F "expectedSalary=135000" \\
+  -F "noticePeriod=1 month" \\
+  -F "linkedinUrl=https://www.linkedin.com/in/janesmith" \\
+  -F "appliedDate=2026-01-20" \\
+  -F "resume=@/path/to/your/resume.pdf"`}
                                     </pre>
                                 </div>
                                 <div className="space-y-3">
-                                    <p className="text-sm font-bold text-slate-700">Request Parameters:</p>
+                                    <p className="text-sm font-bold text-slate-700">Field Reference:</p>
                                     <div className="bg-slate-50 border border-slate-200 rounded-2xl p-4">
                                         <div className="grid gap-3 text-sm">
                                             <div className="flex gap-3">
-                                                <code className="text-blue-600 font-mono font-bold shrink-0">x-api-key</code>
-                                                <span className="text-slate-600">Your API key from above</span>
+                                                <code className="text-blue-600 font-mono font-bold shrink-0 w-36">jobId</code>
+                                                <span className="text-slate-500 text-xs shrink-0 w-16">UUID</span>
+                                                <span className="text-slate-600"><span className="text-red-500 font-semibold">Required.</span> The ID of the job listing.</span>
                                             </div>
                                             <div className="flex gap-3">
-                                                <code className="text-blue-600 font-mono font-bold shrink-0">jobId</code>
-                                                <span className="text-slate-600">The UUID of the job (from GET /public/jobs)</span>
+                                                <code className="text-blue-600 font-mono font-bold shrink-0 w-36">fullName</code>
+                                                <span className="text-slate-500 text-xs shrink-0 w-16">String</span>
+                                                <span className="text-slate-600"><span className="text-red-500 font-semibold">Required.</span> Candidate&apos;s full name.</span>
                                             </div>
                                             <div className="flex gap-3">
-                                                <code className="text-blue-600 font-mono font-bold shrink-0">fullName</code>
-                                                <span className="text-slate-600">Applicant&apos;s full name</span>
+                                                <code className="text-blue-600 font-mono font-bold shrink-0 w-36">email</code>
+                                                <span className="text-slate-500 text-xs shrink-0 w-16">String</span>
+                                                <span className="text-slate-600"><span className="text-red-500 font-semibold">Required.</span> Candidate&apos;s email address.</span>
                                             </div>
                                             <div className="flex gap-3">
-                                                <code className="text-blue-600 font-mono font-bold shrink-0">email</code>
-                                                <span className="text-slate-600">Applicant&apos;s email address</span>
+                                                <code className="text-blue-600 font-mono font-bold shrink-0 w-36">resume</code>
+                                                <span className="text-slate-500 text-xs shrink-0 w-16">File</span>
+                                                <span className="text-slate-600"><span className="text-amber-600 font-semibold">Recommended.</span> The actual PDF/Doc file.</span>
                                             </div>
                                             <div className="flex gap-3">
-                                                <code className="text-blue-600 font-mono font-bold shrink-0">phone</code>
-                                                <span className="text-slate-600">Phone number (optional)</span>
+                                                <code className="text-blue-600 font-mono font-bold shrink-0 w-36">phone</code>
+                                                <span className="text-slate-500 text-xs shrink-0 w-16">String</span>
+                                                <span className="text-slate-600">Contact number.</span>
                                             </div>
                                             <div className="flex gap-3">
-                                                <code className="text-blue-600 font-mono font-bold shrink-0">appliedDate</code>
-                                                <span className="text-slate-600">Date in YYYY-MM-DD format</span>
+                                                <code className="text-blue-600 font-mono font-bold shrink-0 w-36">positionApplied</code>
+                                                <span className="text-slate-500 text-xs shrink-0 w-16">String</span>
+                                                <span className="text-slate-600">Custom title (falls back to Job Title if omitted).</span>
                                             </div>
                                             <div className="flex gap-3">
-                                                <code className="text-blue-600 font-mono font-bold shrink-0">status</code>
-                                                <span className="text-slate-600">Use &quot;new&quot; for fresh applications</span>
+                                                <code className="text-blue-600 font-mono font-bold shrink-0 w-36">yearsOfExperience</code>
+                                                <span className="text-slate-500 text-xs shrink-0 w-16">Number</span>
+                                                <span className="text-slate-600">Total years of relevant work experience.</span>
                                             </div>
                                             <div className="flex gap-3">
-                                                <code className="text-blue-600 font-mono font-bold shrink-0">documents</code>
-                                                <span className="text-slate-600">Object with &quot;files&quot; array of URLs (resumes, portfolios)</span>
+                                                <code className="text-blue-600 font-mono font-bold shrink-0 w-36">currentSalary</code>
+                                                <span className="text-slate-500 text-xs shrink-0 w-16">Number</span>
+                                                <span className="text-slate-600">Current annual salary (base digits only).</span>
+                                            </div>
+                                            <div className="flex gap-3">
+                                                <code className="text-blue-600 font-mono font-bold shrink-0 w-36">expectedSalary</code>
+                                                <span className="text-slate-500 text-xs shrink-0 w-16">Number</span>
+                                                <span className="text-slate-600">Desired annual salary (base digits only).</span>
+                                            </div>
+                                            <div className="flex gap-3">
+                                                <code className="text-blue-600 font-mono font-bold shrink-0 w-36">noticePeriod</code>
+                                                <span className="text-slate-500 text-xs shrink-0 w-16">String</span>
+                                                <span className="text-slate-600">Availability (e.g., &quot;Immediate&quot;, &quot;2 weeks&quot;).</span>
+                                            </div>
+                                            <div className="flex gap-3">
+                                                <code className="text-blue-600 font-mono font-bold shrink-0 w-36">linkedinUrl</code>
+                                                <span className="text-slate-500 text-xs shrink-0 w-16">String</span>
+                                                <span className="text-slate-600">Link to candidate&apos;s professional profile.</span>
+                                            </div>
+                                            <div className="flex gap-3">
+                                                <code className="text-blue-600 font-mono font-bold shrink-0 w-36">appliedDate</code>
+                                                <span className="text-slate-500 text-xs shrink-0 w-16">Date</span>
+                                                <span className="text-slate-600">Format: YYYY-MM-DD (defaults to today).</span>
                                             </div>
                                         </div>
                                     </div>
