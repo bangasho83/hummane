@@ -7,6 +7,7 @@ import { EmployeeForm, JobDescriptionPreview } from '@/features/employees'
 import { toast } from '@/components/ui/toast'
 import { ArrowLeft } from 'lucide-react'
 import { Button } from '@/components/ui/button'
+import { Card, CardContent } from '@/components/ui/card'
 import type { EmployeeApi } from '@/types'
 
 const API_URL = 'https://hummane-api.vercel.app'
