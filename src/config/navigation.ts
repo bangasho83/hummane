@@ -6,6 +6,7 @@ import {
   FileText,
   HelpCircle,
   LayoutDashboard,
+  Settings,
   Users,
   Wallet,
 } from 'lucide-react'
@@ -40,6 +41,7 @@ const performanceItems: NavItem[] = [
 ]
 
 const secondaryItems: NavItem[] = [
+  { name: 'Settings', href: '/settings', icon: Settings },
   { name: 'Support', href: '/support', icon: HelpCircle },
 ]
 

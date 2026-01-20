@@ -128,6 +128,66 @@ export const exchangeFirebaseToken = async (firebaseToken: string) => {
   return { accessToken, user, company, companyId, authResponse: data }
 }
 
+export type ApiKeyResponse = {
+  apiKey: string
+  createdAt?: string
+  expiresAt?: string
+}
+
+export const fetchApiKeyApi = async (
+  accessToken: string
+): Promise<ApiKeyResponse | null> => {
+  let response: Response
+  try {
+    response = await fetch(`${COMPANIES_PATH}/api-key`, {
+      method: 'GET',
+      headers: {
+        Authorization: `Bearer ${accessToken}`,
+      },
+    })
+  } catch (error) {
+    console.error('API /companies/api-key GET network error:', error)
+    throw new Error('Network error while fetching API key')
+  }
+
+  if (response.status === 404) {
+    return null
+  }
+
+  if (!response.ok) {
+    const message = await response.text()
+    throw new Error(message || 'Failed to fetch API key')
+  }
+
+  const data = await response.json().catch(() => null)
+  return (data?.data || data) as ApiKeyResponse
+}
+
+export const generateApiKeyApi = async (
+  accessToken: string
+): Promise<ApiKeyResponse> => {
+  let response: Response
+  try {
+    response = await fetch(`${COMPANIES_PATH}/api-key`, {
+      method: 'POST',
+      headers: {
+        Authorization: `Bearer ${accessToken}`,
+      },
+    })
+  } catch (error) {
+    console.error('API /companies/api-key POST network error:', error)
+    throw new Error('Network error while generating API key')
+  }
+
+  if (!response.ok) {
+    const message = await response.text()
+    throw new Error(message || 'Failed to generate API key')
+  }
+
+  const data = await response.json().catch(() => null)
+  return (data?.data || data) as ApiKeyResponse
+}
+
 export const createCompanyApi = async (
   payload: { name: string; industry: string; size: string; ownerId?: string },
   accessToken: string
