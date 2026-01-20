@@ -133,10 +133,10 @@ export function EmployeeTable({ employees, onRefresh }: EmployeeTableProps) {
         if (confirm(`Are you sure you want to delete ${employee.name}? This action cannot be undone.`)) {
             try {
                 await deleteEmployee(employee.id)
-                toast('Employee deleted successfully', 'success')
+                toast('Team member deleted successfully', 'success')
                 onRefresh?.()
             } catch {
-                toast('Failed to delete employee', 'error')
+                toast('Failed to delete team member', 'error')
             }
         }
     }
@@ -158,7 +158,7 @@ export function EmployeeTable({ employees, onRefresh }: EmployeeTableProps) {
                         <div className="relative group">
                             <Search className="absolute left-4 top-1/2 transform -translate-y-1/2 w-4 h-4 text-slate-400 group-focus-within:text-blue-500 transition-colors" />
                             <Input
-                                placeholder="Search employees..."
+                                placeholder="Search team members..."
                                 value={searchTerm}
                                 onChange={(e) => setSearchTerm(e.target.value)}
                                 className="pl-11 bg-slate-50 border-slate-100 h-12 rounded-2xl focus-visible:ring-blue-500/20"
@@ -214,14 +214,14 @@ export function EmployeeTable({ employees, onRefresh }: EmployeeTableProps) {
                                 className="pl-8 py-4 text-[10px] font-extrabold uppercase tracking-widest text-slate-400 cursor-pointer hover:text-slate-600 transition-colors group"
                                 onClick={() => handleSort('employeeId')}
                             >
-                                <span className="flex items-center">Employee ID{getSortIcon('employeeId')}</span>
+                                <span className="flex items-center">Member ID{getSortIcon('employeeId')}</span>
                             </TableHead>
                             <TableHead className="py-4 text-[10px] font-extrabold uppercase tracking-widest text-slate-400">Photo</TableHead>
                             <TableHead
                                 className="py-4 text-[10px] font-extrabold uppercase tracking-widest text-slate-400 cursor-pointer hover:text-slate-600 transition-colors group"
                                 onClick={() => handleSort('name')}
                             >
-                                <span className="flex items-center">Employee{getSortIcon('name')}</span>
+                                <span className="flex items-center">Team Member{getSortIcon('name')}</span>
                             </TableHead>
                             <TableHead
                                 className="py-4 text-[10px] font-extrabold uppercase tracking-widest text-slate-400 cursor-pointer hover:text-slate-600 transition-colors group"
@@ -259,12 +259,12 @@ export function EmployeeTable({ employees, onRefresh }: EmployeeTableProps) {
                                             <Users className="w-10 h-10 text-slate-200" />
                                         </div>
                                         <h2 className="text-2xl font-bold text-slate-900 mb-2">
-                                            {searchTerm || hasActiveFilters ? 'No results found' : 'No Employees Yet'}
+                                            {searchTerm || hasActiveFilters ? 'No results found' : 'No Team Members Yet'}
                                         </h2>
                                         <p className="text-slate-500 font-medium max-w-sm">
                                             {searchTerm || hasActiveFilters
-                                                ? `We couldn't find any employees matching your search criteria.`
-                                                : 'Add your first employee to start building your team.'}
+                                                ? `We couldn't find any team members matching your search criteria.`
+                                                : 'Add your first team member to start building your team.'}
                                         </p>
                                         {hasActiveFilters && (
                                             <Button
@@ -347,7 +347,7 @@ export function EmployeeTable({ employees, onRefresh }: EmployeeTableProps) {
 
             <div className="p-8 border-t border-slate-50 bg-slate-50/30">
                 <p className="text-xs font-bold text-slate-400 uppercase tracking-widest">
-                    {filteredEmployees.length} {filteredEmployees.length === 1 ? 'Employee' : 'Employees'} {searchTerm || hasActiveFilters ? 'Found' : 'Managed'}
+                    {filteredEmployees.length} {filteredEmployees.length === 1 ? 'Team Member' : 'Team Members'} {searchTerm || hasActiveFilters ? 'Found' : 'Managed'}
                 </p>
             </div>
         </div>

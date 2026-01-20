@@ -76,14 +76,14 @@ export default function EmployeesPage() {
                     className="bg-blue-600 hover:bg-blue-700 text-white rounded-2xl font-bold shadow-lg shadow-blue-500/20 px-6 py-6 h-auto"
                 >
                     <Plus className="w-5 h-5 mr-2" />
-                    Add Employee
+                    Add Team Member
                 </Button>
             </div>
 
             <div className="bg-white rounded-3xl shadow-premium border border-slate-100 overflow-hidden">
                 {isLoading ? (
                     <div className="p-20 flex items-center justify-center">
-                        <div className="text-slate-400 font-medium">Loading employees...</div>
+                        <div className="text-slate-400 font-medium">Loading team members...</div>
                     </div>
                 ) : (
                     <EmployeeTable employees={rawApiResponse || []} onRefresh={fetchEmployees} />
