@@ -273,6 +273,78 @@ curl -X GET "https://hummane-api.vercel.app/public/jobs?jobId=YOUR_JOB_ID&city=L
 
                             <div className="border-t border-slate-100"></div>
 
+                            {/* Get Applicants */}
+                            <div className="space-y-4">
+                                <div className="flex items-center gap-2">
+                                    <span className="px-2 py-1 bg-blue-100 text-blue-700 text-xs font-bold rounded-lg">GET</span>
+                                    <h3 className="text-lg font-bold text-slate-900">Fetch Applicants</h3>
+                                </div>
+                                <p className="text-sm text-slate-600">
+                                    Retrieve all applicants for your company. Use query parameters to filter results.
+                                </p>
+                                <div className="bg-slate-900 rounded-2xl p-4 overflow-x-auto">
+                                    <pre className="text-sm text-slate-100 font-mono whitespace-pre-wrap">
+{`# Get all applicants
+curl -X GET "https://hummane-api.vercel.app/public/applicants" \\
+  -H "x-api-key: YOUR_API_KEY"
+
+# Get applicants with filters
+curl -X GET "https://hummane-api.vercel.app/public/applicants?jobId=YOUR_JOB_ID&status=new&departmentId=YOUR_DEPARTMENT_ID" \\
+  -H "x-api-key: YOUR_API_KEY"`}
+                                    </pre>
+                                </div>
+                                <div className="space-y-3">
+                                    <p className="text-sm font-bold text-slate-700">Query Parameters:</p>
+                                    <div className="bg-slate-50 border border-slate-200 rounded-2xl p-4 space-y-3">
+                                        <div className="flex gap-3 text-sm">
+                                            <code className="text-blue-600 font-mono font-bold shrink-0 w-32">jobId</code>
+                                            <span className="text-slate-600">Filter applicants by specific job UUID</span>
+                                        </div>
+                                        <div className="flex gap-3 text-sm">
+                                            <code className="text-blue-600 font-mono font-bold shrink-0 w-32">status</code>
+                                            <span className="text-slate-600">Filter by status: new, screening, interview, offer, hired, rejected</span>
+                                        </div>
+                                        <div className="flex gap-3 text-sm">
+                                            <code className="text-blue-600 font-mono font-bold shrink-0 w-32">departmentId</code>
+                                            <span className="text-slate-600">Filter applicants by department UUID</span>
+                                        </div>
+                                    </div>
+                                </div>
+                                <div className="space-y-2">
+                                    <p className="text-sm font-bold text-slate-700">Example Response:</p>
+                                    <div className="bg-slate-50 border border-slate-200 rounded-2xl p-4 overflow-x-auto">
+                                        <pre className="text-sm text-slate-700 font-mono whitespace-pre-wrap">
+{`[
+  {
+    "id": "uuid-string",
+    "companyId": "company-uuid",
+    "jobId": "job-uuid",
+    "fullName": "Jane Smith",
+    "email": "jane.smith@example.com",
+    "phone": "+12025550123",
+    "positionApplied": "Senior Lead Developer",
+    "departmentId": "department-uuid",
+    "departmentName": "Engineering",
+    "yearsOfExperience": 8.5,
+    "currentSalary": 110000,
+    "expectedSalary": 135000,
+    "noticePeriod": "1 month",
+    "linkedinUrl": "https://www.linkedin.com/in/janesmith",
+    "documents": {
+      "files": ["https://storage.example.com/resume.pdf"]
+    },
+    "status": "new",
+    "appliedDate": "2026-01-20",
+    "createdAt": "2026-01-20T10:30:00Z"
+  }
+]`}
+                                        </pre>
+                                    </div>
+                                </div>
+                            </div>
+
+                            <div className="border-t border-slate-100"></div>
+
                             {/* Submit Applicant */}
                             <div className="space-y-4">
                                 <div className="flex items-center gap-2">

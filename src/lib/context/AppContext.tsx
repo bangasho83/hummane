@@ -52,6 +52,8 @@ import {
     createApplicantApi,
     deleteApplicantApi,
     fetchApplicantsApi,
+    fetchApplicantsApiWithDebug,
+    type ApplicantsFetchDebugInfo,
     updateApplicantApi,
     updateFeedbackCardApi,
     updateFeedbackEntryApi,
@@ -130,6 +132,7 @@ interface AppContextType {
     updateApplicant: (id: string, applicantData: Partial<Omit<Applicant, 'id' | 'companyId' | 'createdAt'>>) => Promise<Applicant | null>
     deleteApplicant: (id: string) => Promise<void>
     refreshApplicants: (jobId?: string) => Promise<void>
+    refreshApplicantsWithDebug: (jobId?: string) => Promise<ApplicantsFetchDebugInfo | null>
     isHydrating: boolean
 }
 
@@ -1928,6 +1931,20 @@ export function AppProvider({ children }: { children: ReactNode }) {
         }
     }
 
+    const refreshApplicantsWithDebug = async (jobId?: string): Promise<ApplicantsFetchDebugInfo | null> => {
+        try {
+            if (!currentCompany) return null
+            if (!apiAccessToken) return null
+            const debugInfo = await fetchApplicantsApiWithDebug(apiAccessToken, jobId)
+            const normalized = debugInfo.applicants.map(applicant => normalizeApplicant(applicant, currentCompany.id))
+            setApplicants(normalized)
+            return { ...debugInfo, applicants: normalized }
+        } catch (error) {
+            console.error('Refresh applicants error:', error)
+            return null
+        }
+    }
+
     // Applicants are fetched on-demand when visiting the applicants page, not on login
 
     if (!mounted) {
@@ -1998,6 +2015,7 @@ export function AppProvider({ children }: { children: ReactNode }) {
                 updateApplicant,
                 deleteApplicant,
                 refreshApplicants,
+                refreshApplicantsWithDebug,
                 isHydrating
             }}
         >

@@ -1588,13 +1588,20 @@ export const createApplicantApi = async (
   return (data?.data || data?.applicant || data) as Applicant
 }
 
+export interface ApplicantsFetchDebugInfo {
+  curl: string
+  response: unknown
+  applicants: Applicant[]
+}
+
 export const fetchApplicantsApi = async (accessToken: string, jobId?: string): Promise<Applicant[]> => {
+  const result = await fetchApplicantsApiWithDebug(accessToken, jobId)
+  return result.applicants
+}
+
+export const fetchApplicantsApiWithDebug = async (accessToken: string, jobId?: string): Promise<ApplicantsFetchDebugInfo> => {
   const url = jobId ? `${APPLICANTS_PATH}?jobId=${encodeURIComponent(jobId)}` : APPLICANTS_PATH
-  console.info(
-    `Applicants fetch curl:\n` +
-      `curl -X GET "${url}" \\\n` +
-      `  -H "Authorization: Bearer ${accessToken}"`
-  )
+  const curl = `curl -X GET "${url}" \\\n  -H "Authorization: Bearer ${accessToken}"`
   let response: Response
   try {
     response = await fetch(url, {
@@ -1614,9 +1621,9 @@ export const fetchApplicantsApi = async (accessToken: string, jobId?: string): P
   }
 
   const data = await response.json().catch(() => null)
-  console.info('Applicants fetch response:', JSON.stringify(data, null, 2))
   const list = data?.data || data?.applicants || data
-  return Array.isArray(list) ? (list as Applicant[]) : []
+  const applicants = Array.isArray(list) ? (list as Applicant[]) : []
+  return { curl, response: data, applicants }
 }
 
 export const fetchApplicantApi = async (applicantId: string, accessToken: string): Promise<Applicant | null> => {
