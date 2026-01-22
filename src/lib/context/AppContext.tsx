@@ -67,8 +67,11 @@ import {
     getStoredAccessToken,
     getStoredApiUser,
     persistCompanyId,
+    persistUserRole,
+    fetchMeApi,
     type AuthLoginResponse,
-    type ApiUser
+    type ApiUser,
+    type MeResponse
 } from '@/lib/api/client'
 interface AppContextType {
     currentUser: User | null
@@ -87,6 +90,7 @@ interface AppContextType {
     apiAccessToken: string | null
     companyApiResponse: Company | null
     apiCompanyId: string | null
+    meProfile: MeResponse | null
     login: (email: string, password: string) => Promise<{ success: boolean; message: string }>
     loginWithGoogle: () => Promise<{ success: boolean; message: string }>
     signup: (name: string, email: string, password: string) => Promise<{ success: boolean; message: string }>
@@ -158,6 +162,7 @@ export function AppProvider({ children }: { children: ReactNode }) {
     const [authLoginResponse, setAuthLoginResponse] = useState<AuthLoginResponse | null>(null)
     const [companyApiResponse, setCompanyApiResponse] = useState<Company | null>(null)
     const [apiCompanyId, setApiCompanyId] = useState<string | null>(null)
+    const [meProfile, setMeProfile] = useState<MeResponse | null>(null)
 
     const loadCompanyDataFromApi = async (company: Company, accessToken: string) => {
         setCurrentCompany(company)
@@ -622,6 +627,19 @@ export function AppProvider({ children }: { children: ReactNode }) {
         setApiUser(user)
         setApiCompanyId(companyId)
         setAuthLoginResponse(authResponse ?? null)
+
+        // Fetch user profile with role from /users/me
+        try {
+            const me = await fetchMeApi(accessToken)
+            setMeProfile(me)
+            // Persist role in cookie for middleware access
+            if (me.role) {
+                persistUserRole(me.role)
+            }
+        } catch (error) {
+            console.error('Failed to fetch user profile from /users/me:', error)
+        }
+
         return { accessToken, user, company, companyId }
     }
 
@@ -1125,8 +1143,8 @@ export function AppProvider({ children }: { children: ReactNode }) {
 
     useEffect(() => {
         if (!apiAccessToken || !apiCompanyId || !currentUser) {
-            // No API session to hydrate from, stop hydrating
-            if (mounted && !apiAccessToken) {
+            // No API session to hydrate from, or no company to hydrate, stop hydrating
+            if (mounted) {
                 setIsHydrating(false)
             }
             return
@@ -1970,6 +1988,7 @@ export function AppProvider({ children }: { children: ReactNode }) {
                 apiAccessToken,
                 companyApiResponse,
                 apiCompanyId,
+                meProfile,
                 login,
                 loginWithGoogle,
                 signup,

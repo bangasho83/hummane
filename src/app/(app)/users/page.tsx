@@ -13,13 +13,14 @@ import { toast } from '@/components/ui/toast'
 import { Loader2, Plus, Users } from 'lucide-react'
 
 export default function UsersPage() {
-    const { apiAccessToken, apiCompanyId } = useApp()
+    const { apiAccessToken, apiCompanyId, employees } = useApp()
     const [users, setUsers] = useState<ApiUserItem[]>([])
     const [isLoading, setIsLoading] = useState(true)
     const [error, setError] = useState<string | null>(null)
     const [isInviteOpen, setIsInviteOpen] = useState(false)
     const [inviteEmail, setInviteEmail] = useState('')
     const [inviteRole, setInviteRole] = useState<'owner' | 'member'>('member')
+    const [inviteEmployeeId, setInviteEmployeeId] = useState<string>('')
     const [isInviting, setIsInviting] = useState(false)
 
     const fetchUsers = async () => {
@@ -48,6 +49,10 @@ export default function UsersPage() {
             toast('Please enter an email address', 'error')
             return
         }
+        if (inviteRole === 'member' && !inviteEmployeeId) {
+            toast('Please select an employee for the member role', 'error')
+            return
+        }
         if (!apiAccessToken || !apiCompanyId) {
             toast('Not authenticated', 'error')
             return
@@ -55,11 +60,20 @@ export default function UsersPage() {
 
         setIsInviting(true)
         try {
-            await inviteUserApi({ companyId: apiCompanyId, email: inviteEmail.trim(), role: inviteRole }, apiAccessToken)
+            const payload: { companyId: string; email: string; role: 'owner' | 'member'; employeeId?: string } = {
+                companyId: apiCompanyId,
+                email: inviteEmail.trim(),
+                role: inviteRole
+            }
+            if (inviteRole === 'member' && inviteEmployeeId) {
+                payload.employeeId = inviteEmployeeId
+            }
+            await inviteUserApi(payload, apiAccessToken)
             toast('Invitation sent successfully', 'success')
             setIsInviteOpen(false)
             setInviteEmail('')
             setInviteRole('member')
+            setInviteEmployeeId('')
             // Refresh users list
             fetchUsers()
         } catch (err) {
@@ -102,7 +116,13 @@ export default function UsersPage() {
                             </div>
                             <div className="space-y-2">
                                 <Label className="text-sm font-bold text-slate-700 px-1">Role</Label>
-                                <Select value={inviteRole} onValueChange={(v) => setInviteRole(v as 'owner' | 'member')}>
+                                <Select value={inviteRole} onValueChange={(v) => {
+                                    setInviteRole(v as 'owner' | 'member')
+                                    // Clear employee selection when switching to owner
+                                    if (v === 'owner') {
+                                        setInviteEmployeeId('')
+                                    }
+                                }}>
                                     <SelectTrigger className="rounded-xl border-slate-200 h-12">
                                         <SelectValue />
                                     </SelectTrigger>
@@ -112,6 +132,28 @@ export default function UsersPage() {
                                     </SelectContent>
                                 </Select>
                             </div>
+                            {inviteRole === 'member' && (
+                                <div className="space-y-2">
+                                    <Label className="text-sm font-bold text-slate-700 px-1">Employee</Label>
+                                    <Select value={inviteEmployeeId} onValueChange={setInviteEmployeeId}>
+                                        <SelectTrigger className="rounded-xl border-slate-200 h-12">
+                                            <SelectValue placeholder="Select employee" />
+                                        </SelectTrigger>
+                                        <SelectContent>
+                                            {employees.length === 0 ? (
+                                                <SelectItem value="" disabled>No employees available</SelectItem>
+                                            ) : (
+                                                employees.map((employee) => (
+                                                    <SelectItem key={employee.id} value={employee.id}>
+                                                        {employee.name} {employee.email ? `(${employee.email})` : ''}
+                                                    </SelectItem>
+                                                ))
+                                            )}
+                                        </SelectContent>
+                                    </Select>
+                                    <p className="text-xs text-slate-500 px-1">Select the employee profile to associate with this user</p>
+                                </div>
+                            )}
                             <div className="flex justify-end gap-3 pt-4">
                                 <Button
                                     type="button"

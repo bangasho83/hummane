@@ -5,11 +5,11 @@ import { usePathname, useRouter } from 'next/navigation'
 import { LogOut, Copy, ChevronDown, ChevronUp } from 'lucide-react'
 import { useApp } from '@/lib/context/AppContext'
 import { cn } from '@/lib/utils'
-import { navigationSections, type NavItem } from '@/config/navigation'
+import { memberNavigationItems, type MemberNavItem } from '@/config/member-navigation'
 import { toast } from '@/components/ui/toast'
 import { useState } from 'react'
 
-export function Sidebar() {
+export function MemberSidebar() {
     const pathname = usePathname()
     const router = useRouter()
     const { logout, currentCompany, currentUser, apiCompanyId, meProfile } = useApp()
@@ -20,7 +20,7 @@ export function Sidebar() {
         toast(`${label} copied`, 'success')
     }
 
-    const NavLink = ({ item }: { item: NavItem }) => {
+    const NavLink = ({ item }: { item: MemberNavItem }) => {
         const isActive = item.exact
             ? pathname === item.href
             : pathname.startsWith(item.href)
@@ -59,27 +59,16 @@ export function Sidebar() {
                             hummane
                         </span>
                         <p className="text-[10px] font-bold text-slate-400 uppercase tracking-widest leading-none mt-0.5">
-                            Empowering Humans
+                            Member Portal
                         </p>
                     </div>
                 </div>
 
-                <div className="space-y-6">
-                    {navigationSections.map((section) => (
-                        <div key={section.label ?? 'primary'}>
-                            {section.label ? (
-                                <p className="text-[10px] font-extrabold text-slate-400 uppercase tracking-widest mb-4 px-3">
-                                    {section.label}
-                                </p>
-                            ) : null}
-                            <nav>
-                                {section.items.map((item) => (
-                                    <NavLink key={item.name} item={item} />
-                                ))}
-                            </nav>
-                        </div>
+                <nav className="space-y-1">
+                    {memberNavigationItems.map((item) => (
+                        <NavLink key={item.name} item={item} />
                     ))}
-                </div>
+                </nav>
             </div>
 
             <div className="p-6 border-t border-slate-100 bg-slate-50/50">
@@ -200,3 +189,4 @@ export function Sidebar() {
         </aside>
     )
 }
+

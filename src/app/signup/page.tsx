@@ -13,7 +13,7 @@ import { Chrome } from 'lucide-react'
 
 export default function SignupPage() {
     const router = useRouter()
-    const { signup, loginWithGoogle, currentUser, currentCompany, isHydrating } = useApp()
+    const { signup, loginWithGoogle, currentUser, currentCompany, isHydrating, meProfile } = useApp()
     const [name, setName] = useState('')
     const [email, setEmail] = useState('')
     const [password, setPassword] = useState('')
@@ -23,8 +23,18 @@ export default function SignupPage() {
     useEffect(() => {
         if (isHydrating) return
         if (!currentUser) return
-        router.push(currentCompany ? '/dashboard' : '/company-setup')
-    }, [currentCompany, currentUser, router, isHydrating])
+        if (!currentCompany) {
+            router.push('/company-setup')
+            return
+        }
+        // Route based on user role from /users/me API
+        const userRole = meProfile?.role
+        if (userRole === 'member') {
+            router.push('/member')
+        } else {
+            router.push('/dashboard')
+        }
+    }, [currentCompany, currentUser, router, isHydrating, meProfile])
 
     if (currentUser) {
         return null

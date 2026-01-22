@@ -6,6 +6,8 @@ export type ApiUser = {
   name?: string
   companyId?: string
   createdAt?: string
+  role?: 'owner' | 'member'
+  employeeId?: string
 }
 
 export type ApiCompany = Partial<Company>
@@ -36,6 +38,7 @@ const USERS_PATH = `${API_BASE_URL}/users`
 const ACCESS_TOKEN_KEY = 'hummaneApiAccessToken'
 const API_USER_KEY = 'hummaneApiUser'
 const COMPANY_ID_KEY = 'hummaneCompanyId'
+const USER_ROLE_COOKIE = 'hummane_user_role'
 
 const readStorage = (key: string) => {
   if (typeof window === 'undefined') return null
@@ -50,6 +53,18 @@ const writeStorage = (key: string, value: string) => {
 const removeStorage = (key: string) => {
   if (typeof window === 'undefined') return
   window.localStorage.removeItem(key)
+}
+
+const setCookie = (name: string, value: string, days: number = 7) => {
+  if (typeof document === 'undefined') return
+  const expires = new Date()
+  expires.setTime(expires.getTime() + days * 24 * 60 * 60 * 1000)
+  document.cookie = `${name}=${value};expires=${expires.toUTCString()};path=/;SameSite=Lax`
+}
+
+const removeCookie = (name: string) => {
+  if (typeof document === 'undefined') return
+  document.cookie = `${name}=;expires=Thu, 01 Jan 1970 00:00:00 GMT;path=/`
 }
 
 export const getStoredAccessToken = () => readStorage(ACCESS_TOKEN_KEY)
@@ -68,16 +83,25 @@ export const getStoredApiUser = (): ApiUser | null => {
 export const persistApiSession = (accessToken: string, user: ApiUser) => {
   writeStorage(ACCESS_TOKEN_KEY, accessToken)
   writeStorage(API_USER_KEY, JSON.stringify(user))
+  // Also store role in a cookie for middleware access
+  if (user.role) {
+    setCookie(USER_ROLE_COOKIE, user.role)
+  }
 }
 
 export const persistCompanyId = (companyId: string) => {
   writeStorage(COMPANY_ID_KEY, companyId)
 }
 
+export const persistUserRole = (role: string) => {
+  setCookie(USER_ROLE_COOKIE, role)
+}
+
 export const clearApiSession = () => {
   removeStorage(ACCESS_TOKEN_KEY)
   removeStorage(API_USER_KEY)
   removeStorage(COMPANY_ID_KEY)
+  removeCookie(USER_ROLE_COOKIE)
 }
 
 export const exchangeFirebaseToken = async (firebaseToken: string) => {
@@ -127,6 +151,40 @@ export const exchangeFirebaseToken = async (firebaseToken: string) => {
   }
 
   return { accessToken, user, company, companyId, authResponse: data }
+}
+
+export type MeResponse = {
+  id: string
+  email: string
+  name?: string
+  companyId?: string
+  role?: 'owner' | 'member'
+  employeeId?: string
+  createdAt?: string
+}
+
+export const fetchMeApi = async (accessToken: string): Promise<MeResponse> => {
+  const USERS_ME_PATH = `${API_BASE_URL}/users/me`
+  let response: Response
+  try {
+    response = await fetch(USERS_ME_PATH, {
+      method: 'GET',
+      headers: {
+        Authorization: `Bearer ${accessToken}`,
+      },
+    })
+  } catch (error) {
+    console.error('API /users/me GET network error:', error)
+    throw new Error('Network error while fetching user profile')
+  }
+
+  if (!response.ok) {
+    const message = await response.text()
+    throw new Error(message || 'Failed to fetch user profile')
+  }
+
+  const data = await response.json()
+  return data as MeResponse
 }
 
 export type ApiKeyResponse = {
@@ -1863,7 +1921,7 @@ export const fetchUsersApi = async (accessToken: string): Promise<ApiUserItem[]>
 }
 
 export const inviteUserApi = async (
-  payload: { companyId: string; email: string; role: 'owner' | 'member' },
+  payload: { companyId: string; email: string; role: 'owner' | 'member'; employeeId?: string },
   accessToken: string
 ): Promise<void> => {
   let response: Response
