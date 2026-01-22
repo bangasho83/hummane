@@ -1,6 +1,6 @@
 'use client'
 
-import { useMemo, useState } from 'react'
+import { useCallback, useEffect, useMemo, useState } from 'react'
 import Link from 'next/link'
 import { usePathname } from 'next/navigation'
 import { Card, CardContent } from '@/components/ui/card'
@@ -10,17 +10,55 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table'
 import { toast } from '@/components/ui/toast'
 import { useApp } from '@/lib/context/AppContext'
-import { FEEDBACK_SUBJECTS, type FeedbackCard, type FeedbackSubject } from '@/types'
-import { Plus, Search, Trash2 } from 'lucide-react'
+import { FEEDBACK_SUBJECTS, type FeedbackCard, type FeedbackEntry, type FeedbackSubject } from '@/types'
+import { Loader2, Plus, Search, Trash2 } from 'lucide-react'
+
+const API_BASE_URL = 'https://api.hummane.com'
 
 type FeedbackTypeFilter = 'all' | FeedbackSubject
 
 export default function FeedbackPage() {
-    const { feedbackCards, feedbackEntries, deleteFeedbackEntry } = useApp()
+    const { feedbackCards, apiAccessToken, isHydrating } = useApp()
     const pathname = usePathname()
+    const [entries, setEntries] = useState<FeedbackEntry[]>([])
+    const [loading, setLoading] = useState(true)
     const [searchTerm, setSearchTerm] = useState('')
     const [typeFilter, setTypeFilter] = useState<FeedbackTypeFilter>('all')
     const [cardFilter, setCardFilter] = useState<string>('all')
+
+    // Fetch all feedback entries from API
+    const fetchFeedbackEntries = useCallback(async () => {
+        if (!apiAccessToken) {
+            setLoading(false)
+            return
+        }
+        setLoading(true)
+        try {
+            const response = await fetch(`${API_BASE_URL}/feedback-entries`, {
+                method: 'GET',
+                headers: {
+                    Authorization: `Bearer ${apiAccessToken}`,
+                },
+            })
+            if (response.ok) {
+                const data = await response.json()
+                const list = data?.data || data?.feedbackEntries || data
+                setEntries(Array.isArray(list) ? list : [])
+            } else {
+                setEntries([])
+            }
+        } catch {
+            setEntries([])
+        } finally {
+            setLoading(false)
+        }
+    }, [apiAccessToken])
+
+    useEffect(() => {
+        if (!isHydrating && apiAccessToken) {
+            fetchFeedbackEntries()
+        }
+    }, [isHydrating, apiAccessToken, fetchFeedbackEntries])
 
     const cardsById = useMemo(() => new Map(feedbackCards.map(card => [card.id, card])), [feedbackCards])
     const cardOptions = useMemo(
@@ -29,8 +67,8 @@ export default function FeedbackPage() {
     )
 
     const sortedEntries = useMemo(
-        () => [...feedbackEntries].sort((a, b) => b.createdAt.localeCompare(a.createdAt)),
-        [feedbackEntries]
+        () => [...entries].sort((a, b) => b.createdAt.localeCompare(a.createdAt)),
+        [entries]
     )
 
     const filteredEntries = useMemo(() => {
@@ -41,7 +79,8 @@ export default function FeedbackPage() {
                 || (entry.subjectName || '').toLowerCase().includes(searchTerm.toLowerCase())
                 || (card?.title || '').toLowerCase().includes(searchTerm.toLowerCase())
             // Use subjectType for filtering since type can be null from API
-            const entryType = entry.type || (entry.subjectType === 'Employee' ? 'Team Member' : entry.subjectType === 'Applicant' ? 'Applicant' : null)
+            // eslint-disable-next-line @typescript-eslint/no-explicit-any
+            const entryType = entry.type || ((entry as any).subjectType === 'Employee' ? 'Team Member' : (entry as any).subjectType === 'Applicant' ? 'Applicant' : null)
             const matchesType = typeFilter === 'all' || entryType === typeFilter
             const matchesCard = cardFilter === 'all' || entry.cardId === cardFilter
             return matchesSearch && matchesType && matchesCard
@@ -59,12 +98,31 @@ export default function FeedbackPage() {
     const handleDelete = async (entryId: string) => {
         if (confirm('Delete this feedback entry?')) {
             try {
-                await deleteFeedbackEntry(entryId)
-                toast('Feedback entry deleted', 'success')
-            } catch (error) {
+                const response = await fetch(`${API_BASE_URL}/feedback-entries/${encodeURIComponent(entryId)}`, {
+                    method: 'DELETE',
+                    headers: {
+                        Authorization: `Bearer ${apiAccessToken}`,
+                    },
+                })
+                if (response.ok) {
+                    toast('Feedback entry deleted', 'success')
+                    // Refresh the list
+                    fetchFeedbackEntries()
+                } else {
+                    toast('Failed to delete feedback entry', 'error')
+                }
+            } catch {
                 toast('Failed to delete feedback entry', 'error')
             }
         }
+    }
+
+    if (isHydrating) {
+        return (
+            <div className="flex items-center justify-center p-12">
+                <Loader2 className="w-8 h-8 animate-spin text-blue-600" />
+            </div>
+        )
     }
 
     return (
@@ -139,13 +197,20 @@ export default function FeedbackPage() {
                             </div>
                         </div>
                     </div>
+                    {loading ? (
+                        <div className="flex items-center justify-center p-12">
+                            <Loader2 className="w-8 h-8 animate-spin text-blue-600" />
+                        </div>
+                    ) : (
                     <Table>
                         <TableHeader className="bg-slate-50/50">
                             <TableRow className="hover:bg-transparent border-slate-100">
                                 <TableHead className="pl-8 py-4 text-[10px] font-extrabold uppercase tracking-widest text-slate-400">View Feedback</TableHead>
-                                <TableHead className="py-4 text-[10px] font-extrabold uppercase tracking-widest text-slate-400">Recipient</TableHead>
                                 <TableHead className="py-4 text-[10px] font-extrabold uppercase tracking-widest text-slate-400">Card</TableHead>
+                                <TableHead className="py-4 text-[10px] font-extrabold uppercase tracking-widest text-slate-400">To</TableHead>
                                 <TableHead className="py-4 text-[10px] font-extrabold uppercase tracking-widest text-slate-400">From</TableHead>
+                                <TableHead className="py-4 text-[10px] font-extrabold uppercase tracking-widest text-slate-400">Score</TableHead>
+                                <TableHead className="py-4 text-[10px] font-extrabold uppercase tracking-widest text-slate-400">Status</TableHead>
                                 <TableHead className="py-4 text-[10px] font-extrabold uppercase tracking-widest text-slate-400">Date</TableHead>
                                 <TableHead className="text-right pr-8 py-4 text-[10px] font-extrabold uppercase tracking-widest text-slate-400">Actions</TableHead>
                             </TableRow>
@@ -153,21 +218,34 @@ export default function FeedbackPage() {
                         <TableBody>
                             {filteredEntries.length === 0 ? (
                                 <TableRow>
-                                    <TableCell colSpan={6} className="py-12 text-center text-slate-500">
-                                        {feedbackEntries.length === 0 ? 'No feedback submitted yet.' : 'No matches for the selected filters.'}
+                                    <TableCell colSpan={8} className="py-12 text-center text-slate-500">
+                                        {entries.length === 0 ? 'No feedback submitted yet.' : 'No matches for the selected filters.'}
                                     </TableCell>
                                 </TableRow>
                             ) : (
                                 filteredEntries.map((entry) => {
                                     const card = cardsById.get(entry.cardId) as FeedbackCard | undefined
-                                    // Complete if all answers with kind 'score' have answer value > 0
+                                    // Calculate score from answers
                                     // eslint-disable-next-line @typescript-eslint/no-explicit-any
                                     const scoreAnswers = entry.answers.filter((a: any) => a.question?.kind === 'score')
-                                    // eslint-disable-next-line @typescript-eslint/no-explicit-any
-                                    const isIncomplete = scoreAnswers.some((a: any) => {
-                                        const value = parseInt(a.answer, 10)
-                                        return isNaN(value) || value <= 0
-                                    })
+                                    let scorePercent: number | null = null
+                                    let isIncomplete = false
+                                    if (scoreAnswers.length > 0) {
+                                        let total = 0, max = 0
+                                        // eslint-disable-next-line @typescript-eslint/no-explicit-any
+                                        scoreAnswers.forEach((a: any) => {
+                                            const val = parseInt(a.answer || '0', 10)
+                                            if (!isNaN(val) && val > 0) {
+                                                total += val
+                                                max += 5
+                                            } else {
+                                                isIncomplete = true
+                                            }
+                                        })
+                                        if (max > 0) {
+                                            scorePercent = Math.round((total / max) * 100)
+                                        }
+                                    }
                                     return (
                                         <TableRow key={entry.id} className="hover:bg-slate-50/50 border-slate-50">
                                             <TableCell className="pl-8 py-5">
@@ -183,6 +261,9 @@ export default function FeedbackPage() {
                                                     View Feedback
                                                 </Link>
                                             </TableCell>
+                                            <TableCell className="py-5 text-sm text-slate-600">
+                                                {card?.title || 'Unknown'}
+                                            </TableCell>
                                             <TableCell className="py-5 font-semibold text-slate-900">
                                                 {entry.subjectId ? (
                                                     <Link
@@ -195,18 +276,34 @@ export default function FeedbackPage() {
                                                     entry.subjectName || 'Unknown'
                                                 )}
                                             </TableCell>
-                                            <TableCell className="py-5 text-sm text-slate-600">
-                                                <div className="flex items-center gap-2">
-                                                    <span>{card?.title || 'Unknown'}</span>
-                                                    {isIncomplete && (
-                                                        <span className="text-[10px] font-bold uppercase tracking-widest px-2 py-1 rounded-full bg-yellow-100 text-yellow-700">
-                                                            Incomplete
-                                                        </span>
-                                                    )}
-                                                </div>
-                                            </TableCell>
                                             <TableCell className="py-5 text-sm font-medium text-slate-600">
                                                 {entry.authorName || '—'}
+                                            </TableCell>
+                                            <TableCell className="py-5">
+                                                {scorePercent !== null ? (
+                                                    <div className="flex items-center gap-2">
+                                                        <div className="w-16 h-2 rounded-full bg-slate-100 overflow-hidden">
+                                                            <div
+                                                                className={`h-2 rounded-full ${scorePercent >= 80 ? 'bg-emerald-500' : scorePercent >= 60 ? 'bg-amber-500' : 'bg-red-500'}`}
+                                                                style={{ width: `${scorePercent}%` }}
+                                                            />
+                                                        </div>
+                                                        <span className="text-sm font-semibold text-slate-700">{scorePercent}%</span>
+                                                    </div>
+                                                ) : (
+                                                    <span className="text-sm text-slate-400">—</span>
+                                                )}
+                                            </TableCell>
+                                            <TableCell className="py-5">
+                                                {isIncomplete ? (
+                                                    <span className="text-[10px] font-bold uppercase tracking-widest px-2 py-1 rounded-full bg-yellow-100 text-yellow-700">
+                                                        Incomplete
+                                                    </span>
+                                                ) : (
+                                                    <span className="text-[10px] font-bold uppercase tracking-widest px-2 py-1 rounded-full bg-emerald-100 text-emerald-700">
+                                                        Complete
+                                                    </span>
+                                                )}
                                             </TableCell>
                                             <TableCell className="py-5 text-sm text-slate-500">
                                                 {new Date(entry.createdAt).toLocaleDateString()}
@@ -227,6 +324,7 @@ export default function FeedbackPage() {
                                 )}
                             </TableBody>
                         </Table>
+                    )}
                 </CardContent>
             </Card>
         </div>
