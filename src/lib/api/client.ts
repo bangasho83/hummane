@@ -32,6 +32,7 @@ const HOLIDAYS_PATH = `${API_BASE_URL}/holidays`
 const JOBS_PATH = `${API_BASE_URL}/jobs`
 const APPLICANTS_PATH = `${API_BASE_URL}/applicants`
 const DOCUMENTS_PATH = `${API_BASE_URL}/documents`
+const USERS_PATH = `${API_BASE_URL}/users`
 const ACCESS_TOKEN_KEY = 'hummaneApiAccessToken'
 const API_USER_KEY = 'hummaneApiUser'
 const COMPANY_ID_KEY = 'hummaneCompanyId'
@@ -1825,5 +1826,63 @@ export const deleteDocumentApi = async (documentId: string, accessToken: string)
   if (!response.ok) {
     const message = await response.text()
     throw new Error(message || 'Failed to delete document')
+  }
+}
+
+export type ApiUserItem = {
+  id: string
+  email: string
+  name?: string
+  role?: string
+  createdAt?: string
+  updatedAt?: string
+}
+
+export const fetchUsersApi = async (accessToken: string): Promise<ApiUserItem[]> => {
+  let response: Response
+  try {
+    response = await fetch(USERS_PATH, {
+      method: 'GET',
+      headers: {
+        Authorization: `Bearer ${accessToken}`,
+      },
+    })
+  } catch (error) {
+    console.error('API /users GET network error:', error)
+    throw new Error('Network error while contacting the API')
+  }
+
+  if (!response.ok) {
+    const message = await response.text()
+    throw new Error(message || 'Failed to fetch users')
+  }
+
+  const data = await response.json().catch(() => null)
+  const list = data?.data || data?.users || data
+  return Array.isArray(list) ? (list as ApiUserItem[]) : []
+}
+
+export const inviteUserApi = async (
+  payload: { companyId: string; email: string; role: 'owner' | 'member' },
+  accessToken: string
+): Promise<void> => {
+  let response: Response
+  try {
+    response = await fetch(`${API_BASE_URL}/invitations`, {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        Authorization: `Bearer ${accessToken}`,
+      },
+      body: JSON.stringify(payload),
+    })
+  } catch (error) {
+    console.error('API /invitations POST network error:', error)
+    throw new Error('Network error while contacting the API')
+  }
+
+  if (!response.ok) {
+    const message = await response.text()
+    throw new Error(message || 'Failed to invite user')
   }
 }

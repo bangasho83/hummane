@@ -8,6 +8,7 @@ import {
   LayoutDashboard,
   Settings,
   Users,
+  UserCog,
   Wallet,
 } from 'lucide-react'
 
@@ -41,6 +42,7 @@ const performanceItems: NavItem[] = [
 ]
 
 const secondaryItems: NavItem[] = [
+  { name: 'Users', href: '/users', icon: UserCog },
   { name: 'Settings', href: '/settings', icon: Settings },
   { name: 'Support', href: '/support', icon: HelpCircle },
 ]

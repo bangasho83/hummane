@@ -75,7 +75,7 @@ export function JobForm({ mode, job }: JobFormProps) {
 
     const handleSubmit = async (e: React.FormEvent) => {
         e.preventDefault()
-        if (!form.title || !form.experience || !form.employmentMode) {
+        if (!form.title || !form.roleId || !form.department || !form.employmentType || !form.employmentMode || !form.salary.min || !form.salary.max || !form.experience) {
             toast('Please fill in all required fields', 'error')
             return
         }
@@ -108,7 +108,6 @@ export function JobForm({ mode, job }: JobFormProps) {
                             className="rounded-xl border-slate-200 h-12"
                             value={form.title}
                             onChange={(e) => setForm({ ...form, title: e.target.value })}
-                            required
                         />
                     </div>
                     <div className="space-y-2">
@@ -253,13 +252,12 @@ export function JobForm({ mode, job }: JobFormProps) {
                         </div>
                     </div>
                     <div className="space-y-2">
-                        <Label className="text-sm font-bold text-slate-700 px-1">Experience Required *</Label>
+                        <Label className="text-sm font-bold text-slate-700 px-1">Experience Required</Label>
                         <Input
                             placeholder="e.g. 3-5 years"
                             className="rounded-xl border-slate-200 h-12"
                             value={form.experience}
                             onChange={(e) => setForm({ ...form, experience: e.target.value })}
-                            required
                         />
                     </div>
                     <div className="space-y-2">
