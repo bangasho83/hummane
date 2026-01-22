@@ -2,23 +2,16 @@
 
 import Link from 'next/link'
 import { usePathname, useRouter } from 'next/navigation'
-import { LogOut, Copy, ChevronDown, ChevronUp } from 'lucide-react'
+import { LogOut } from 'lucide-react'
 import { useApp } from '@/lib/context/AppContext'
 import { cn } from '@/lib/utils'
 import { memberNavigationItems, type MemberNavItem } from '@/config/member-navigation'
 import { toast } from '@/components/ui/toast'
-import { useState } from 'react'
 
 export function MemberSidebar() {
     const pathname = usePathname()
     const router = useRouter()
-    const { logout, currentCompany, currentUser, apiCompanyId, meProfile } = useApp()
-    const [userDetailsExpanded, setUserDetailsExpanded] = useState(false)
-
-    const copyToClipboard = (text: string, label: string) => {
-        navigator.clipboard.writeText(text)
-        toast(`${label} copied`, 'success')
-    }
+    const { logout, currentCompany } = useApp()
 
     const NavLink = ({ item }: { item: MemberNavItem }) => {
         const isActive = item.exact
@@ -100,89 +93,6 @@ export function MemberSidebar() {
                                 {currentCompany.name}
                             </p>
                         </div>
-
-                        {/* User Details Toggle */}
-                        <button
-                            onClick={() => setUserDetailsExpanded(!userDetailsExpanded)}
-                            className="w-full flex items-center justify-between text-[10px] font-bold text-slate-500 hover:text-slate-700 py-1 transition-colors"
-                        >
-                            <span>User Details</span>
-                            {userDetailsExpanded ? <ChevronUp className="w-3 h-3" /> : <ChevronDown className="w-3 h-3" />}
-                        </button>
-
-                        {userDetailsExpanded && (
-                            <div className="mt-2 space-y-2 text-[10px] bg-slate-50 rounded-lg p-2">
-                                {/* User ID */}
-                                <div className="flex items-center justify-between">
-                                    <span className="text-slate-400 font-medium">User ID:</span>
-                                    <div className="flex items-center gap-1">
-                                        <span className="text-slate-600 font-mono truncate max-w-[100px]" title={currentUser?.id}>
-                                            {currentUser?.id ? `${currentUser.id.slice(0, 8)}...` : '-'}
-                                        </span>
-                                        {currentUser?.id && (
-                                            <button
-                                                onClick={() => copyToClipboard(currentUser.id, 'User ID')}
-                                                className="text-slate-400 hover:text-blue-600"
-                                            >
-                                                <Copy className="w-3 h-3" />
-                                            </button>
-                                        )}
-                                    </div>
-                                </div>
-
-                                {/* User Email */}
-                                <div className="flex items-center justify-between">
-                                    <span className="text-slate-400 font-medium">Email:</span>
-                                    <span className="text-slate-600 truncate max-w-[120px]" title={currentUser?.email}>
-                                        {currentUser?.email || '-'}
-                                    </span>
-                                </div>
-
-                                {/* Company ID */}
-                                <div className="flex items-center justify-between">
-                                    <span className="text-slate-400 font-medium">Company ID:</span>
-                                    <div className="flex items-center gap-1">
-                                        <span className="text-slate-600 font-mono truncate max-w-[100px]" title={apiCompanyId || currentCompany.id}>
-                                            {(apiCompanyId || currentCompany.id).slice(0, 8)}...
-                                        </span>
-                                        <button
-                                            onClick={() => copyToClipboard(apiCompanyId || currentCompany.id, 'Company ID')}
-                                            className="text-slate-400 hover:text-blue-600"
-                                        >
-                                            <Copy className="w-3 h-3" />
-                                        </button>
-                                    </div>
-                                </div>
-
-                                {/* Role */}
-                                {meProfile?.role && (
-                                    <div className="flex items-center justify-between">
-                                        <span className="text-slate-400 font-medium">Role:</span>
-                                        <span className="text-slate-600 capitalize">
-                                            {meProfile.role}
-                                        </span>
-                                    </div>
-                                )}
-
-                                {/* Employee ID if available */}
-                                {meProfile?.employeeId && (
-                                    <div className="flex items-center justify-between">
-                                        <span className="text-slate-400 font-medium">Employee ID:</span>
-                                        <div className="flex items-center gap-1">
-                                            <span className="text-slate-600 font-mono truncate max-w-[100px]" title={meProfile.employeeId}>
-                                                {meProfile.employeeId.slice(0, 8)}...
-                                            </span>
-                                            <button
-                                                onClick={() => copyToClipboard(meProfile.employeeId!, 'Employee ID')}
-                                                className="text-slate-400 hover:text-blue-600"
-                                            >
-                                                <Copy className="w-3 h-3" />
-                                            </button>
-                                        </div>
-                                    </div>
-                                )}
-                            </div>
-                        )}
                     </div>
                 )}
             </div>

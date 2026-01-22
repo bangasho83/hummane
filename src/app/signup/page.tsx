@@ -1,6 +1,6 @@
 'use client'
 
-import { useEffect, useState } from 'react'
+import { useState } from 'react'
 import { useRouter } from 'next/navigation'
 import Link from 'next/link'
 import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from '@/components/ui/card'
@@ -13,32 +13,12 @@ import { Chrome } from 'lucide-react'
 
 export default function SignupPage() {
     const router = useRouter()
-    const { signup, loginWithGoogle, currentUser, currentCompany, isHydrating, meProfile } = useApp()
+    const { signup, loginWithGoogle } = useApp()
     const [name, setName] = useState('')
     const [email, setEmail] = useState('')
     const [password, setPassword] = useState('')
     const [loading, setLoading] = useState(false)
     const [googleLoading, setGoogleLoading] = useState(false)
-
-    useEffect(() => {
-        if (isHydrating) return
-        if (!currentUser) return
-        if (!currentCompany) {
-            router.push('/company-setup')
-            return
-        }
-        // Route based on user role from /users/me API
-        const userRole = meProfile?.role
-        if (userRole === 'member') {
-            router.push('/member')
-        } else {
-            router.push('/dashboard')
-        }
-    }, [currentCompany, currentUser, router, isHydrating, meProfile])
-
-    if (currentUser) {
-        return null
-    }
 
     const handleSubmit = async (e: React.FormEvent) => {
         e.preventDefault()
@@ -48,6 +28,8 @@ export default function SignupPage() {
 
         if (result.success) {
             toast(result.message, 'success')
+            // Middleware will handle routing based on cookies
+            router.push('/dashboard')
         } else {
             toast(result.message, 'error')
             setLoading(false)
@@ -59,9 +41,8 @@ export default function SignupPage() {
         const result = await loginWithGoogle()
         if (result.success) {
             toast(result.message, 'success')
-            setTimeout(() => {
-                router.push('/company-setup')
-            }, 100)
+            // Middleware will handle routing based on cookies
+            router.push('/dashboard')
         } else {
             toast(result.message, 'error')
         }

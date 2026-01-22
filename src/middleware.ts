@@ -1,8 +1,10 @@
 import { NextResponse } from 'next/server'
 import type { NextRequest } from 'next/server'
 
-// Cookie name that stores user role
+// Cookie names
 const USER_ROLE_COOKIE = 'hummane_user_role'
+const HAS_COMPANY_COOKIE = 'hummane_has_company'
+const IS_AUTHENTICATED_COOKIE = 'hummane_is_authenticated'
 
 // Admin routes that member users should NOT access
 const ADMIN_ROUTES = [
@@ -24,26 +26,59 @@ const ADMIN_ROUTES = [
 // Member routes
 const MEMBER_ROUTES = ['/member']
 
+// Auth routes (login/signup)
+const AUTH_ROUTES = ['/login', '/signup']
+
 // Public routes that don't require auth
-const PUBLIC_ROUTES = ['/login', '/signup', '/']
+const PUBLIC_ROUTES = ['/', ...AUTH_ROUTES]
 
 export function middleware(request: NextRequest) {
   const { pathname } = request.nextUrl
+  const isAuthenticated = request.cookies.get(IS_AUTHENTICATED_COOKIE)?.value === 'true'
+  const hasCompany = request.cookies.get(HAS_COMPANY_COOKIE)?.value === 'true'
   const userRole = request.cookies.get(USER_ROLE_COOKIE)?.value
 
-  // Allow public routes
-  if (PUBLIC_ROUTES.some(route => pathname === route)) {
-    return NextResponse.next()
+  // ===== UNAUTHENTICATED USERS =====
+  if (!isAuthenticated) {
+    // Allow public routes
+    if (PUBLIC_ROUTES.some(route => pathname === route)) {
+      return NextResponse.next()
+    }
+    // Redirect to login for all other routes
+    return NextResponse.redirect(new URL('/login', request.url))
   }
 
-  // Allow company-setup for all authenticated users
+  // ===== AUTHENTICATED USERS =====
+
+  // If authenticated user visits login/signup, redirect them appropriately
+  if (AUTH_ROUTES.some(route => pathname === route)) {
+    if (!hasCompany) {
+      return NextResponse.redirect(new URL('/company-setup', request.url))
+    }
+    if (userRole === 'member') {
+      return NextResponse.redirect(new URL('/member', request.url))
+    }
+    return NextResponse.redirect(new URL('/dashboard', request.url))
+  }
+
+  // If user has no company, they must go to company-setup
+  if (!hasCompany) {
+    if (pathname.startsWith('/company-setup')) {
+      return NextResponse.next()
+    }
+    // Redirect to company-setup for all other routes
+    return NextResponse.redirect(new URL('/company-setup', request.url))
+  }
+
+  // ===== AUTHENTICATED USERS WITH COMPANY =====
+
+  // Allow company-setup (in case they want to view it)
   if (pathname.startsWith('/company-setup')) {
-    return NextResponse.next()
-  }
-
-  // If no role cookie, allow the request (let client-side handle auth)
-  if (!userRole) {
-    return NextResponse.next()
+    // If they already have a company, redirect to appropriate dashboard
+    if (userRole === 'member') {
+      return NextResponse.redirect(new URL('/member', request.url))
+    }
+    return NextResponse.redirect(new URL('/dashboard', request.url))
   }
 
   // Handle member users

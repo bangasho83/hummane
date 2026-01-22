@@ -39,6 +39,8 @@ const ACCESS_TOKEN_KEY = 'hummaneApiAccessToken'
 const API_USER_KEY = 'hummaneApiUser'
 const COMPANY_ID_KEY = 'hummaneCompanyId'
 const USER_ROLE_COOKIE = 'hummane_user_role'
+const HAS_COMPANY_COOKIE = 'hummane_has_company'
+const IS_AUTHENTICATED_COOKIE = 'hummane_is_authenticated'
 
 const readStorage = (key: string) => {
   if (typeof window === 'undefined') return null
@@ -83,6 +85,8 @@ export const getStoredApiUser = (): ApiUser | null => {
 export const persistApiSession = (accessToken: string, user: ApiUser) => {
   writeStorage(ACCESS_TOKEN_KEY, accessToken)
   writeStorage(API_USER_KEY, JSON.stringify(user))
+  // Mark as authenticated for middleware
+  setCookie(IS_AUTHENTICATED_COOKIE, 'true')
   // Also store role in a cookie for middleware access
   if (user.role) {
     setCookie(USER_ROLE_COOKIE, user.role)
@@ -91,10 +95,20 @@ export const persistApiSession = (accessToken: string, user: ApiUser) => {
 
 export const persistCompanyId = (companyId: string) => {
   writeStorage(COMPANY_ID_KEY, companyId)
+  // Mark that user has a company for middleware
+  setCookie(HAS_COMPANY_COOKIE, 'true')
 }
 
 export const persistUserRole = (role: string) => {
   setCookie(USER_ROLE_COOKIE, role)
+}
+
+export const persistHasCompany = (hasCompany: boolean) => {
+  if (hasCompany) {
+    setCookie(HAS_COMPANY_COOKIE, 'true')
+  } else {
+    removeCookie(HAS_COMPANY_COOKIE)
+  }
 }
 
 export const clearApiSession = () => {
@@ -102,6 +116,8 @@ export const clearApiSession = () => {
   removeStorage(API_USER_KEY)
   removeStorage(COMPANY_ID_KEY)
   removeCookie(USER_ROLE_COOKIE)
+  removeCookie(HAS_COMPANY_COOKIE)
+  removeCookie(IS_AUTHENTICATED_COOKIE)
 }
 
 export const exchangeFirebaseToken = async (firebaseToken: string) => {

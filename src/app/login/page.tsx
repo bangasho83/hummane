@@ -1,6 +1,6 @@
 'use client'
 
-import { useEffect, useState } from 'react'
+import { useState } from 'react'
 import { useRouter } from 'next/navigation'
 import Link from 'next/link'
 import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from '@/components/ui/card'
@@ -13,31 +13,11 @@ import { Chrome } from 'lucide-react'
 
 export default function LoginPage() {
     const router = useRouter()
-    const { login, loginWithGoogle, currentUser, currentCompany, isHydrating, meProfile } = useApp()
+    const { login, loginWithGoogle } = useApp()
     const [email, setEmail] = useState('')
     const [password, setPassword] = useState('')
     const [loading, setLoading] = useState(false)
     const [googleLoading, setGoogleLoading] = useState(false)
-
-    useEffect(() => {
-        if (isHydrating) return
-        if (!currentUser) return
-        if (!currentCompany) {
-            router.push('/company-setup')
-            return
-        }
-        // Route based on user role from /users/me API
-        const userRole = meProfile?.role
-        if (userRole === 'member') {
-            router.push('/member')
-        } else {
-            router.push('/dashboard')
-        }
-    }, [currentCompany, currentUser, router, isHydrating, meProfile])
-
-    if (currentUser) {
-        return null
-    }
 
     const handleSubmit = async (e: React.FormEvent) => {
         e.preventDefault()
@@ -47,6 +27,9 @@ export default function LoginPage() {
 
         if (result.success) {
             toast(result.message, 'success')
+            // Middleware will handle routing based on cookies
+            // Force a navigation to trigger middleware
+            router.push('/dashboard')
         } else {
             toast(result.message, 'error')
             setLoading(false)
@@ -58,6 +41,8 @@ export default function LoginPage() {
         const result = await loginWithGoogle()
         if (result.success) {
             toast(result.message, 'success')
+            // Middleware will handle routing based on cookies
+            router.push('/dashboard')
         } else {
             toast(result.message, 'error')
         }

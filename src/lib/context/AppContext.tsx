@@ -68,6 +68,7 @@ import {
     getStoredApiUser,
     persistCompanyId,
     persistUserRole,
+    persistHasCompany,
     fetchMeApi,
     type AuthLoginResponse,
     type ApiUser,
@@ -628,6 +629,9 @@ export function AppProvider({ children }: { children: ReactNode }) {
         setApiCompanyId(companyId)
         setAuthLoginResponse(authResponse ?? null)
 
+        // Persist hasCompany cookie for middleware routing
+        persistHasCompany(!!companyId)
+
         // Fetch user profile with role from /users/me
         try {
             const me = await fetchMeApi(accessToken)
@@ -635,6 +639,10 @@ export function AppProvider({ children }: { children: ReactNode }) {
             // Persist role in cookie for middleware access
             if (me.role) {
                 persistUserRole(me.role)
+            }
+            // Also update hasCompany from meProfile if available
+            if (me.companyId) {
+                persistHasCompany(true)
             }
         } catch (error) {
             console.error('Failed to fetch user profile from /users/me:', error)
