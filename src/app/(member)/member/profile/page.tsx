@@ -1,6 +1,6 @@
 'use client'
 
-import { useEffect, useState } from 'react'
+import { useEffect, useState, useCallback } from 'react'
 import { useApp } from '@/lib/context/AppContext'
 import { DOCUMENT_KINDS } from '@/types'
 import type { Employee, EmployeeDocument, EmployeeApi, DocumentKind } from '@/types'
@@ -18,8 +18,9 @@ import { uploadFileToStorage, uploadProfilePicture } from '@/lib/firebase/storag
 const API_URL = 'https://api.hummane.com'
 
 export default function MemberProfilePage() {
-    const { employees, currentCompany, getDocuments, addDocument, meProfile, apiAccessToken, isHydrating } = useApp()
+    const { currentCompany, getDocuments, addDocument, meProfile, apiAccessToken, isHydrating } = useApp()
     const [employee, setEmployee] = useState<Employee | null>(null)
+    const [loading, setLoading] = useState(true)
     const [docs, setDocs] = useState<EmployeeDocument[]>([])
 
     // Photo upload state
@@ -36,17 +37,36 @@ export default function MemberProfilePage() {
 
     const employeeId = meProfile?.employeeId
 
-    // Wait for hydration AND meProfile to be loaded before looking for employee
-    const isDataLoading = isHydrating || (!meProfile && employees.length === 0)
+    // Wait for hydration AND meProfile to be loaded
+    const isDataLoading = isHydrating || !meProfile
 
-    useEffect(() => {
-        if (!employeeId) {
+    // Fetch employee data directly from API
+    const fetchEmployee = useCallback(async () => {
+        if (!employeeId || !apiAccessToken) {
             setEmployee(null)
+            setLoading(false)
             return
         }
-        const emp = employees.find(e => e.id === employeeId)
-        setEmployee(emp || null)
-    }, [employees, employeeId])
+        setLoading(true)
+        try {
+            const response = await fetch(`${API_URL}/employees/${encodeURIComponent(employeeId)}`, {
+                method: 'GET',
+                headers: { Authorization: `Bearer ${apiAccessToken}` },
+            })
+            if (!response.ok) throw new Error('Failed to fetch employee')
+            const data = await response.json()
+            setEmployee(data)
+        } catch (error) {
+            console.error('Error fetching employee:', error)
+            setEmployee(null)
+        } finally {
+            setLoading(false)
+        }
+    }, [employeeId, apiAccessToken])
+
+    useEffect(() => {
+        fetchEmployee()
+    }, [fetchEmployee])
 
     useEffect(() => {
         let isActive = true
@@ -130,7 +150,7 @@ export default function MemberProfilePage() {
         }
     }
 
-    if (isDataLoading) {
+    if (isDataLoading || loading) {
         return (
             <div className="flex items-center justify-center p-12">
                 <Loader2 className="w-8 h-8 animate-spin text-blue-600" />

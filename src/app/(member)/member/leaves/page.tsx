@@ -1,6 +1,6 @@
 'use client'
 
-import { useEffect, useMemo, useState } from 'react'
+import { useEffect, useMemo, useState, useCallback } from 'react'
 import { useApp } from '@/lib/context/AppContext'
 import type { Employee, LeaveRecord } from '@/types'
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
@@ -14,9 +14,13 @@ import { toast } from '@/components/ui/toast'
 import { CalendarDays, FileText, Loader2, Plus } from 'lucide-react'
 import { uploadFileToStorage } from '@/lib/firebase/storage'
 
+const API_BASE_URL = 'https://api.hummane.com'
+
 export default function MemberLeavesPage() {
-    const { employees, leaves, leaveTypes, meProfile, isHydrating, addLeave, refreshLeaveTypes } = useApp()
+    const { employees, leaveTypes, meProfile, isHydrating, addLeave, refreshLeaveTypes, apiAccessToken } = useApp()
     const [employee, setEmployee] = useState<Employee | null>(null)
+    const [employeeLeaves, setEmployeeLeaves] = useState<LeaveRecord[]>([])
+    const [loading, setLoading] = useState(true)
 
     // Leave application form state
     const [isDialogOpen, setIsDialogOpen] = useState(false)
@@ -42,6 +46,34 @@ export default function MemberLeavesPage() {
         const emp = employees.find(e => e.id === employeeId)
         setEmployee(emp || null)
     }, [employees, employeeId])
+
+    // Fetch leaves for this employee directly from API
+    const fetchEmployeeLeaves = useCallback(async () => {
+        if (!employeeId || !apiAccessToken) {
+            setEmployeeLeaves([])
+            setLoading(false)
+            return
+        }
+        setLoading(true)
+        try {
+            const response = await fetch(`${API_BASE_URL}/leaves?employeeId=${encodeURIComponent(employeeId)}`, {
+                method: 'GET',
+                headers: { Authorization: `Bearer ${apiAccessToken}` },
+            })
+            if (!response.ok) throw new Error('Failed to fetch leaves')
+            const data = await response.json()
+            setEmployeeLeaves(Array.isArray(data) ? data : [])
+        } catch (error) {
+            console.error('Error fetching employee leaves:', error)
+            setEmployeeLeaves([])
+        } finally {
+            setLoading(false)
+        }
+    }, [employeeId, apiAccessToken])
+
+    useEffect(() => {
+        fetchEmployeeLeaves()
+    }, [fetchEmployeeLeaves])
 
     // Filter leave types by employee's employment type
     const filteredLeaveTypes = useMemo(() => {
@@ -71,11 +103,6 @@ export default function MemberLeavesPage() {
             setEndDate(dateStr)
         }
     }, [isDialogOpen, startDate])
-
-    const employeeLeaves = useMemo(
-        () => employeeId ? leaves.filter(l => l.employeeId === employeeId) : [],
-        [leaves, employeeId]
-    )
 
     const resetForm = () => {
         setSelectedType('')
@@ -173,6 +200,8 @@ export default function MemberLeavesPage() {
             toast('Leave applied successfully', 'success')
             setIsDialogOpen(false)
             resetForm()
+            // Refresh the leaves list
+            fetchEmployeeLeaves()
         } catch (error) {
             toast('Failed to apply leave', 'error')
         } finally {
@@ -180,7 +209,7 @@ export default function MemberLeavesPage() {
         }
     }
 
-    if (isDataLoading) {
+    if (isDataLoading || loading) {
         return (
             <div className="flex items-center justify-center p-12">
                 <Loader2 className="w-8 h-8 animate-spin text-blue-600" />
@@ -369,9 +398,9 @@ export default function MemberLeavesPage() {
                                 <TableHead className="pl-6 py-4 text-[10px] font-extrabold uppercase tracking-widest text-slate-400">Date</TableHead>
                                 <TableHead className="py-4 text-[10px] font-extrabold uppercase tracking-widest text-slate-400">Type</TableHead>
                                 <TableHead className="py-4 text-[10px] font-extrabold uppercase tracking-widest text-slate-400">Code</TableHead>
-                                <TableHead className="py-4 text-[10px] font-extrabold uppercase tracking-widest text-slate-400">Quota</TableHead>
                                 <TableHead className="py-4 text-[10px] font-extrabold uppercase tracking-widest text-slate-400">Unit</TableHead>
                                 <TableHead className="py-4 text-[10px] font-extrabold uppercase tracking-widest text-slate-400">Amount</TableHead>
+                                <TableHead className="py-4 text-[10px] font-extrabold uppercase tracking-widest text-slate-400">Quota</TableHead>
                                 <TableHead className="py-4 text-[10px] font-extrabold uppercase tracking-widest text-slate-400">Note</TableHead>
                                 <TableHead className="py-4 text-[10px] font-extrabold uppercase tracking-widest text-slate-400">Document</TableHead>
                             </TableRow>
@@ -390,12 +419,17 @@ export default function MemberLeavesPage() {
                                     const firstFile = files[0]
                                     return (
                                         <TableRow key={leave.id} className="border-slate-50">
-                                            <TableCell className="pl-6 py-4 text-sm font-medium text-slate-700">{formatDate(leave.date)}</TableCell>
+                                            <TableCell className="pl-6 py-4 text-sm font-medium text-slate-700">
+                                                {leave.startDate && leave.endDate && leave.startDate !== leave.endDate
+                                                    ? `${formatDate(leave.startDate)} - ${formatDate(leave.endDate)}`
+                                                    : formatDate(leave.startDate || leave.date)
+                                                }
+                                            </TableCell>
                                             <TableCell className="text-sm font-medium text-slate-700">{leave.leaveTypeName || lt?.name || '—'}</TableCell>
                                             <TableCell className="text-sm text-slate-500">{leave.leaveTypeCode || lt?.code || '—'}</TableCell>
-                                            <TableCell className="text-sm text-slate-500">{leave.leaveTypeQuota ?? lt?.quota ?? '—'}</TableCell>
                                             <TableCell className="text-sm text-slate-500">{leave.unit || lt?.unit || 'Day'}</TableCell>
                                             <TableCell className="text-sm text-slate-500">{leave.amount ?? 1}</TableCell>
+                                            <TableCell className="text-sm text-slate-500">{leave.leaveTypeQuota ?? lt?.quota ?? '—'}</TableCell>
                                             <TableCell className="text-sm text-slate-500">{leave.note || '—'}</TableCell>
                                             <TableCell className="text-sm text-slate-500">
                                                 {firstFile ? (

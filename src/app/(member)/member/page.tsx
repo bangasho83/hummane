@@ -1,6 +1,6 @@
 'use client'
 
-import { useMemo } from 'react'
+import { useMemo, useState, useEffect } from 'react'
 import Link from 'next/link'
 import { useApp } from '@/lib/context/AppContext'
 import { Card, CardContent } from '@/components/ui/card'
@@ -18,38 +18,97 @@ import {
     Users
 } from 'lucide-react'
 import { formatDate } from '@/lib/utils'
+import type { LeaveRecord, FeedbackEntry, Employee } from '@/types'
+
+const API_BASE_URL = 'https://api.hummane.com'
 
 export default function MemberDashboardPage() {
     const {
         employees,
         leaves,
         leaveTypes,
-        feedbackEntries,
         feedbackCards,
         holidays,
         meProfile,
+        apiAccessToken,
         isHydrating
     } = useApp()
 
-    const isDataLoading = isHydrating || (!meProfile && employees.length === 0)
+    const [employee, setEmployee] = useState<Employee | null>(null)
+    const [myLeaves, setMyLeaves] = useState<LeaveRecord[]>([])
+    const [myFeedback, setMyFeedback] = useState<FeedbackEntry[]>([])
+    const [loading, setLoading] = useState(true)
 
     const employeeId = meProfile?.employeeId
-    const employee = useMemo(
-        () => employees.find(e => e.id === employeeId),
-        [employees, employeeId]
-    )
+
+    const isDataLoading = isHydrating || !meProfile
 
     const todayKey = useMemo(() => new Date().toISOString().split('T')[0], [])
 
-    // My leaves
-    const myLeaves = useMemo(
-        () => leaves.filter(l => l.employeeId === employeeId),
-        [leaves, employeeId]
-    )
+    // Fetch all data on mount
+    useEffect(() => {
+        if (!employeeId || !apiAccessToken) {
+            setEmployee(null)
+            setMyLeaves([])
+            setMyFeedback([])
+            setLoading(false)
+            return
+        }
+
+        const fetchData = async () => {
+            setLoading(true)
+            try {
+                const [empRes, leavesRes, feedbackRes] = await Promise.all([
+                    fetch(`${API_BASE_URL}/employees/${encodeURIComponent(employeeId)}`, {
+                        method: 'GET',
+                        headers: { Authorization: `Bearer ${apiAccessToken}` },
+                    }),
+                    fetch(`${API_BASE_URL}/leaves?employeeId=${encodeURIComponent(employeeId)}`, {
+                        method: 'GET',
+                        headers: { Authorization: `Bearer ${apiAccessToken}` },
+                    }),
+                    fetch(`${API_BASE_URL}/feedback-entries?subjectId=${encodeURIComponent(employeeId)}`, {
+                        method: 'GET',
+                        headers: { Authorization: `Bearer ${apiAccessToken}` },
+                    })
+                ])
+
+                if (empRes.ok) {
+                    const empData = await empRes.json()
+                    setEmployee(empData)
+                } else {
+                    setEmployee(null)
+                }
+
+                if (leavesRes.ok) {
+                    const leavesData = await leavesRes.json()
+                    setMyLeaves(Array.isArray(leavesData) ? leavesData : [])
+                } else {
+                    setMyLeaves([])
+                }
+
+                if (feedbackRes.ok) {
+                    const feedbackData = await feedbackRes.json()
+                    setMyFeedback(Array.isArray(feedbackData) ? feedbackData : [])
+                } else {
+                    setMyFeedback([])
+                }
+            } catch (error) {
+                console.error('Error fetching data:', error)
+                setEmployee(null)
+                setMyLeaves([])
+                setMyFeedback([])
+            } finally {
+                setLoading(false)
+            }
+        }
+
+        fetchData()
+    }, [employeeId, apiAccessToken])
 
     const myLeavesThisYear = useMemo(() => {
         const year = new Date().getFullYear().toString()
-        return myLeaves.filter(l => l.date?.startsWith(year))
+        return myLeaves.filter(l => (l.startDate || l.date)?.startsWith(year))
     }, [myLeaves])
 
     // Leave balance calculation
@@ -71,16 +130,6 @@ export default function MemberDashboardPage() {
             }
         })
     }, [employee, leaveTypes, myLeavesThisYear])
-
-    // My feedback
-    const myFeedback = useMemo(
-        () => feedbackEntries.filter(e => {
-            if (e.subjectId !== employeeId) return false
-            const isTeamMember = e.type === 'Team Member' || (e as { subjectType?: string }).subjectType === 'Employee'
-            return isTeamMember
-        }),
-        [feedbackEntries, employeeId]
-    )
 
     // Calculate average feedback score
     const avgFeedbackScore = useMemo(() => {
@@ -139,7 +188,7 @@ export default function MemberDashboardPage() {
         [feedbackCards]
     )
 
-    if (isDataLoading) {
+    if (isDataLoading || loading) {
         return (
             <div className="flex items-center justify-center p-12">
                 <Loader2 className="w-8 h-8 animate-spin text-blue-600" />
