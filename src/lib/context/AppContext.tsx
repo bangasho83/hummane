@@ -658,6 +658,20 @@ export function AppProvider({ children }: { children: ReactNode }) {
                 name: firebaseUser.displayName || firebaseUser.email.split('@')[0]
             })
             setUserSession(localUser)
+
+            // Sync API session on auth state change (including page refresh)
+            // This ensures meProfile, employees, and other data are loaded
+            try {
+                const apiSession = await syncApiSession(firebaseUser)
+                if (apiSession.company && apiSession.accessToken) {
+                    const normalizedCompany = normalizeCompany(apiSession.company, localUser.id)
+                    if (normalizedCompany) {
+                        await loadCompanyDataFromApi(normalizedCompany, apiSession.accessToken)
+                    }
+                }
+            } catch (error) {
+                console.error('Failed to sync API session on auth state change:', error)
+            }
         })
         return () => unsubscribe()
     }, [])

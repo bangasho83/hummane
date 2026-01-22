@@ -18,10 +18,9 @@ import { uploadFileToStorage, uploadProfilePicture } from '@/lib/firebase/storag
 const API_URL = 'https://api.hummane.com'
 
 export default function MemberProfilePage() {
-    const { employees, currentCompany, getDocuments, addDocument, meProfile, apiAccessToken } = useApp()
+    const { employees, currentCompany, getDocuments, addDocument, meProfile, apiAccessToken, isHydrating } = useApp()
     const [employee, setEmployee] = useState<Employee | null>(null)
     const [docs, setDocs] = useState<EmployeeDocument[]>([])
-    const [loading, setLoading] = useState(true)
 
     // Photo upload state
     const [isPhotoDialogOpen, setIsPhotoDialogOpen] = useState(false)
@@ -37,14 +36,16 @@ export default function MemberProfilePage() {
 
     const employeeId = meProfile?.employeeId
 
+    // Wait for hydration AND meProfile to be loaded before looking for employee
+    const isDataLoading = isHydrating || (!meProfile && employees.length === 0)
+
     useEffect(() => {
         if (!employeeId) {
-            setLoading(false)
+            setEmployee(null)
             return
         }
         const emp = employees.find(e => e.id === employeeId)
         setEmployee(emp || null)
-        setLoading(false)
     }, [employees, employeeId])
 
     useEffect(() => {
@@ -129,7 +130,7 @@ export default function MemberProfilePage() {
         }
     }
 
-    if (loading) {
+    if (isDataLoading) {
         return (
             <div className="flex items-center justify-center p-12">
                 <Loader2 className="w-8 h-8 animate-spin text-blue-600" />
