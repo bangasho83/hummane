@@ -7,7 +7,7 @@ import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select'
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table'
-import { Plus, Trash2, Search, Pencil } from 'lucide-react'
+import { Plus, Trash2, Search, Pencil, ArrowUpDown, ArrowUp, ArrowDown } from 'lucide-react'
 import { toast } from '@/components/ui/toast'
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from '@/components/ui/dialog'
 import { EMPLOYMENT_TYPES, LEAVE_UNITS, type EmploymentType, type LeaveType, type LeaveUnit } from '@/types'
@@ -20,6 +20,9 @@ type LeaveFormState = {
     employmentType: EmploymentType
     color: string
 }
+
+type SortColumn = 'name' | 'code' | 'unit' | 'employmentType' | 'quota' | null
+type SortDirection = 'asc' | 'desc'
 
 const DEFAULT_LEAVE_COLOR = '#ec4899'
 
@@ -42,13 +45,60 @@ export function LeavesTab() {
     const [editing, setEditing] = useState<LeaveType | null>(null)
     const [loading, setLoading] = useState(false)
     const [editLoading, setEditLoading] = useState(false)
+    const [sortColumn, setSortColumn] = useState<SortColumn>(null)
+    const [sortDirection, setSortDirection] = useState<SortDirection>('asc')
+
+    const handleSort = (column: SortColumn) => {
+        if (sortColumn === column) {
+            setSortDirection(prev => prev === 'asc' ? 'desc' : 'asc')
+        } else {
+            setSortColumn(column)
+            setSortDirection('asc')
+        }
+    }
 
     const filtered = useMemo(() => {
-        return leaveTypes.filter(lt =>
+        let result = leaveTypes.filter(lt =>
             lt.name.toLowerCase().includes(searchTerm.toLowerCase()) ||
             lt.code.toLowerCase().includes(searchTerm.toLowerCase())
         )
-    }, [leaveTypes, searchTerm])
+
+        if (sortColumn) {
+            result = [...result].sort((a, b) => {
+                let aVal: string | number = ''
+                let bVal: string | number = ''
+
+                switch (sortColumn) {
+                    case 'name':
+                        aVal = a.name.toLowerCase()
+                        bVal = b.name.toLowerCase()
+                        break
+                    case 'code':
+                        aVal = a.code.toLowerCase()
+                        bVal = b.code.toLowerCase()
+                        break
+                    case 'unit':
+                        aVal = a.unit.toLowerCase()
+                        bVal = b.unit.toLowerCase()
+                        break
+                    case 'employmentType':
+                        aVal = a.employmentType.toLowerCase()
+                        bVal = b.employmentType.toLowerCase()
+                        break
+                    case 'quota':
+                        aVal = a.quota
+                        bVal = b.quota
+                        break
+                }
+
+                if (aVal < bVal) return sortDirection === 'asc' ? -1 : 1
+                if (aVal > bVal) return sortDirection === 'asc' ? 1 : -1
+                return 0
+            })
+        }
+
+        return result
+    }, [leaveTypes, searchTerm, sortColumn, sortDirection])
 
     const handleSubmit = async (e: React.FormEvent) => {
         e.preventDefault()
@@ -377,11 +427,71 @@ export function LeavesTab() {
                     <TableHeader className="bg-slate-50/50">
                         <TableRow className="hover:bg-transparent border-slate-100">
                             <TableHead className="pl-8 py-4 text-[10px] font-extrabold uppercase tracking-widest text-slate-400">Color</TableHead>
-                            <TableHead className="py-4 text-[10px] font-extrabold uppercase tracking-widest text-slate-400">Leave Name</TableHead>
-                            <TableHead className="py-4 text-[10px] font-extrabold uppercase tracking-widest text-slate-400">Code</TableHead>
-                            <TableHead className="py-4 text-[10px] font-extrabold uppercase tracking-widest text-slate-400">Unit</TableHead>
-                            <TableHead className="py-4 text-[10px] font-extrabold uppercase tracking-widest text-slate-400">Employment Type</TableHead>
-                            <TableHead className="py-4 text-[10px] font-extrabold uppercase tracking-widest text-slate-400">Quota</TableHead>
+                            <TableHead
+                                className="py-4 text-[10px] font-extrabold uppercase tracking-widest text-slate-400 cursor-pointer hover:text-slate-600 transition-colors"
+                                onClick={() => handleSort('name')}
+                            >
+                                <div className="flex items-center gap-1">
+                                    Leave Name
+                                    {sortColumn === 'name' ? (
+                                        sortDirection === 'asc' ? <ArrowUp className="w-3 h-3" /> : <ArrowDown className="w-3 h-3" />
+                                    ) : (
+                                        <ArrowUpDown className="w-3 h-3 opacity-40" />
+                                    )}
+                                </div>
+                            </TableHead>
+                            <TableHead
+                                className="py-4 text-[10px] font-extrabold uppercase tracking-widest text-slate-400 cursor-pointer hover:text-slate-600 transition-colors"
+                                onClick={() => handleSort('code')}
+                            >
+                                <div className="flex items-center gap-1">
+                                    Code
+                                    {sortColumn === 'code' ? (
+                                        sortDirection === 'asc' ? <ArrowUp className="w-3 h-3" /> : <ArrowDown className="w-3 h-3" />
+                                    ) : (
+                                        <ArrowUpDown className="w-3 h-3 opacity-40" />
+                                    )}
+                                </div>
+                            </TableHead>
+                            <TableHead
+                                className="py-4 text-[10px] font-extrabold uppercase tracking-widest text-slate-400 cursor-pointer hover:text-slate-600 transition-colors"
+                                onClick={() => handleSort('unit')}
+                            >
+                                <div className="flex items-center gap-1">
+                                    Unit
+                                    {sortColumn === 'unit' ? (
+                                        sortDirection === 'asc' ? <ArrowUp className="w-3 h-3" /> : <ArrowDown className="w-3 h-3" />
+                                    ) : (
+                                        <ArrowUpDown className="w-3 h-3 opacity-40" />
+                                    )}
+                                </div>
+                            </TableHead>
+                            <TableHead
+                                className="py-4 text-[10px] font-extrabold uppercase tracking-widest text-slate-400 cursor-pointer hover:text-slate-600 transition-colors"
+                                onClick={() => handleSort('employmentType')}
+                            >
+                                <div className="flex items-center gap-1">
+                                    Employment Type
+                                    {sortColumn === 'employmentType' ? (
+                                        sortDirection === 'asc' ? <ArrowUp className="w-3 h-3" /> : <ArrowDown className="w-3 h-3" />
+                                    ) : (
+                                        <ArrowUpDown className="w-3 h-3 opacity-40" />
+                                    )}
+                                </div>
+                            </TableHead>
+                            <TableHead
+                                className="py-4 text-[10px] font-extrabold uppercase tracking-widest text-slate-400 cursor-pointer hover:text-slate-600 transition-colors"
+                                onClick={() => handleSort('quota')}
+                            >
+                                <div className="flex items-center gap-1">
+                                    Quota
+                                    {sortColumn === 'quota' ? (
+                                        sortDirection === 'asc' ? <ArrowUp className="w-3 h-3" /> : <ArrowDown className="w-3 h-3" />
+                                    ) : (
+                                        <ArrowUpDown className="w-3 h-3 opacity-40" />
+                                    )}
+                                </div>
+                            </TableHead>
                             <TableHead className="text-right pr-8 py-4 text-[10px] font-extrabold uppercase tracking-widest text-slate-400">Actions</TableHead>
                         </TableRow>
                     </TableHeader>

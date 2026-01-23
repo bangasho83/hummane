@@ -142,7 +142,7 @@ export default function FeedbackDetailPage() {
                 <div>
                     <p className="text-xs font-bold text-slate-400 uppercase tracking-widest">Feedback Detail</p>
                     <h1 className="text-2xl font-extrabold text-slate-900 tracking-tight">
-                        {apiEntry.subjectName || 'Unknown'} <span className="text-slate-400 font-medium text-lg">({apiEntry.id})</span>
+                        {apiEntry.subjectName || 'Unknown'}
                     </h1>
                 </div>
             </div>
@@ -168,8 +168,8 @@ export default function FeedbackDetailPage() {
                             <p className="font-semibold text-slate-900">{displayType}</p>
                         </div>
                         <div>
-                            <p className="text-xs font-bold text-slate-400 uppercase tracking-widest">Recipient</p>
-                            <p className="font-semibold text-slate-900">{apiEntry.subjectName || 'Unknown'}</p>
+                            <p className="text-xs font-bold text-slate-400 uppercase tracking-widest">From</p>
+                            <p className="font-semibold text-slate-900">{apiEntry.authorName || 'Unknown'}</p>
                         </div>
                         <div>
                             <p className="text-xs font-bold text-slate-400 uppercase tracking-widest">Card</p>

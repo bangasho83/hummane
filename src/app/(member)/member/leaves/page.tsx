@@ -62,7 +62,8 @@ export default function MemberLeavesPage() {
             })
             if (!response.ok) throw new Error('Failed to fetch leaves')
             const data = await response.json()
-            setEmployeeLeaves(Array.isArray(data) ? data : [])
+            const list = data?.records || data?.data || data?.leaves || data
+            setEmployeeLeaves(Array.isArray(list) ? list : [])
         } catch (error) {
             console.error('Error fetching employee leaves:', error)
             setEmployeeLeaves([])

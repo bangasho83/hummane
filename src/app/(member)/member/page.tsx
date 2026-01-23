@@ -82,7 +82,8 @@ export default function MemberDashboardPage() {
 
                 if (leavesRes.ok) {
                     const leavesData = await leavesRes.json()
-                    setMyLeaves(Array.isArray(leavesData) ? leavesData : [])
+                    const leavesList = leavesData?.records || leavesData?.data || leavesData?.leaves || leavesData
+                    setMyLeaves(Array.isArray(leavesList) ? leavesList : [])
                 } else {
                     setMyLeaves([])
                 }

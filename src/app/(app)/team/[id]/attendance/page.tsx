@@ -1,10 +1,10 @@
 'use client'
 
-import { useEffect, useMemo, useState } from 'react'
+import { useEffect, useState, useCallback } from 'react'
 import { useParams, useRouter } from 'next/navigation'
 import Link from 'next/link'
 import { useApp } from '@/lib/context/AppContext'
-import type { Employee } from '@/types'
+import type { Employee, LeaveRecord } from '@/types'
 import { Card, CardContent } from '@/components/ui/card'
 import { Badge } from '@/components/ui/badge'
 import { formatDate } from '@/lib/utils'
@@ -13,12 +13,43 @@ import { Button } from '@/components/ui/button'
 import { toast } from '@/components/ui/toast'
 import { ArrowLeft, FileText } from 'lucide-react'
 
+const API_BASE_URL = 'https://api.hummane.com'
+
 export default function EmployeeAttendancePage() {
     const params = useParams()
     const router = useRouter()
-    const { employees, leaves, leaveTypes } = useApp()
+    const { employees, leaveTypes, apiAccessToken } = useApp()
     const [employee, setEmployee] = useState<Employee | null>(null)
+    const [employeeLeaves, setEmployeeLeaves] = useState<LeaveRecord[]>([])
+    const [leaveSummary, setLeaveSummary] = useState<Array<{ id: string; name: string; code: string; unit: string; quota: number; color: string; used: number; remaining: number }>>([])
+    const [loading, setLoading] = useState(true)
     const employeeId = params.id as string
+
+    const fetchLeaves = useCallback(async () => {
+        if (!apiAccessToken || !employeeId) return
+
+        setLoading(true)
+        try {
+            const response = await fetch(`${API_BASE_URL}/leaves?employeeId=${encodeURIComponent(employeeId)}`, {
+                headers: { Authorization: `Bearer ${apiAccessToken}` }
+            })
+            const data = await response.json()
+            const list = data?.records || data?.data || data?.leaves || data
+            setEmployeeLeaves(Array.isArray(list) ? list : [])
+            // Extract summary data
+            if (Array.isArray(data?.summary)) {
+                setLeaveSummary(data.summary)
+            } else {
+                setLeaveSummary([])
+            }
+        } catch (error) {
+            console.error('Error fetching leaves:', error)
+            setEmployeeLeaves([])
+            setLeaveSummary([])
+        } finally {
+            setLoading(false)
+        }
+    }, [apiAccessToken, employeeId])
 
     useEffect(() => {
         const emp = employees.find(e => e.id === employeeId)
@@ -30,10 +61,14 @@ export default function EmployeeAttendancePage() {
         }
     }, [employees, employeeId, router])
 
-    const employeeLeaves = useMemo(
-        () => leaves.filter(l => l.employeeId === employeeId),
-        [leaves, employeeId]
-    )
+    useEffect(() => {
+        fetchLeaves()
+    }, [fetchLeaves])
+
+    const copyToClipboard = (text: string) => {
+        navigator.clipboard.writeText(text)
+        toast('Copied to clipboard', 'success')
+    }
 
     if (!employee) {
         return (
@@ -85,6 +120,54 @@ export default function EmployeeAttendancePage() {
                 </Button>
             </div>
 
+            {/* Leave Summary */}
+            {leaveSummary.length > 0 && (
+                <div className="flex flex-wrap items-center gap-6">
+                    {/* Day-based leaves */}
+                    {leaveSummary.filter(item => item.unit === 'Day').length > 0 && (
+                        <div className="flex items-center gap-2">
+                            <span className="text-xs font-bold text-slate-400 uppercase tracking-wider">Days</span>
+                            <div className="flex flex-wrap gap-2">
+                                {leaveSummary.filter(item => item.unit === 'Day').map((item) => (
+                                    <div
+                                        key={item.id}
+                                        className="flex items-center gap-2 px-3 py-1.5 rounded-lg border border-slate-100 bg-white shadow-sm"
+                                    >
+                                        <div
+                                            className="w-2.5 h-2.5 rounded-full"
+                                            style={{ backgroundColor: item.color || '#94a3b8' }}
+                                        />
+                                        <span className="text-sm font-medium text-slate-700">{item.name}</span>
+                                        <span className="text-sm font-bold text-slate-900">{item.used}/{item.quota}</span>
+                                    </div>
+                                ))}
+                            </div>
+                        </div>
+                    )}
+                    {/* Hour-based leaves */}
+                    {leaveSummary.filter(item => item.unit === 'Hour').length > 0 && (
+                        <div className="flex items-center gap-2">
+                            <span className="text-xs font-bold text-slate-400 uppercase tracking-wider">Hours</span>
+                            <div className="flex flex-wrap gap-2">
+                                {leaveSummary.filter(item => item.unit === 'Hour').map((item) => (
+                                    <div
+                                        key={item.id}
+                                        className="flex items-center gap-2 px-3 py-1.5 rounded-lg border border-slate-100 bg-white shadow-sm"
+                                    >
+                                        <div
+                                            className="w-2.5 h-2.5 rounded-full"
+                                            style={{ backgroundColor: item.color || '#94a3b8' }}
+                                        />
+                                        <span className="text-sm font-medium text-slate-700">{item.name}</span>
+                                        <span className="text-sm font-bold text-slate-900">{item.used}/{item.quota}</span>
+                                    </div>
+                                ))}
+                            </div>
+                        </div>
+                    )}
+                </div>
+            )}
+
             <Card className="border border-slate-100 shadow-premium rounded-3xl bg-white">
                 <CardContent className="p-0">
                     <Table>
@@ -93,7 +176,6 @@ export default function EmployeeAttendancePage() {
                                 <TableHead className="pl-6 py-4 text-[10px] font-extrabold uppercase tracking-widest text-slate-400">Date</TableHead>
                                 <TableHead className="py-4 text-[10px] font-extrabold uppercase tracking-widest text-slate-400">Type</TableHead>
                                 <TableHead className="py-4 text-[10px] font-extrabold uppercase tracking-widest text-slate-400">Code</TableHead>
-                                <TableHead className="py-4 text-[10px] font-extrabold uppercase tracking-widest text-slate-400">Quota</TableHead>
                                 <TableHead className="py-4 text-[10px] font-extrabold uppercase tracking-widest text-slate-400">Unit</TableHead>
                                 <TableHead className="py-4 text-[10px] font-extrabold uppercase tracking-widest text-slate-400">Amount</TableHead>
                                 <TableHead className="py-4 text-[10px] font-extrabold uppercase tracking-widest text-slate-400">Note</TableHead>
@@ -101,9 +183,18 @@ export default function EmployeeAttendancePage() {
                             </TableRow>
                         </TableHeader>
                         <TableBody>
-                            {employeeLeaves.length === 0 ? (
+                            {loading ? (
                                 <TableRow>
-                                    <TableCell colSpan={8} className="p-10 text-center text-slate-500">
+                                    <TableCell colSpan={7} className="p-10 text-center text-slate-500">
+                                        <div className="flex items-center justify-center gap-2">
+                                            <div className="w-4 h-4 border-2 border-slate-300 border-t-blue-600 rounded-full animate-spin" />
+                                            Loading leaves...
+                                        </div>
+                                    </TableCell>
+                                </TableRow>
+                            ) : employeeLeaves.length === 0 ? (
+                                <TableRow>
+                                    <TableCell colSpan={7} className="p-10 text-center text-slate-500">
                                         No leaves recorded.
                                     </TableCell>
                                 </TableRow>
@@ -112,12 +203,12 @@ export default function EmployeeAttendancePage() {
                                     const lt = leaveTypes.find(t => t.id === leave.leaveTypeId)
                                     const files = leave.documents?.files || []
                                     const firstFile = files[0]
+                                    const displayDate = leave.startDate || leave.date
                                     return (
                                         <TableRow key={leave.id} className="border-slate-50">
-                                            <TableCell className="pl-6 py-4 text-sm font-medium text-slate-700">{formatDate(leave.date)}</TableCell>
+                                            <TableCell className="pl-6 py-4 text-sm font-medium text-slate-700">{displayDate ? formatDate(displayDate) : '—'}</TableCell>
                                             <TableCell className="text-sm font-medium text-slate-700">{leave.leaveTypeName || lt?.name || '—'}</TableCell>
                                             <TableCell className="text-sm text-slate-500">{leave.leaveTypeCode || lt?.code || '—'}</TableCell>
-                                            <TableCell className="text-sm text-slate-500">{leave.leaveTypeQuota ?? lt?.quota ?? '—'}</TableCell>
                                             <TableCell className="text-sm text-slate-500">{leave.unit || lt?.unit || 'Day'}</TableCell>
                                             <TableCell className="text-sm text-slate-500">{leave.amount ?? 1}</TableCell>
                                             <TableCell className="text-sm text-slate-500">{leave.note || '—'}</TableCell>
@@ -145,5 +236,5 @@ export default function EmployeeAttendancePage() {
                     </CardContent>
                 </Card>
             </div>
-)
+        )
 }

@@ -112,17 +112,19 @@ export default function EmployeeFeedbackPage() {
                     <Table>
                         <TableHeader className="bg-slate-50/50">
                             <TableRow className="hover:bg-transparent border-slate-100">
-                                <TableHead className="pl-8 py-4 text-[10px] font-extrabold uppercase tracking-widest text-slate-400">View Feedback</TableHead>
+                                <TableHead className="pl-6 py-4 text-[10px] font-extrabold uppercase tracking-widest text-slate-400">View Feedback</TableHead>
                                 <TableHead className="py-4 text-[10px] font-extrabold uppercase tracking-widest text-slate-400">Card</TableHead>
                                 <TableHead className="py-4 text-[10px] font-extrabold uppercase tracking-widest text-slate-400">From</TableHead>
+                                <TableHead className="py-4 text-[10px] font-extrabold uppercase tracking-widest text-slate-400">Score</TableHead>
+                                <TableHead className="py-4 text-[10px] font-extrabold uppercase tracking-widest text-slate-400">Status</TableHead>
                                 <TableHead className="py-4 text-[10px] font-extrabold uppercase tracking-widest text-slate-400">Date</TableHead>
-                                <TableHead className="text-right pr-8 py-4 text-[10px] font-extrabold uppercase tracking-widest text-slate-400">Actions</TableHead>
+                                <TableHead className="text-right pr-6 py-4 text-[10px] font-extrabold uppercase tracking-widest text-slate-400">Actions</TableHead>
                             </TableRow>
                         </TableHeader>
                         <TableBody>
                             {entries.length === 0 ? (
                                 <TableRow>
-                                    <TableCell colSpan={5} className="py-12 text-center text-slate-500">
+                                    <TableCell colSpan={7} className="py-12 text-center text-slate-500">
                                         No feedback entries for this team member.
                                     </TableCell>
                                 </TableRow>
@@ -136,9 +138,21 @@ export default function EmployeeFeedbackPage() {
                                         const value = parseInt(a.answer, 10)
                                         return isNaN(value) || value <= 0
                                     })
+                                    // Calculate score percentage
+                                    let scorePercent = 0
+                                    if (scoreAnswers.length > 0) {
+                                        // eslint-disable-next-line @typescript-eslint/no-explicit-any
+                                        const total = scoreAnswers.reduce((sum: number, a: any) => {
+                                            const val = parseInt(a.answer, 10)
+                                            return sum + (isNaN(val) ? 0 : val)
+                                        }, 0)
+                                        const maxScore = scoreAnswers.length * 5
+                                        scorePercent = Math.round((total / maxScore) * 100)
+                                    }
+                                    const scoreColor = scorePercent >= 80 ? 'bg-green-500' : scorePercent >= 60 ? 'bg-amber-500' : 'bg-red-500'
                                     return (
                                         <TableRow key={entry.id} className="hover:bg-slate-50/50 border-slate-50">
-                                            <TableCell className="pl-8 py-5">
+                                            <TableCell className="pl-6 py-5">
                                                 <Link
                                                     href={`/performance/feedback/${entry.id}`}
                                                     onClick={() => {
@@ -152,22 +166,34 @@ export default function EmployeeFeedbackPage() {
                                                 </Link>
                                             </TableCell>
                                             <TableCell className="py-5 text-sm text-slate-600">
-                                                <div className="flex items-center gap-2">
-                                                    <span>{card?.title || 'Unknown'}</span>
-                                                    {isIncomplete && (
-                                                        <span className="text-[10px] font-bold uppercase tracking-widest px-2 py-1 rounded-full bg-yellow-100 text-yellow-700">
-                                                            Incomplete
-                                                        </span>
-                                                    )}
-                                                </div>
+                                                {card?.title || 'Unknown'}
                                             </TableCell>
                                             <TableCell className="py-5 text-sm font-medium text-slate-600">
                                                 {entry.authorName || '—'}
                                             </TableCell>
+                                            <TableCell className="py-5">
+                                                <div className="flex items-center gap-2">
+                                                    <div className="w-16 h-2 bg-slate-100 rounded-full overflow-hidden">
+                                                        <div className={`h-full ${scoreColor} rounded-full`} style={{ width: `${scorePercent}%` }} />
+                                                    </div>
+                                                    <span className="text-sm font-medium text-slate-700">{scorePercent}%</span>
+                                                </div>
+                                            </TableCell>
+                                            <TableCell className="py-5">
+                                                {isIncomplete ? (
+                                                    <span className="text-[10px] font-bold uppercase tracking-widest px-2 py-1 rounded-full bg-yellow-100 text-yellow-700">
+                                                        Incomplete
+                                                    </span>
+                                                ) : (
+                                                    <span className="text-[10px] font-bold uppercase tracking-widest px-2 py-1 rounded-full bg-green-100 text-green-700">
+                                                        Complete
+                                                    </span>
+                                                )}
+                                            </TableCell>
                                             <TableCell className="py-5 text-sm text-slate-500">
                                                 {new Date(entry.createdAt).toLocaleDateString()}
                                             </TableCell>
-                                            <TableCell className="text-right pr-8">
+                                            <TableCell className="text-right pr-6">
                                                 <Button
                                                     variant="ghost"
                                                     size="icon"

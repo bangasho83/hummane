@@ -966,7 +966,7 @@ export const fetchLeavesApi = async (accessToken: string): Promise<LeaveRecord[]
   }
 
   const data = await response.json().catch(() => null)
-  const list = data?.data || data?.leaves || data
+  const list = data?.records || data?.data || data?.leaves || data
   return Array.isArray(list) ? (list as LeaveRecord[]) : []
 }
 
