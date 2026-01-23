@@ -1,6 +1,6 @@
 'use client'
 
-import { useMemo, useState } from 'react'
+import { useMemo, useState, useEffect } from 'react'
 import Link from 'next/link'
 import { AttendanceTabs } from '@/features/attendance'
 import { useApp } from '@/lib/context/AppContext'
@@ -9,12 +9,63 @@ import { Card, CardContent } from '@/components/ui/card'
 import { cn } from '@/lib/utils'
 import { Input } from '@/components/ui/input'
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select'
+import { Button } from '@/components/ui/button'
+import { Copy, ChevronDown, ChevronUp } from 'lucide-react'
+
+const API_BASE_URL = process.env.NEXT_PUBLIC_API_BASE_URL || 'https://api.hummane.com'
 
 export default function AttendanceTeamPage() {
-    const { employees, leaveTypes, leaves } = useApp()
+    const { employees, leaveTypes, leaves, apiAccessToken } = useApp()
     const [searchTerm, setSearchTerm] = useState('')
     const [departmentFilter, setDepartmentFilter] = useState<string>('all')
     const [positionFilter, setPositionFilter] = useState<string>('all')
+
+    // Debug panel state
+    const [debugExpanded, setDebugExpanded] = useState(false)
+    const [leavesResponse, setLeavesResponse] = useState<string>('')
+    const [leaveTypesResponse, setLeaveTypesResponse] = useState<string>('')
+    const [employeesResponse, setEmployeesResponse] = useState<string>('')
+
+    const leavesCurl = `curl -X GET "${API_BASE_URL}/leaves" \\
+  -H "Authorization: Bearer <token>"`
+
+    const leaveTypesCurl = `curl -X GET "${API_BASE_URL}/leave-types" \\
+  -H "Authorization: Bearer <token>"`
+
+    const employeesCurl = `curl -X GET "${API_BASE_URL}/employees" \\
+  -H "Authorization: Bearer <token>"`
+
+    useEffect(() => {
+        if (!apiAccessToken) return
+
+        // Fetch leaves
+        fetch(`${API_BASE_URL}/leaves`, {
+            headers: { Authorization: `Bearer ${apiAccessToken}` }
+        })
+            .then(res => res.json())
+            .then(data => setLeavesResponse(JSON.stringify(data, null, 2)))
+            .catch(err => setLeavesResponse(`Error: ${err.message}`))
+
+        // Fetch leave types
+        fetch(`${API_BASE_URL}/leave-types`, {
+            headers: { Authorization: `Bearer ${apiAccessToken}` }
+        })
+            .then(res => res.json())
+            .then(data => setLeaveTypesResponse(JSON.stringify(data, null, 2)))
+            .catch(err => setLeaveTypesResponse(`Error: ${err.message}`))
+
+        // Fetch employees
+        fetch(`${API_BASE_URL}/employees`, {
+            headers: { Authorization: `Bearer ${apiAccessToken}` }
+        })
+            .then(res => res.json())
+            .then(data => setEmployeesResponse(JSON.stringify(data, null, 2)))
+            .catch(err => setEmployeesResponse(`Error: ${err.message}`))
+    }, [apiAccessToken])
+
+    const copyToClipboard = (text: string) => {
+        navigator.clipboard.writeText(text)
+    }
 
     const leaveTypesOrdered = useMemo(
         () => [...leaveTypes].sort((a, b) => a.name.localeCompare(b.name)),
@@ -74,28 +125,32 @@ export default function AttendanceTeamPage() {
         return normalized.toFixed(2)
     }
 
-    const getLeaveAmount = (leave: { amount?: number | string; leaveDays?: { amount: number | string; countsTowardQuota?: boolean | string }[] }) => {
+    const getLeaveAmount = (leave: { amount?: number | string; unit?: string; leaveDays?: { amount?: number | string; countsTowardQuota?: boolean | string }[] }) => {
         if (leave.leaveDays && leave.leaveDays.length > 0) {
             const total = leave.leaveDays.reduce((sum, day) => {
                 const countsTowardQuota = day.countsTowardQuota
+                // Skip days that explicitly don't count toward quota
                 if (countsTowardQuota === false || countsTowardQuota === 'false') {
                     return sum
                 }
-                const amount = Number(day.amount)
-                if (!Number.isFinite(amount)) {
-                    return sum
+                // If day has an amount property, use it; otherwise count as 1 day
+                const dayAmount = day.amount !== undefined ? Number(day.amount) : 1
+                if (!Number.isFinite(dayAmount)) {
+                    return sum + 1 // Count as 1 if amount is invalid
                 }
-                return sum + amount
+                return sum + dayAmount
             }, 0)
             const normalized = normalizeCount(total)
+            // Fallback to leave.amount if leaveDays total is 0
             const fallbackAmount = Number(leave.amount)
             if (normalized <= 0 && Number.isFinite(fallbackAmount) && fallbackAmount > 0) {
                 return normalizeCount(fallbackAmount)
             }
             return normalized
         }
+        // No leaveDays - use leave.amount or default to 1
         const amount = Number(leave.amount)
-        return normalizeCount(Number.isFinite(amount) ? amount : 1)
+        return normalizeCount(Number.isFinite(amount) && amount > 0 ? amount : 1)
     }
 
     const normalizeId = (value: string | undefined) => (value || '').trim().toLowerCase()
@@ -261,6 +316,96 @@ export default function AttendanceTeamPage() {
                                 </TableBody>
                             </Table>
                     </div>
+                </CardContent>
+            </Card>
+
+            {/* API Debug Panel */}
+            <Card className="mt-6 border border-slate-200 shadow-sm rounded-2xl bg-slate-50">
+                <CardContent className="p-4">
+                    <button
+                        type="button"
+                        onClick={() => setDebugExpanded(!debugExpanded)}
+                        className="flex items-center justify-between w-full text-left"
+                    >
+                        <span className="text-sm font-bold text-slate-600">API Debug Panel</span>
+                        {debugExpanded ? <ChevronUp className="w-4 h-4 text-slate-400" /> : <ChevronDown className="w-4 h-4 text-slate-400" />}
+                    </button>
+
+                    {debugExpanded && (
+                        <div className="mt-4 space-y-6">
+                            {/* Leaves API */}
+                            <div className="space-y-2">
+                                <div className="flex items-center justify-between">
+                                    <p className="text-xs font-bold text-slate-500 uppercase tracking-widest">GET /leaves</p>
+                                    <Button
+                                        variant="ghost"
+                                        size="sm"
+                                        onClick={() => copyToClipboard(leavesCurl)}
+                                        className="h-7 px-2 text-xs"
+                                    >
+                                        <Copy className="w-3 h-3 mr-1" /> Copy cURL
+                                    </Button>
+                                </div>
+                                <pre className="text-xs bg-slate-900 text-green-400 p-3 rounded-lg overflow-x-auto whitespace-pre-wrap">
+                                    {leavesCurl}
+                                </pre>
+                                <details className="text-xs">
+                                    <summary className="cursor-pointer text-slate-500 font-medium">Response ({leaves.length} records)</summary>
+                                    <pre className="mt-2 bg-white border border-slate-200 p-3 rounded-lg overflow-x-auto max-h-64 text-slate-700">
+                                        {leavesResponse || 'Loading...'}
+                                    </pre>
+                                </details>
+                            </div>
+
+                            {/* Leave Types API */}
+                            <div className="space-y-2">
+                                <div className="flex items-center justify-between">
+                                    <p className="text-xs font-bold text-slate-500 uppercase tracking-widest">GET /leave-types</p>
+                                    <Button
+                                        variant="ghost"
+                                        size="sm"
+                                        onClick={() => copyToClipboard(leaveTypesCurl)}
+                                        className="h-7 px-2 text-xs"
+                                    >
+                                        <Copy className="w-3 h-3 mr-1" /> Copy cURL
+                                    </Button>
+                                </div>
+                                <pre className="text-xs bg-slate-900 text-green-400 p-3 rounded-lg overflow-x-auto whitespace-pre-wrap">
+                                    {leaveTypesCurl}
+                                </pre>
+                                <details className="text-xs">
+                                    <summary className="cursor-pointer text-slate-500 font-medium">Response ({leaveTypes.length} records)</summary>
+                                    <pre className="mt-2 bg-white border border-slate-200 p-3 rounded-lg overflow-x-auto max-h-64 text-slate-700">
+                                        {leaveTypesResponse || 'Loading...'}
+                                    </pre>
+                                </details>
+                            </div>
+
+                            {/* Employees API */}
+                            <div className="space-y-2">
+                                <div className="flex items-center justify-between">
+                                    <p className="text-xs font-bold text-slate-500 uppercase tracking-widest">GET /employees</p>
+                                    <Button
+                                        variant="ghost"
+                                        size="sm"
+                                        onClick={() => copyToClipboard(employeesCurl)}
+                                        className="h-7 px-2 text-xs"
+                                    >
+                                        <Copy className="w-3 h-3 mr-1" /> Copy cURL
+                                    </Button>
+                                </div>
+                                <pre className="text-xs bg-slate-900 text-green-400 p-3 rounded-lg overflow-x-auto whitespace-pre-wrap">
+                                    {employeesCurl}
+                                </pre>
+                                <details className="text-xs">
+                                    <summary className="cursor-pointer text-slate-500 font-medium">Response ({employees.length} records)</summary>
+                                    <pre className="mt-2 bg-white border border-slate-200 p-3 rounded-lg overflow-x-auto max-h-64 text-slate-700">
+                                        {employeesResponse || 'Loading...'}
+                                    </pre>
+                                </details>
+                            </div>
+                        </div>
+                    )}
                 </CardContent>
             </Card>
 
