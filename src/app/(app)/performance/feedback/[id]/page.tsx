@@ -38,6 +38,7 @@ interface ApiEntry {
     id: string
     subjectName?: string
     subjectType?: string
+    authorName?: string
     type?: string
     createdAt: string
     card: ApiCard
