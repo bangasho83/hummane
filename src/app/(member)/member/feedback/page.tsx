@@ -6,8 +6,9 @@ import Link from 'next/link'
 import { useApp } from '@/lib/context/AppContext'
 import type { Employee, FeedbackCard, FeedbackEntry } from '@/types'
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
+import { Button } from '@/components/ui/button'
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table'
-import { MessageSquare, Loader2 } from 'lucide-react'
+import { MessageSquare, Loader2, Plus } from 'lucide-react'
 import { MemberFeedbackTabs } from '@/features/member/components/MemberFeedbackTabs'
 
 const API_BASE_URL = 'https://api.hummane.com'
@@ -109,9 +110,20 @@ export default function MemberFeedbackPage() {
 
     return (
         <div className="animate-in fade-in duration-500 slide-in-from-bottom-4 space-y-6">
-            <div>
-                <h1 className="text-2xl font-bold text-slate-900">My Feedback</h1>
-                <p className="text-slate-500">View feedback you have received and given</p>
+            <div className="flex items-end justify-between gap-4">
+                <div>
+                    <h1 className="text-2xl font-bold text-slate-900">My Feedback</h1>
+                    <p className="text-slate-500">View feedback you have received and given</p>
+                </div>
+                <Button
+                    asChild
+                    className="bg-blue-600 hover:bg-blue-700 text-white rounded-2xl font-bold shadow-lg shadow-blue-500/20 px-6 py-6 h-auto"
+                >
+                    <Link href="/member/feedback/given/new">
+                        <Plus className="w-5 h-5 mr-2" />
+                        Add Feedback
+                    </Link>
+                </Button>
             </div>
 
             <MemberFeedbackTabs />
@@ -227,4 +239,3 @@ export default function MemberFeedbackPage() {
         </div>
     )
 }
-

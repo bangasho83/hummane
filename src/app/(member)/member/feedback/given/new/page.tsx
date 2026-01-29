@@ -8,6 +8,7 @@ import { Card, CardContent } from '@/components/ui/card'
 import { Button } from '@/components/ui/button'
 import { Label } from '@/components/ui/label'
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select'
+import { Input } from '@/components/ui/input'
 import { toast } from '@/components/ui/toast'
 import { useApp } from '@/lib/context/AppContext'
 import { Loader2 } from 'lucide-react'
@@ -25,6 +26,7 @@ export default function MemberNewFeedbackPage() {
     const [subjectId, setSubjectId] = useState<string>('')
     const [answers, setAnswers] = useState<DraftAnswer[]>([])
     const [saving, setSaving] = useState(false)
+    const [subjectQuery, setSubjectQuery] = useState('')
 
     const employeeId = meProfile?.employeeId
     const isDataLoading = isHydrating || (!meProfile && employees.length === 0)
@@ -51,6 +53,12 @@ export default function MemberNewFeedbackPage() {
         () => employees.map(e => ({ id: e.id, label: e.name })),
         [employees]
     )
+
+    const filteredSubjects = useMemo(() => {
+        const query = subjectQuery.trim().toLowerCase()
+        if (!query) return subjects
+        return subjects.filter(subject => subject.label.toLowerCase().includes(query))
+    }, [subjects, subjectQuery])
 
     const handleSelectCard = (value: string) => {
         setCardId(value)
@@ -173,8 +181,18 @@ export default function MemberNewFeedbackPage() {
                                     <SelectValue placeholder="Select team member" />
                                 </SelectTrigger>
                                 <SelectContent>
+                                    <div className="p-2 sticky top-0 bg-white z-10 border-b border-slate-100">
+                                        <Input
+                                            value={subjectQuery}
+                                            onChange={(e) => setSubjectQuery(e.target.value)}
+                                            placeholder="Search team members..."
+                                            className="h-9 rounded-lg"
+                                            onKeyDown={(e) => e.stopPropagation()}
+                                            onClick={(e) => e.stopPropagation()}
+                                        />
+                                    </div>
                                     <SelectItem value="none">Select</SelectItem>
-                                    {subjects.map(subject => (
+                                    {filteredSubjects.map(subject => (
                                         <SelectItem key={subject.id} value={subject.id}>
                                             {subject.label}
                                         </SelectItem>
@@ -279,4 +297,3 @@ export default function MemberNewFeedbackPage() {
         </div>
     )
 }
-
