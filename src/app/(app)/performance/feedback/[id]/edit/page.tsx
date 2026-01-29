@@ -53,6 +53,18 @@ type DraftAnswer = {
     comment?: string
 }
 
+type ApiAnswerPayload = {
+    answer: string
+    questionId: string
+    question: {
+        id: string
+        kind: 'score' | 'comment'
+        prompt: string
+        weight?: number
+        questionId: string
+    }
+}
+
 export default function EditFeedbackPage() {
     const params = useParams()
     const router = useRouter()
@@ -154,46 +166,38 @@ export default function EditFeedbackPage() {
                 .map((q, index) => {
                     const answer = answers.find(a => a.index === index)
                     const questionId = q.answer?.questionId || q.questionId || q.id || `q_${index}`
-                    if (q.kind === 'comment') {
+                    if (q.kind === 'content') return null
+                    const kind: 'score' | 'comment' = q.kind === 'comment' ? 'comment' : 'score'
+                    if (kind === 'comment') {
                         const value = answer?.comment || ''
-                        return {
+                        const payload: ApiAnswerPayload = {
                             answer: value,
                             questionId,
                             question: {
                                 id: questionId,
-                                kind: q.kind,
+                                kind,
                                 prompt: q.prompt,
                                 ...(q.weight !== undefined ? { weight: q.weight } : {}),
                                 questionId
                             }
                         }
-                    } else if (q.kind === 'score') {
-                        const value = String(answer?.score || 0)
-                        return {
-                            answer: value,
-                            questionId,
-                            question: {
-                                id: questionId,
-                                kind: q.kind,
-                                prompt: q.prompt,
-                                ...(q.weight !== undefined ? { weight: q.weight } : {}),
-                                questionId
-                            }
+                        return payload
+                    }
+                    const value = String(answer?.score || 0)
+                    const payload: ApiAnswerPayload = {
+                        answer: value,
+                        questionId,
+                        question: {
+                            id: questionId,
+                            kind,
+                            prompt: q.prompt,
+                            ...(q.weight !== undefined ? { weight: q.weight } : {}),
+                            questionId
                         }
                     }
-                    return null
+                    return payload
                 })
-                .filter((a): a is {
-                    answer: string
-                    questionId: string
-                    question: {
-                        id: string
-                        kind: 'content' | 'score' | 'comment'
-                        prompt: string
-                        weight?: number
-                        questionId: string
-                    }
-                } => a !== null)
+                .filter((a): a is ApiAnswerPayload => a !== null)
 
             // Build the actual API payload (only answers and companyId)
             const apiPayload = {
