@@ -1,6 +1,6 @@
 'use client'
 
-import { useEffect, useMemo, useState } from 'react'
+import { useEffect, useMemo, useState, useCallback } from 'react'
 import { useParams, useRouter, usePathname } from 'next/navigation'
 import Link from 'next/link'
 import { useApp } from '@/lib/context/AppContext'
@@ -12,12 +12,16 @@ import { Button } from '@/components/ui/button'
 import { toast } from '@/components/ui/toast'
 import { ArrowLeft, Trash2 } from 'lucide-react'
 
+const API_BASE_URL = 'https://api.hummane.com'
+
 export default function EmployeeFeedbackPage() {
     const params = useParams()
     const router = useRouter()
     const pathname = usePathname()
-    const { employees, feedbackEntries, feedbackCards, deleteFeedbackEntry } = useApp()
+    const { employees, feedbackCards, apiAccessToken } = useApp()
     const [employee, setEmployee] = useState<Employee | null>(null)
+    const [entries, setEntries] = useState<any[]>([])
+    const [isLoading, setIsLoading] = useState(true)
     const employeeId = params.id as string
 
     useEffect(() => {
@@ -30,16 +34,50 @@ export default function EmployeeFeedbackPage() {
         }
     }, [employees, employeeId, router])
 
-    const entries = useMemo(
-        () => feedbackEntries.filter(e => {
-            // Check subjectId matches the employee
-            if (e.subjectId !== employeeId) return false
-            // Check if it's a team member entry (API returns subjectType: 'Employee' or type: 'Team Member')
-            const isTeamMember = e.type === 'Team Member' || e.subjectType === 'Employee'
-            return isTeamMember
-        }),
-        [feedbackEntries, employeeId]
-    )
+    const fetchEntries = useCallback(async () => {
+        if (!apiAccessToken || !employeeId) {
+            setEntries([])
+            setIsLoading(false)
+            return
+        }
+        setIsLoading(true)
+        try {
+            const url = `${API_BASE_URL}/feedback-entries?subjectId=${encodeURIComponent(employeeId)}`
+            const response = await fetch(url, {
+                method: 'GET',
+                headers: {
+                    Authorization: `Bearer ${apiAccessToken}`
+                }
+            })
+            const text = await response.text()
+            let parsed: unknown = null
+            if (text) {
+                try {
+                    parsed = JSON.parse(text)
+                } catch {
+                    parsed = text
+                }
+            }
+            if (!response.ok) {
+                const message = typeof parsed === 'string' ? parsed : 'Failed to fetch feedback entries'
+                throw new Error(message || 'Failed to fetch feedback entries')
+            }
+            const list = Array.isArray(parsed)
+                ? parsed
+                : Array.isArray((parsed as { data?: unknown })?.data)
+                    ? (parsed as { data: unknown[] }).data
+                    : Array.isArray((parsed as { feedbackEntries?: unknown })?.feedbackEntries)
+                        ? (parsed as { feedbackEntries: unknown[] }).feedbackEntries
+                        : []
+            setEntries(list)
+        } catch (error) {
+            const message = error instanceof Error ? error.message : 'Failed to fetch feedback entries'
+            toast(message, 'error')
+            setEntries([])
+        } finally {
+            setIsLoading(false)
+        }
+    }, [apiAccessToken, employeeId])
 
     const cardsById = useMemo(
         () => new Map(feedbackCards.map(card => [card.id, card])),
@@ -49,13 +87,31 @@ export default function EmployeeFeedbackPage() {
     const handleDelete = async (entryId: string) => {
         if (confirm('Delete this feedback entry?')) {
             try {
-                await deleteFeedbackEntry(entryId)
+                const response = await fetch(
+                    `${API_BASE_URL}/feedback-entries/${encodeURIComponent(entryId)}`,
+                    {
+                        method: 'DELETE',
+                        headers: {
+                            Authorization: `Bearer ${apiAccessToken}`
+                        }
+                    }
+                )
+                if (!response.ok) {
+                    const message = await response.text()
+                    throw new Error(message || 'Failed to delete feedback entry')
+                }
                 toast('Feedback entry deleted', 'success')
+                await fetchEntries()
             } catch (error) {
-                toast('Failed to delete feedback entry', 'error')
+                const message = error instanceof Error ? error.message : 'Failed to delete feedback entry'
+                toast(message, 'error')
             }
         }
     }
+
+    useEffect(() => {
+        void fetchEntries()
+    }, [fetchEntries])
 
     if (!employee) {
         return (
@@ -122,7 +178,13 @@ export default function EmployeeFeedbackPage() {
                             </TableRow>
                         </TableHeader>
                         <TableBody>
-                            {entries.length === 0 ? (
+                            {isLoading ? (
+                                <TableRow>
+                                    <TableCell colSpan={7} className="py-12 text-center text-slate-500">
+                                        Loading feedback entries...
+                                    </TableCell>
+                                </TableRow>
+                            ) : entries.length === 0 ? (
                                 <TableRow>
                                     <TableCell colSpan={7} className="py-12 text-center text-slate-500">
                                         No feedback entries for this team member.
@@ -211,6 +273,7 @@ export default function EmployeeFeedbackPage() {
                     </Table>
                 </CardContent>
             </Card>
+
             </div>
 )
 }

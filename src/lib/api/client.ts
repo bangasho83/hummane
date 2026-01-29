@@ -1298,7 +1298,20 @@ export const fetchFeedbackEntryApi = async (entryId: string, accessToken: string
 
 export const updateFeedbackEntryApi = async (
   entryId: string,
-  payload: { answers: { questionId: string; answer: string }[]; companyId: string },
+  payload: {
+    answers: {
+      questionId: string
+      answer: string
+      question: {
+        id: string
+        questionId: string
+        prompt: string
+        kind: 'score' | 'comment' | 'content'
+        weight?: number
+      }
+    }[]
+    companyId: string
+  },
   accessToken: string
 ): Promise<FeedbackEntry> => {
   let response: Response

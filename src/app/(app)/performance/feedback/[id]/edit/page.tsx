@@ -15,6 +15,8 @@ const API_BASE_URL = process.env.NEXT_PUBLIC_API_BASE_URL || 'https://hummane-ap
 
 // Types for the API card structure
 interface CardQuestion {
+    id?: string
+    questionId?: string
     kind: 'content' | 'score' | 'comment'  // API uses 'kind' and 'comment' for text
     prompt: string
     weight?: number
@@ -151,15 +153,47 @@ export default function EditFeedbackPage() {
             const apiAnswers = questions
                 .map((q, index) => {
                     const answer = answers.find(a => a.index === index)
-                    const questionId = q.answer?.questionId || `q_${index}`
+                    const questionId = q.answer?.questionId || q.questionId || q.id || `q_${index}`
                     if (q.kind === 'comment') {
-                        return { questionId, answer: answer?.comment || '' }
+                        const value = answer?.comment || ''
+                        return {
+                            answer: value,
+                            questionId,
+                            question: {
+                                id: questionId,
+                                kind: q.kind,
+                                prompt: q.prompt,
+                                ...(q.weight !== undefined ? { weight: q.weight } : {}),
+                                questionId
+                            }
+                        }
                     } else if (q.kind === 'score') {
-                        return { questionId, answer: String(answer?.score || 0) }
+                        const value = String(answer?.score || 0)
+                        return {
+                            answer: value,
+                            questionId,
+                            question: {
+                                id: questionId,
+                                kind: q.kind,
+                                prompt: q.prompt,
+                                ...(q.weight !== undefined ? { weight: q.weight } : {}),
+                                questionId
+                            }
+                        }
                     }
                     return null
                 })
-                .filter((a): a is { questionId: string; answer: string } => a !== null)
+                .filter((a): a is {
+                    answer: string
+                    questionId: string
+                    question: {
+                        id: string
+                        kind: 'content' | 'score' | 'comment'
+                        prompt: string
+                        weight?: number
+                        questionId: string
+                    }
+                } => a !== null)
 
             // Build the actual API payload (only answers and companyId)
             const apiPayload = {

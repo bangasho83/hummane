@@ -1394,7 +1394,8 @@ export function AppProvider({ children }: { children: ReactNode }) {
             const card = feedbackCards.find(item => item.id === cardId)
             const answers = updates.answers || existing?.answers || []
             const apiAnswers = answers.map((answer) => {
-                const kind = card?.questions.find(q => q.id === answer.questionId)?.kind
+                const questionDef = card?.questions.find(q => q.id === answer.questionId)
+                const kind = questionDef?.kind || 'comment'
                 const value = kind === 'comment'
                     ? answer.comment || ''
                     : Number.isFinite(answer.score)
@@ -1402,7 +1403,14 @@ export function AppProvider({ children }: { children: ReactNode }) {
                         : answer.comment || ''
                 return {
                     questionId: answer.questionId,
-                    answer: value
+                    answer: value,
+                    question: {
+                        id: answer.questionId,
+                        questionId: answer.questionId,
+                        prompt: questionDef?.prompt || '',
+                        kind,
+                        ...(questionDef?.weight !== undefined ? { weight: questionDef.weight } : {})
+                    }
                 }
             })
             const apiEntry = await updateFeedbackEntryApi(

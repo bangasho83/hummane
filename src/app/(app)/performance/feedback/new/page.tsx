@@ -7,6 +7,7 @@ import { useRouter } from 'next/navigation'
 import { Card, CardContent } from '@/components/ui/card'
 import { Button } from '@/components/ui/button'
 import { Label } from '@/components/ui/label'
+import { Input } from '@/components/ui/input'
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select'
 import { toast } from '@/components/ui/toast'
 import { useApp } from '@/lib/context/AppContext'
@@ -27,6 +28,8 @@ export default function NewFeedbackPage() {
     const [authorId, setAuthorId] = useState<string>('')
     const [answers, setAnswers] = useState<DraftAnswer[]>([])
     const [saving, setSaving] = useState(false)
+    const [authorQuery, setAuthorQuery] = useState('')
+    const [subjectQuery, setSubjectQuery] = useState('')
 
     const filteredCards = useMemo(
         () => feedbackCards.filter(card => card.subject === type),
@@ -48,6 +51,18 @@ export default function NewFeedbackPage() {
         () => employees.map(e => ({ id: e.id, label: e.name })),
         [employees]
     )
+
+    const filteredAuthors = useMemo(() => {
+        const query = authorQuery.trim().toLowerCase()
+        if (!query) return authors
+        return authors.filter(author => author.label.toLowerCase().includes(query))
+    }, [authors, authorQuery])
+
+    const filteredSubjects = useMemo(() => {
+        const query = subjectQuery.trim().toLowerCase()
+        if (!query) return subjects
+        return subjects.filter(subject => subject.label.toLowerCase().includes(query))
+    }, [subjects, subjectQuery])
 
     const handleSelectCard = (value: string) => {
         setCardId(value)
@@ -166,8 +181,18 @@ export default function NewFeedbackPage() {
                                     <SelectValue placeholder="Select team member" />
                                 </SelectTrigger>
                                 <SelectContent>
+                                    <div className="p-2 sticky top-0 bg-white z-10 border-b border-slate-100">
+                                        <Input
+                                            value={authorQuery}
+                                            onChange={(e) => setAuthorQuery(e.target.value)}
+                                            placeholder="Search team members..."
+                                            className="h-9 rounded-lg"
+                                            onKeyDown={(e) => e.stopPropagation()}
+                                            onClick={(e) => e.stopPropagation()}
+                                        />
+                                    </div>
                                     <SelectItem value="none">Select</SelectItem>
-                                    {authors.map(author => (
+                                    {filteredAuthors.map(author => (
                                         <SelectItem key={author.id} value={author.id}>
                                             {author.label}
                                         </SelectItem>
@@ -183,6 +208,7 @@ export default function NewFeedbackPage() {
                                     setType(value)
                                     setCardId('')
                                     setSubjectId('')
+                                    setSubjectQuery('')
                                     setAnswers([])
                                 }}
                             >
@@ -211,8 +237,18 @@ export default function NewFeedbackPage() {
                                     <SelectValue placeholder="Select person" />
                                 </SelectTrigger>
                                 <SelectContent>
+                                    <div className="p-2 sticky top-0 bg-white z-10 border-b border-slate-100">
+                                        <Input
+                                            value={subjectQuery}
+                                            onChange={(e) => setSubjectQuery(e.target.value)}
+                                            placeholder={`Search ${type === 'Applicant' ? 'applicants' : 'team members'}...`}
+                                            className="h-9 rounded-lg"
+                                            onKeyDown={(e) => e.stopPropagation()}
+                                            onClick={(e) => e.stopPropagation()}
+                                        />
+                                    </div>
                                     <SelectItem value="none">Select</SelectItem>
-                                    {subjects.map(subject => (
+                                    {filteredSubjects.map(subject => (
                                         <SelectItem key={subject.id} value={subject.id}>
                                             {subject.label}
                                         </SelectItem>
