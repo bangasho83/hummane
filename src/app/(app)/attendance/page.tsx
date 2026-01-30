@@ -20,30 +20,34 @@ import { uploadFileToStorage } from '@/lib/firebase/storage'
 const DEFAULT_LEAVE_COLOR = '#ec4899'
 
 export default function AttendancePage() {
-    const { employees, leaves, addLeave, leaveTypes, refreshLeaveTypes } = useApp()
+    const { employees, addLeave, leaveTypes, refreshLeaveTypes, apiAccessToken } = useApp()
+    const [leaves, setLeaves] = useState<LeaveRecord[]>([])
     const [isDialogOpen, setIsDialogOpen] = useState(false)
     const [selectedEmployee, setSelectedEmployee] = useState('')
     const [selectedType, setSelectedType] = useState<string>('')
     const [startDate, setStartDate] = useState('')
     const [endDate, setEndDate] = useState('')
+    const [rangeStart, setRangeStart] = useState('')
+    const [rangeEnd, setRangeEnd] = useState('')
     const [startTime, setStartTime] = useState('09:00')
     const [endTime, setEndTime] = useState('18:00')
     const [note, setNote] = useState('')
     const [attachment, setAttachment] = useState<File | null>(null)
     const [loading, setLoading] = useState(false)
+    const [leavesLoading, setLeavesLoading] = useState(false)
     const [today, setToday] = useState<Date | null>(null)
     const [dates, setDates] = useState<Date[]>([])
+    const [rangeError, setRangeError] = useState('')
     // Build the date range on the client to avoid SSR/client drift
     useEffect(() => {
         const current = new Date()
-        const range: Date[] = []
-        for (let i = -15; i <= 15; i++) {
-            const date = new Date(current)
-            date.setDate(current.getDate() + i)
-            range.push(date)
-        }
+        const start = new Date(current)
+        start.setDate(current.getDate() - 15)
+        const end = new Date(current)
+        end.setDate(current.getDate() + 15)
         setToday(current)
-        setDates(range)
+        setRangeStart(formatDate(start))
+        setRangeEnd(formatDate(end))
         const todayStr = formatDate(current)
         setStartDate(todayStr)
         setEndDate(todayStr)
@@ -77,6 +81,22 @@ export default function AttendancePage() {
         return `${year}-${month}-${day}`
     }
 
+    const buildDateRange = (from: string, to: string) => {
+        if (!from || !to) return []
+        const start = new Date(from)
+        const end = new Date(to)
+        if (isNaN(start.getTime()) || isNaN(end.getTime()) || end < start) {
+            return []
+        }
+        const range: Date[] = []
+        const current = new Date(start)
+        while (current <= end) {
+            range.push(new Date(current))
+            current.setDate(current.getDate() + 1)
+        }
+        return range
+    }
+
     // Normalize date string to YYYY-MM-DD format, handling timezone offset
     const normalizeDate = (value: string) => {
         if (!value) return ''
@@ -91,6 +111,48 @@ export default function AttendancePage() {
         const day = date.getDay()
         return day === 0 || day === 6
     }
+
+    const fetchLeaves = async () => {
+        if (!apiAccessToken || !rangeStart || !rangeEnd) {
+            setLeaves([])
+            return
+        }
+        setLeavesLoading(true)
+        try {
+            const response = await fetch(
+                `${process.env.NEXT_PUBLIC_API_BASE_URL || 'https://api.hummane.com'}/leaves?startDate=${encodeURIComponent(rangeStart)}&endDate=${encodeURIComponent(rangeEnd)}`,
+                {
+                    method: 'GET',
+                    headers: { Authorization: `Bearer ${apiAccessToken}` }
+                }
+            )
+            if (!response.ok) {
+                const message = await response.text()
+                throw new Error(message || 'Failed to fetch leave records')
+            }
+            const data = await response.json()
+            const list = data?.records || data?.data || data?.leaves || data
+            setLeaves(Array.isArray(list) ? list : [])
+        } catch (error) {
+            const message = error instanceof Error ? error.message : 'Failed to fetch leave records'
+            toast(message, 'error')
+            setLeaves([])
+        } finally {
+            setLeavesLoading(false)
+        }
+    }
+
+    useEffect(() => {
+        if (!rangeStart || !rangeEnd) return
+        const range = buildDateRange(rangeStart, rangeEnd)
+        setDates(range)
+        if (range.length === 0) {
+            setRangeError('Invalid date range')
+            return
+        }
+        setRangeError('')
+        void fetchLeaves()
+    }, [rangeStart, rangeEnd, apiAccessToken])
 
     // Find all leaves for a specific employee on a specific date
     const getLeavesForDate = (employeeId: string, date: Date): LeaveRecord[] => {
@@ -232,6 +294,7 @@ export default function AttendancePage() {
             setEndTime('18:00')
             setNote('')
             setAttachment(null)
+            await fetchLeaves()
         } catch (error) {
             toast('Failed to register leave', 'error')
         } finally {
@@ -423,8 +486,41 @@ export default function AttendancePage() {
                                 </div>
                             </form>
                         </DialogContent>
-                    </Dialog>
+                </Dialog>
+            </div>
+
+            <div className="flex flex-wrap items-end justify-between gap-4 mb-6">
+                <div className="flex flex-wrap items-center gap-3">
+                    <div className="space-y-1">
+                        <label className="text-xs font-bold text-slate-400 uppercase tracking-widest">From</label>
+                        <Input
+                            type="date"
+                            className="h-10 rounded-xl border-slate-200"
+                            value={rangeStart}
+                            onChange={(e) => setRangeStart(e.target.value)}
+                        />
+                    </div>
+                    <div className="space-y-1">
+                        <label className="text-xs font-bold text-slate-400 uppercase tracking-widest">To</label>
+                        <Input
+                            type="date"
+                            className="h-10 rounded-xl border-slate-200"
+                            value={rangeEnd}
+                            onChange={(e) => setRangeEnd(e.target.value)}
+                        />
+                    </div>
+                    {rangeError && (
+                        <div className="text-xs text-red-600 font-semibold mt-5">
+                            {rangeError}
+                        </div>
+                    )}
                 </div>
+                {leavesLoading && (
+                    <div className="text-xs font-bold text-slate-400 uppercase tracking-widest">
+                        Loading leave records...
+                    </div>
+                )}
+            </div>
 
                 <div className="bg-white rounded-3xl shadow-premium border border-slate-100 overflow-hidden">
                     <div className="overflow-x-auto">
