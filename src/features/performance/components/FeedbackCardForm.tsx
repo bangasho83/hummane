@@ -6,7 +6,7 @@ import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
 import { QuillEditor } from '@/components/ui/quill-editor'
 import type { FeedbackQuestion } from '@/types'
-import { Plus, Trash2 } from 'lucide-react'
+import { ArrowDown, ArrowUp, Plus, Trash2 } from 'lucide-react'
 import { toast } from '@/components/ui/toast'
 
 type FeedbackCardFormProps = {
@@ -66,6 +66,16 @@ export function FeedbackCardForm({
             const parsed = Number.parseInt(value, 10)
             return { ...q, weight: Number.isFinite(parsed) && parsed >= 0 ? parsed : 0 }
         }))
+    }
+
+    const moveQuestion = (fromIndex: number, toIndex: number) => {
+        if (toIndex < 0 || toIndex >= questions.length) return
+        setQuestions(prev => {
+            const next = [...prev]
+            const [item] = next.splice(fromIndex, 1)
+            next.splice(toIndex, 0, item)
+            return next
+        })
     }
 
     const validate = () => {
@@ -143,15 +153,37 @@ export function FeedbackCardForm({
                                 <p className="text-xs font-bold text-slate-400 uppercase tracking-widest">
                                     {q.kind === 'content' ? 'Content Block' : 'Question'}
                                 </p>
-                                <Button
-                                    type="button"
-                                    variant="ghost"
-                                    size="icon"
-                                    className="h-8 w-8 text-slate-400 hover:text-red-500"
-                                    onClick={() => handleRemoveQuestion(q.id)}
-                                >
-                                    <Trash2 className="w-4 h-4" />
-                                </Button>
+                                <div className="flex items-center gap-1">
+                                    <Button
+                                        type="button"
+                                        variant="ghost"
+                                        size="icon"
+                                        className="h-8 w-8 text-slate-400 hover:text-slate-700"
+                                        onClick={() => moveQuestion(index, index - 1)}
+                                        disabled={index === 0}
+                                    >
+                                        <ArrowUp className="w-4 h-4" />
+                                    </Button>
+                                    <Button
+                                        type="button"
+                                        variant="ghost"
+                                        size="icon"
+                                        className="h-8 w-8 text-slate-400 hover:text-slate-700"
+                                        onClick={() => moveQuestion(index, index + 1)}
+                                        disabled={index === questions.length - 1}
+                                    >
+                                        <ArrowDown className="w-4 h-4" />
+                                    </Button>
+                                    <Button
+                                        type="button"
+                                        variant="ghost"
+                                        size="icon"
+                                        className="h-8 w-8 text-slate-400 hover:text-red-500"
+                                        onClick={() => handleRemoveQuestion(q.id)}
+                                    >
+                                        <Trash2 className="w-4 h-4" />
+                                    </Button>
+                                </div>
                             </div>
                             <div className="grid grid-cols-1 md:grid-cols-[1fr_140px] gap-3 items-start">
                                 {q.kind === 'content' ? (
