@@ -253,6 +253,7 @@ export interface Job {
         currency: string
     }
     experience: string
+    requirement?: string
     status: JobStatus
     applicantCount?: number
     createdAt: string

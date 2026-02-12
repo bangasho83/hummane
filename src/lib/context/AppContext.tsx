@@ -365,6 +365,7 @@ export function AppProvider({ children }: { children: ReactNode }) {
             location,
             salary,
             experience: job.experience ?? '',
+            requirement: job.requirement ?? '',
             status: (job.status || 'open') as Job['status'],
             applicantCount: job.applicantCount,
             createdAt: job.createdAt || now,
@@ -1788,6 +1789,7 @@ export function AppProvider({ children }: { children: ReactNode }) {
                     salaryFrom: jobData.salary?.min,
                     salaryTo: jobData.salary?.max,
                     experience: jobData.experience,
+                    requirement: jobData.requirement,
                     companyId: currentCompany.id
                 },
                 apiAccessToken
@@ -1822,6 +1824,7 @@ export function AppProvider({ children }: { children: ReactNode }) {
                 salaryFrom?: number
                 salaryTo?: number
                 experience?: string
+                requirement?: string
             } = {
                 companyId: currentCompany.id
             }
@@ -1836,6 +1839,7 @@ export function AppProvider({ children }: { children: ReactNode }) {
             if (jobData.salary?.min !== undefined) payload.salaryFrom = jobData.salary.min
             if (jobData.salary?.max !== undefined) payload.salaryTo = jobData.salary.max
             if (jobData.experience) payload.experience = jobData.experience
+            if (jobData.requirement !== undefined) payload.requirement = jobData.requirement
 
             const apiJob = await updateJobApi(id, payload, apiAccessToken)
             const normalized = normalizeJob(apiJob, currentCompany.id)

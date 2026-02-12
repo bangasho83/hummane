@@ -7,6 +7,7 @@ import { Card, CardContent } from '@/components/ui/card'
 import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select'
+import { QuillEditor } from '@/components/ui/quill-editor'
 import { useApp } from '@/lib/context/AppContext'
 import { EMPLOYMENT_MODES, EMPLOYMENT_TYPES, JOB_STATUSES, type EmploymentMode, type EmploymentType, type Job, type JobStatus } from '@/types'
 import { toast } from '@/components/ui/toast'
@@ -32,6 +33,7 @@ type JobFormState = {
         currency: string
     }
     experience: string
+    requirement: string
     status: JobStatus
 }
 
@@ -51,6 +53,7 @@ export function JobForm({ mode, job }: JobFormProps) {
         },
         salary: job?.salary || { min: 0, max: 0, currency: currentCompany?.currency || 'USD' },
         experience: job?.experience || '',
+        requirement: job?.requirement || '',
         status: job?.status ?? JOB_STATUSES[0]
     })
 
@@ -68,6 +71,7 @@ export function JobForm({ mode, job }: JobFormProps) {
                 },
                 salary: job.salary || { min: 0, max: 0, currency: currentCompany?.currency || 'USD' },
                 experience: job.experience,
+                requirement: job.requirement || '',
                 status: job.status
             })
         }
@@ -258,6 +262,15 @@ export function JobForm({ mode, job }: JobFormProps) {
                             className="rounded-xl border-slate-200 h-12"
                             value={form.experience}
                             onChange={(e) => setForm({ ...form, experience: e.target.value })}
+                        />
+                    </div>
+                    <div className="space-y-2">
+                        <Label className="text-sm font-bold text-slate-700 px-1">Requirements</Label>
+                        <QuillEditor
+                            value={form.requirement}
+                            onChange={(value) => setForm({ ...form, requirement: value })}
+                            placeholder="Describe the role requirements..."
+                            className="bg-white"
                         />
                     </div>
                     <div className="space-y-2">

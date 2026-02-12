@@ -1462,6 +1462,7 @@ export const createJobApi = async (
     salaryFrom?: number
     salaryTo?: number
     experience?: string
+    requirement?: string
     companyId: string
   },
   accessToken: string
@@ -1562,6 +1563,7 @@ export const updateJobApi = async (
     salaryFrom?: number
     salaryTo?: number
     experience?: string
+    requirement?: string
   },
   accessToken: string
 ): Promise<Job> => {
@@ -1606,6 +1608,7 @@ export const updateJobApi = async (
       employmentMode: payload.employmentMode as Job['employmentMode'],
       salary: { min: 0, max: 0, currency: 'USD' },
       experience: '',
+      requirement: payload.requirement ?? '',
       status: (payload.status as Job['status']) || 'open',
       createdAt: new Date().toISOString()
     }

@@ -1711,6 +1711,7 @@ export class DataStore {
                     : undefined,
                 salary: jobData.salary,
                 experience: sanitizeInput(jobData.experience),
+                requirement: jobData.requirement ? sanitizeRichText(jobData.requirement) : '',
                 status: jobData.status || 'open',
                 createdAt: new Date().toISOString(),
                 updatedAt: new Date().toISOString()
@@ -1750,6 +1751,7 @@ export class DataStore {
                     }
                     : data.jobs[jobIndex].location,
                 experience: jobData.experience ? sanitizeInput(jobData.experience) : data.jobs[jobIndex].experience,
+                requirement: jobData.requirement !== undefined ? sanitizeRichText(jobData.requirement) : data.jobs[jobIndex].requirement,
                 updatedAt: new Date().toISOString()
             }
 
@@ -1792,6 +1794,7 @@ export class DataStore {
                 departmentId: job.departmentId,
                 department: job.department ? sanitizeInput(job.department) : undefined,
                 experience: job.experience ? sanitizeInput(job.experience) : '',
+                requirement: job.requirement ? sanitizeRichText(job.requirement) : '',
                 location: job.location
                     ? {
                         city: sanitizeInput(job.location.city),
@@ -1832,6 +1835,7 @@ export class DataStore {
                 departmentId: job.departmentId,
                 department: job.department ? sanitizeInput(job.department) : undefined,
                 experience: job.experience ? sanitizeInput(job.experience) : '',
+                requirement: job.requirement ? sanitizeRichText(job.requirement) : '',
                 location: job.location
                     ? {
                         city: sanitizeInput(job.location.city),
