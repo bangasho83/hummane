@@ -5,6 +5,7 @@ import { Card, CardContent } from '@/components/ui/card'
 import { Label } from '@/components/ui/label'
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select'
 import { Input } from '@/components/ui/input'
+import { Textarea } from '@/components/ui/textarea'
 import { Button } from '@/components/ui/button'
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from '@/components/ui/dialog'
 import { Plus, Calendar as CalendarIcon, X } from 'lucide-react'
@@ -64,8 +65,11 @@ export function GeneralTab() {
     const [companyName, setCompanyName] = useState('')
     const [industry, setIndustry] = useState('')
     const [currency, setCurrency] = useState('')
+    const [about, setAbout] = useState('')
     const [isEditingSettings, setIsEditingSettings] = useState(false)
     const [settingsLoading, setSettingsLoading] = useState(false)
+    const [isEditingAbout, setIsEditingAbout] = useState(false)
+    const [aboutLoading, setAboutLoading] = useState(false)
     const [settingsErrors, setSettingsErrors] = useState<SettingsErrors>({})
     const [schedule, setSchedule] = useState<ScheduleRow[]>([])
     const [holidayRows, setHolidayRows] = useState([{ date: '', name: '' }])
@@ -104,6 +108,11 @@ export function GeneralTab() {
             setTimezone(currentCompany.timezone)
         }
     }, [currentCompany, isEditingSettings])
+
+    useEffect(() => {
+        if (!currentCompany || isEditingAbout) return
+        setAbout(currentCompany.about || '')
+    }, [currentCompany, isEditingAbout])
 
     useEffect(() => {
         if (!currentCompany || isEditingHours) return
@@ -242,6 +251,27 @@ export function GeneralTab() {
         } finally {
             setHoursLoading(false)
         }
+    }
+
+    const handleSaveAbout = async () => {
+        if (!currentCompany) return
+        setAboutLoading(true)
+        try {
+            await updateCompany(currentCompany.id, {
+                about: about.trim()
+            })
+            toast('Company overview updated', 'success')
+            setIsEditingAbout(false)
+        } catch (error: any) {
+            toast(error?.message || 'Failed to update company overview', 'error')
+        } finally {
+            setAboutLoading(false)
+        }
+    }
+
+    const handleCancelAbout = () => {
+        setAbout(currentCompany?.about || '')
+        setIsEditingAbout(false)
     }
 
     const handleCancelHours = () => {
@@ -576,6 +606,60 @@ export function GeneralTab() {
                     </CardContent>
                 </Card>
             </div>
+
+            <Card className="border border-slate-100 shadow-premium rounded-3xl bg-white">
+                <CardContent className="p-6 space-y-4">
+                    <div className="flex items-center justify-between">
+                        <div>
+                            <p className="text-sm font-bold text-slate-700 px-1">Company Overview</p>
+                            <p className="text-xs text-slate-500 font-medium">Share a short profile of your organization.</p>
+                        </div>
+                        {isEditingAbout ? (
+                            <div className="flex items-center gap-2">
+                                <Button
+                                    type="button"
+                                    variant="outline"
+                                    className="rounded-xl border-slate-200"
+                                    onClick={handleCancelAbout}
+                                    disabled={aboutLoading}
+                                >
+                                    Cancel
+                                </Button>
+                                <Button
+                                    type="button"
+                                    className="rounded-xl bg-blue-600 text-white"
+                                    onClick={handleSaveAbout}
+                                    disabled={aboutLoading}
+                                >
+                                    {aboutLoading ? 'Saving...' : 'Save'}
+                                </Button>
+                            </div>
+                        ) : (
+                            <Button
+                                type="button"
+                                variant="outline"
+                                className="rounded-xl border-slate-200"
+                                onClick={() => setIsEditingAbout(true)}
+                            >
+                                Edit
+                            </Button>
+                        )}
+                    </div>
+
+                    {isEditingAbout ? (
+                        <Textarea
+                            value={about}
+                            onChange={(e) => setAbout(e.target.value)}
+                            className="min-h-[140px] rounded-xl border-slate-200"
+                            placeholder="Write a professional overview about your company..."
+                        />
+                    ) : (
+                        <div className="min-h-[140px] rounded-xl border border-slate-200 bg-slate-50 px-4 py-3 text-sm text-slate-700 whitespace-pre-wrap">
+                            {about || 'No company overview added yet.'}
+                        </div>
+                    )}
+                </CardContent>
+            </Card>
 
             <Card className="border border-slate-100 shadow-premium rounded-3xl bg-white">
                 <CardContent className="p-6 space-y-4">

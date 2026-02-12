@@ -249,6 +249,7 @@ export class DataStore {
             // Sanitize inputs
             const sanitizedName = sanitizeInput(companyData.name)
             const sanitizedIndustry = sanitizeInput(companyData.industry)
+            const sanitizedAbout = companyData.about ? sanitizeInput(companyData.about) : undefined
             const sanitizedCurrency = companyData.currency ? sanitizeInput(companyData.currency).toUpperCase() : undefined
 
             // Check if user already has a company
@@ -261,6 +262,7 @@ export class DataStore {
                 name: sanitizedName,
                 industry: sanitizedIndustry,
                 size: companyData.size,
+                about: sanitizedAbout,
                 currency: sanitizedCurrency,
                 ownerId,
                 createdAt: new Date().toISOString()
@@ -337,6 +339,9 @@ export class DataStore {
             }
             if (companyData.workingHours !== undefined) {
                 sanitizedData.workingHours = companyData.workingHours
+            }
+            if (companyData.about !== undefined) {
+                sanitizedData.about = companyData.about ? sanitizeInput(companyData.about) : ''
             }
 
             data.companies[index] = {

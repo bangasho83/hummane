@@ -24,6 +24,7 @@ export interface Company {
     name: string
     industry: string
     size: CompanySize
+    about?: string
     currency?: string
     timezone?: string
     workingHours?: Record<

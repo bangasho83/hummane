@@ -614,6 +614,7 @@ export function AppProvider({ children }: { children: ReactNode }) {
             name: company?.name || fallback.name || 'Company',
             industry: company?.industry || fallback.industry || 'Unknown',
             size,
+            about: company?.about || fallback.about,
             currency: company?.currency || fallback.currency,
             timezone: company?.timezone || fallback.timezone,
             workingHours: company?.workingHours || fallback.workingHours,

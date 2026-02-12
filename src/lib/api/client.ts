@@ -286,7 +286,7 @@ export const createCompanyApi = async (
 
 export const updateCompanyApi = async (
   companyId: string,
-  payload: Partial<Pick<Company, 'name' | 'industry' | 'size' | 'currency' | 'timezone' | 'workingHours'>>,
+  payload: Partial<Pick<Company, 'name' | 'industry' | 'size' | 'currency' | 'timezone' | 'workingHours' | 'about'>>,
   accessToken: string
 ): Promise<Company> => {
   let response: Response
