@@ -96,14 +96,17 @@ export default function DashboardPage() {
     const applicantCounts = useMemo(() => {
         return applicants.reduce(
             (acc, applicant) => {
-                acc[applicant.status] += 1
+                if (applicant.status in acc) {
+                    acc[applicant.status as keyof typeof acc] += 1
+                }
                 return acc
             },
             {
                 new: 0,
-                screening: 0,
-                interview: 0,
-                offer: 0,
+                'first interview': 0,
+                'second interview': 0,
+                'final interview': 0,
+                'initiate documentation': 0,
                 hired: 0,
                 rejected: 0
             }
@@ -112,9 +115,10 @@ export default function DashboardPage() {
 
     const activeApplicants =
         applicantCounts.new +
-        applicantCounts.screening +
-        applicantCounts.interview +
-        applicantCounts.offer
+        applicantCounts['first interview'] +
+        applicantCounts['second interview'] +
+        applicantCounts['final interview'] +
+        applicantCounts['initiate documentation']
 
     const recentApplicants = useMemo(() => {
         return [...applicants]
@@ -376,9 +380,10 @@ export default function DashboardPage() {
                             <div className="space-y-3">
                                 {[
                                     { key: 'new', label: 'New', tone: 'bg-blue-100 text-blue-700' },
-                                    { key: 'screening', label: 'Screening', tone: 'bg-amber-100 text-amber-700' },
-                                    { key: 'interview', label: 'Interview', tone: 'bg-purple-100 text-purple-700' },
-                                    { key: 'offer', label: 'Offer', tone: 'bg-emerald-100 text-emerald-700' },
+                                    { key: 'first interview', label: 'First Interview', tone: 'bg-amber-100 text-amber-700' },
+                                    { key: 'second interview', label: 'Second Interview', tone: 'bg-purple-100 text-purple-700' },
+                                    { key: 'final interview', label: 'Final Interview', tone: 'bg-indigo-100 text-indigo-700' },
+                                    { key: 'initiate documentation', label: 'Initiate Documentation', tone: 'bg-emerald-100 text-emerald-700' },
                                     { key: 'hired', label: 'Hired', tone: 'bg-slate-100 text-slate-700' },
                                     { key: 'rejected', label: 'Rejected', tone: 'bg-red-100 text-red-700' }
                                 ].map(stage => (

@@ -2,7 +2,7 @@
 
 import { useEffect, useMemo, useRef, useState } from 'react'
 import { useRouter, useSearchParams } from 'next/navigation'
-import { Plus, Trash2, Users, Search, Briefcase } from 'lucide-react'
+import { Plus, Trash2, Users, Search, Briefcase, ExternalLink } from 'lucide-react'
 import { useApp } from '@/lib/context/AppContext'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
@@ -98,6 +98,21 @@ export default function ApplicantsPage() {
         return jobByTitle.get(applicant.positionApplied)
     }
 
+    const toExternalUrl = (value?: string) => {
+        if (!value) return ''
+        const trimmed = value.trim()
+        if (!trimmed) return ''
+        if (/^https?:\/\//i.test(trimmed)) return trimmed
+        return `https://${trimmed}`
+    }
+
+    const getResumeUrl = (applicant: Applicant) => {
+        if (typeof applicant.resumeFile === 'string') return applicant.resumeFile
+        if (typeof applicant.resumeFile === 'object' && applicant.resumeFile?.dataUrl) return applicant.resumeFile.dataUrl
+        if (applicant.documents?.files?.length) return applicant.documents.files[0]
+        return ''
+    }
+
     const filteredApplicants = applicants.filter(applicant => {
         const job = getApplicantJob(applicant)
         const matchesSearch =
@@ -189,9 +204,10 @@ export default function ApplicantsPage() {
     const getStatusColor = (status: ApplicantStatus) => {
         switch (status) {
             case 'new': return 'bg-blue-100 text-blue-700'
-            case 'screening': return 'bg-yellow-100 text-yellow-700'
-            case 'interview': return 'bg-purple-100 text-purple-700'
-            case 'offer': return 'bg-green-100 text-green-700'
+            case 'first interview': return 'bg-yellow-100 text-yellow-700'
+            case 'second interview': return 'bg-purple-100 text-purple-700'
+            case 'final interview': return 'bg-indigo-100 text-indigo-700'
+            case 'initiate documentation': return 'bg-green-100 text-green-700'
             case 'rejected': return 'bg-red-100 text-red-700'
             case 'hired': return 'bg-emerald-100 text-emerald-700'
             default: return 'bg-slate-100 text-slate-700'
@@ -581,6 +597,8 @@ export default function ApplicantsPage() {
                                 <TableHead className="py-4 text-[10px] font-extrabold uppercase tracking-widest text-slate-400">Department</TableHead>
                                 <TableHead className="py-4 text-[10px] font-extrabold uppercase tracking-widest text-slate-400">Experience</TableHead>
                                 <TableHead className="py-4 text-[10px] font-extrabold uppercase tracking-widest text-slate-400">Expected Salary</TableHead>
+                                <TableHead className="py-4 text-[10px] font-extrabold uppercase tracking-widest text-slate-400">LinkedIn</TableHead>
+                                <TableHead className="py-4 text-[10px] font-extrabold uppercase tracking-widest text-slate-400">Resume</TableHead>
                                 <TableHead className="py-4 text-[10px] font-extrabold uppercase tracking-widest text-slate-400">Status</TableHead>
                                 <TableHead className="py-4 text-[10px] font-extrabold uppercase tracking-widest text-slate-400">Applied Date</TableHead>
                                 <TableHead className="text-right pr-8 py-4 text-[10px] font-extrabold uppercase tracking-widest text-slate-400">Actions</TableHead>
@@ -589,6 +607,8 @@ export default function ApplicantsPage() {
                         <TableBody>
                             {filteredApplicants.map((applicant) => {
                                 const job = getApplicantJob(applicant)
+                                const linkedinUrl = toExternalUrl(applicant.linkedinUrl)
+                                const resumeUrl = getResumeUrl(applicant)
                                 return (
                                     <TableRow
                                         key={applicant.id}
@@ -600,11 +620,57 @@ export default function ApplicantsPage() {
                                             router.push(`/applicants/${applicant.id}`)
                                         }}
                                     >
-                                        <TableCell className="pl-8 py-5 font-bold text-slate-900">{applicant.fullName}</TableCell>
+                                        <TableCell className="pl-8 py-5 font-bold text-slate-900">
+                                            <div className="flex items-center gap-2">
+                                                <span>{applicant.fullName}</span>
+                                                <button
+                                                    type="button"
+                                                    onClick={(e) => {
+                                                        e.stopPropagation()
+                                                        window.open(`/applicants/${applicant.id}`, '_blank', 'noopener')
+                                                    }}
+                                                    aria-label={`Open ${applicant.fullName} profile in new tab`}
+                                                    title="Open in new tab"
+                                                    className="text-slate-300 hover:text-slate-500 opacity-60 group-hover:opacity-100 transition"
+                                                >
+                                                    <ExternalLink className="w-3.5 h-3.5" />
+                                                </button>
+                                            </div>
+                                        </TableCell>
                                         <TableCell className="text-slate-600">{applicant.positionApplied}</TableCell>
                                         <TableCell className="text-slate-600">{applicant.departmentName || job?.department || '—'}</TableCell>
                                         <TableCell className="text-slate-600">{applicant.yearsOfExperience} {applicant.yearsOfExperience === 1 ? 'year' : 'years'}</TableCell>
                                         <TableCell className="text-slate-600">{applicant.expectedSalary || 'Not specified'}</TableCell>
+                                        <TableCell className="text-slate-600">
+                                            {linkedinUrl ? (
+                                                <a
+                                                    href={linkedinUrl}
+                                                    target="_blank"
+                                                    rel="noreferrer"
+                                                    onClick={(e) => e.stopPropagation()}
+                                                    className="text-blue-600 hover:underline"
+                                                >
+                                                    View
+                                                </a>
+                                            ) : (
+                                                '—'
+                                            )}
+                                        </TableCell>
+                                        <TableCell className="text-slate-600">
+                                            {resumeUrl ? (
+                                                <a
+                                                    href={resumeUrl}
+                                                    target="_blank"
+                                                    rel="noreferrer"
+                                                    onClick={(e) => e.stopPropagation()}
+                                                    className="text-blue-600 hover:underline"
+                                                >
+                                                    Open
+                                                </a>
+                                            ) : (
+                                                '—'
+                                            )}
+                                        </TableCell>
                                         <TableCell>
                                             <span className={`inline-flex items-center px-3 py-1 rounded-full text-xs font-bold ${getStatusColor(applicant.status)}`}>
                                                 {applicant.status.charAt(0).toUpperCase() + applicant.status.slice(1)}

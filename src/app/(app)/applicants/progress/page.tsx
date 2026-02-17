@@ -8,10 +8,10 @@ import { Button } from '@/components/ui/button'
 import { Badge } from '@/components/ui/badge'
 import { useApp } from '@/lib/context/AppContext'
 import { toast } from '@/components/ui/toast'
-import type { Applicant, ApplicantStatus, Job } from '@/types'
+import { APPLICANT_STATUSES, type Applicant, type ApplicantStatus, type Job } from '@/types'
 import { Briefcase } from 'lucide-react'
 
-const STATUSES = ['new', 'screening', 'interview', 'offer', 'hired', 'rejected'] as const satisfies ApplicantStatus[]
+const STATUSES = [...APPLICANT_STATUSES] as const satisfies ApplicantStatus[]
 
 export default function ApplicantsProgressPage() {
     const router = useRouter()
@@ -41,9 +41,10 @@ export default function ApplicantsProgressPage() {
     const getStatusColor = (status: ApplicantStatus) => {
         switch (status) {
             case 'new': return 'bg-blue-100 text-blue-700'
-            case 'screening': return 'bg-yellow-100 text-yellow-700'
-            case 'interview': return 'bg-purple-100 text-purple-700'
-            case 'offer': return 'bg-green-100 text-green-700'
+            case 'first interview': return 'bg-yellow-100 text-yellow-700'
+            case 'second interview': return 'bg-purple-100 text-purple-700'
+            case 'final interview': return 'bg-indigo-100 text-indigo-700'
+            case 'initiate documentation': return 'bg-green-100 text-green-700'
             case 'rejected': return 'bg-red-100 text-red-700'
             case 'hired': return 'bg-emerald-100 text-emerald-700'
             default: return 'bg-slate-100 text-slate-700'

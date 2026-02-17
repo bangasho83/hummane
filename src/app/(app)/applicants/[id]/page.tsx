@@ -1,22 +1,56 @@
 'use client'
 
-import { useEffect, useMemo, useState, useCallback } from 'react'
+import 'quill/dist/quill.snow.css'
+
+import { useEffect, useMemo, useState, useCallback, useRef } from 'react'
 import { useRouter, useParams } from 'next/navigation'
 import Link from 'next/link'
-import { ArrowLeft, Mail, Phone, Briefcase, Calendar, FileText, Linkedin, ExternalLink, Clock, Building2 } from 'lucide-react'
+import { FileText, ExternalLink, Linkedin } from 'lucide-react'
 import { useApp } from '@/lib/context/AppContext'
 import { Button } from '@/components/ui/button'
-import { type Applicant, type ApplicantStatus, type FeedbackCard } from '@/types'
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select'
+import { toast } from '@/components/ui/toast'
+import { APPLICANT_STATUSES, type Applicant, type ApplicantStatus, type FeedbackCard, type FeedbackEntry } from '@/types'
 import { Progress } from '@/components/ui/progress'
-import { fetchApplicantApi } from '@/lib/api/client'
+import { fetchApplicantApi, fetchFeedbackEntriesApi } from '@/lib/api/client'
+
+const API_BASE_URL = process.env.NEXT_PUBLIC_API_BASE_URL || 'https://hummane-api.vercel.app'
+
+interface CardQuestion {
+    id: string
+    kind: 'content' | 'score' | 'comment'
+    prompt: string
+    weight?: number
+    answer?: {
+        answer: string
+        questionId: string
+    }
+}
+
+interface FeedbackEntryDetail {
+    id: string
+    subjectName?: string
+    subjectType?: string
+    authorName?: string
+    type?: string
+    createdAt: string
+    card?: {
+        id: string
+        title: string
+        questions: CardQuestion[]
+    }
+}
 
 export default function ApplicantDetailPage() {
     const router = useRouter()
     const params = useParams()
-    const { applicants, feedbackEntries, feedbackCards, apiAccessToken, currentCompany } = useApp()
+    const { applicants, feedbackEntries, feedbackCards, apiAccessToken, updateApplicant } = useApp()
     const [applicant, setApplicant] = useState<Applicant | null>(null)
+    const [pageFeedbackEntries, setPageFeedbackEntries] = useState<FeedbackEntry[] | null>(null)
+    const [feedbackEntryDetails, setFeedbackEntryDetails] = useState<Record<string, FeedbackEntryDetail>>({})
     const [pageLoading, setPageLoading] = useState(true)
     const [activeTab, setActiveTab] = useState<'details' | 'feedback'>('details')
+    const lastFetchedApplicantId = useRef<string | null>(null)
 
     const fetchApplicantFromApi = useCallback(async () => {
         if (!apiAccessToken || !params.id) return null
@@ -32,18 +66,32 @@ export default function ApplicantDetailPage() {
 
     useEffect(() => {
         const loadApplicant = async () => {
+            const applicantId = params.id as string | undefined
+            if (!applicantId) {
+                setApplicant(null)
+                setPageLoading(false)
+                return
+            }
+
+            // Avoid refetching on unrelated context updates (e.g., global AppContext bootstrap updates).
+            if (apiAccessToken && lastFetchedApplicantId.current === applicantId) {
+                setPageLoading(false)
+                return
+            }
+
             setPageLoading(true)
             // First try to fetch from API
             if (apiAccessToken) {
                 const apiApplicant = await fetchApplicantFromApi()
                 if (apiApplicant) {
                     setApplicant(apiApplicant)
+                    lastFetchedApplicantId.current = applicantId
                     setPageLoading(false)
                     return
                 }
             }
             // Fallback to context data
-            const found = applicants.find(a => a.id === params.id)
+            const found = applicants.find(a => a.id === applicantId)
             if (found) {
                 setApplicant(found)
             }
@@ -52,14 +100,113 @@ export default function ApplicantDetailPage() {
         loadApplicant()
     }, [params.id, applicants, apiAccessToken, fetchApplicantFromApi])
 
+    useEffect(() => {
+        const loadFeedbackEntries = async () => {
+            if (!apiAccessToken) return
+            try {
+                const entries = await fetchFeedbackEntriesApi(apiAccessToken)
+                setPageFeedbackEntries(entries)
+            } catch (error) {
+                console.error('Error fetching feedback entries from API:', error)
+                setPageFeedbackEntries(null)
+            }
+        }
+        void loadFeedbackEntries()
+    }, [apiAccessToken])
+
+    const feedbackSource = pageFeedbackEntries ?? feedbackEntries
+    const applicantId = applicant?.id
+    const applicantName = applicant?.fullName?.trim().toLowerCase() || ''
+
     const applicantFeedback = useMemo(
-        () => feedbackEntries.filter(e => e.type === 'Applicant' && e.subjectId === applicant?.id),
-        [feedbackEntries, applicant?.id]
+        () => feedbackSource.filter(e => {
+            const rawType = (e.type || e.subjectType || '').toString().toLowerCase()
+            const isApplicantType = rawType === 'applicant'
+            const subjectIdMatches = !!applicantId && e.subjectId === applicantId
+            const subjectNameMatches =
+                !!applicantName &&
+                typeof e.subjectName === 'string' &&
+                e.subjectName.trim().toLowerCase() === applicantName
+            return isApplicantType && (subjectIdMatches || subjectNameMatches)
+        }),
+        [feedbackSource, applicantId, applicantName]
     )
     const cardsById = useMemo(
         () => new Map(feedbackCards.map(card => [card.id, card])),
         [feedbackCards]
     )
+
+    useEffect(() => {
+        if (!apiAccessToken || applicantFeedback.length === 0) return
+        const entriesToLoad = applicantFeedback.filter(entry => !feedbackEntryDetails[entry.id])
+        if (entriesToLoad.length === 0) return
+
+        const loadFeedbackDetails = async () => {
+            try {
+                const details = await Promise.all(
+                    entriesToLoad.map(async (entry) => {
+                        const response = await fetch(`${API_BASE_URL}/feedback-entries/${encodeURIComponent(entry.id)}`, {
+                            method: 'GET',
+                            headers: {
+                                Authorization: `Bearer ${apiAccessToken}`,
+                            },
+                        })
+                        if (!response.ok) return null
+                        const data = await response.json().catch(() => null)
+                        const detail = (data?.data || data) as FeedbackEntryDetail | null
+                        return detail && detail.id ? detail : null
+                    })
+                )
+
+                const byId = details.reduce<Record<string, FeedbackEntryDetail>>((acc, detail) => {
+                    if (detail?.id) acc[detail.id] = detail
+                    return acc
+                }, {})
+                if (Object.keys(byId).length > 0) {
+                    setFeedbackEntryDetails(prev => ({ ...prev, ...byId }))
+                }
+            } catch (error) {
+                console.error('Error fetching feedback entry details:', error)
+            }
+        }
+
+        void loadFeedbackDetails()
+    }, [apiAccessToken, applicantFeedback, feedbackEntryDetails])
+    const feedbackScoreSummary = useMemo(() => {
+        return applicantFeedback
+            .map((entry) => {
+                const detail = feedbackEntryDetails[entry.id]
+                const card = cardsById.get(entry.cardId) as FeedbackCard | undefined
+                const questions = detail?.card?.questions || []
+                const answerByQuestionId = new Map(entry.answers.map(answer => [answer.questionId, answer]))
+                const scoreQuestions = questions.filter(question => question.kind === 'score')
+
+                const getScore = (question: CardQuestion) => {
+                    if (question.answer?.answer) {
+                        const parsed = parseFloat(question.answer.answer)
+                        if (!Number.isNaN(parsed)) return parsed
+                    }
+                    const entryAnswer = question.id ? answerByQuestionId.get(question.id) : undefined
+                    if (typeof entryAnswer?.score === 'number') return entryAnswer.score
+                    if (entryAnswer?.answer) {
+                        const parsed = parseFloat(entryAnswer.answer)
+                        if (!Number.isNaN(parsed)) return parsed
+                    }
+                    return 0
+                }
+                const total = scoreQuestions.reduce((sum, question) => sum + getScore(question), 0)
+                const max = scoreQuestions.length * 5
+                return {
+                    id: entry.id,
+                    title: detail?.card?.title || card?.title || 'Feedback',
+                    total,
+                    max,
+                    createdAt: detail?.createdAt || entry.createdAt
+                }
+            })
+            .filter(item => item.max > 0)
+            .sort((a, b) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime())
+    }, [applicantFeedback, feedbackEntryDetails, cardsById])
 
     if (pageLoading) {
         return (
@@ -84,12 +231,25 @@ export default function ApplicantDetailPage() {
     const getStatusColor = (status: ApplicantStatus) => {
         switch (status) {
             case 'new': return 'bg-blue-100 text-blue-700'
-            case 'screening': return 'bg-yellow-100 text-yellow-700'
-            case 'interview': return 'bg-purple-100 text-purple-700'
-            case 'offer': return 'bg-green-100 text-green-700'
+            case 'first interview': return 'bg-yellow-100 text-yellow-700'
+            case 'second interview': return 'bg-purple-100 text-purple-700'
+            case 'final interview': return 'bg-indigo-100 text-indigo-700'
+            case 'initiate documentation': return 'bg-green-100 text-green-700'
             case 'rejected': return 'bg-red-100 text-red-700'
             case 'hired': return 'bg-emerald-100 text-emerald-700'
             default: return 'bg-slate-100 text-slate-700'
+        }
+    }
+
+    const handleStatusChange = async (status: ApplicantStatus) => {
+        if (!applicant || status === applicant.status) return
+        try {
+            const updated = await updateApplicant(applicant.id, { status })
+            setApplicant(prev => (prev ? { ...prev, status: updated?.status || status } : prev))
+            toast('Applicant status updated', 'success')
+        } catch (error) {
+            console.error('Failed to update applicant status:', error)
+            toast('Failed to update applicant status', 'error')
         }
     }
 
@@ -106,14 +266,18 @@ export default function ApplicantDetailPage() {
         : getResumeUrl()
             ? [getResumeUrl()!]
             : []
+    const linkedinUrl = applicant.linkedinUrl
+        ? applicant.linkedinUrl.startsWith('http://') || applicant.linkedinUrl.startsWith('https://')
+            ? applicant.linkedinUrl
+            : `https://${applicant.linkedinUrl}`
+        : ''
 
     return (
         <>
             <div className="animate-in fade-in duration-500 slide-in-from-bottom-4">
             <div className="flex items-center gap-4 mb-8">
                 <Button
-                    variant="ghost"
-                    size="icon"
+                    variant="outline"
                     onClick={() => {
                         if (typeof window !== 'undefined') {
                             const backTarget = sessionStorage.getItem('applicantDetailBack')
@@ -124,9 +288,9 @@ export default function ApplicantDetailPage() {
                         }
                         router.push('/applicants')
                     }}
-                    className="rounded-xl hover:bg-white hover:shadow-sm border border-transparent hover:border-slate-100"
+                    className="rounded-xl"
                 >
-                    <ArrowLeft className="w-5 h-5" />
+                    Back
                 </Button>
                 <div className="flex-1">
                     <h1 className="text-3xl font-extrabold text-slate-900 tracking-tight">
@@ -162,95 +326,61 @@ export default function ApplicantDetailPage() {
                     <div className="lg:col-span-2 space-y-6">
                         <div className="bg-white rounded-3xl shadow-sm border border-slate-200 p-6">
                             <h2 className="text-sm font-extrabold text-slate-700 uppercase tracking-widest mb-6">Personal Information</h2>
-                            <div className="space-y-4">
-                                <div className="flex items-center gap-3">
-                                    <div className="w-10 h-10 rounded-xl bg-blue-50 flex items-center justify-center">
-                                        <Mail className="w-5 h-5 text-blue-600" />
-                                    </div>
-                                    <div>
-                                        <p className="text-xs font-bold text-slate-500 uppercase tracking-wider">Email</p>
-                                        <p className="text-slate-900 font-medium">{applicant.email}</p>
-                                    </div>
+                            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                                <div className="rounded-2xl border border-slate-200 p-4">
+                                    <p className="text-xs font-bold text-slate-500 uppercase tracking-wider mb-1">Email</p>
+                                    <p className="text-slate-900 font-semibold break-all">{applicant.email}</p>
                                 </div>
-                                <div className="flex items-center gap-3">
-                                    <div className="w-10 h-10 rounded-xl bg-blue-50 flex items-center justify-center">
-                                        <Phone className="w-5 h-5 text-blue-600" />
-                                    </div>
-                                    <div>
-                                        <p className="text-xs font-bold text-slate-500 uppercase tracking-wider">Phone</p>
-                                        <p className="text-slate-900 font-medium">{applicant.phone || 'Not provided'}</p>
-                                    </div>
+                                <div className="rounded-2xl border border-slate-200 p-4">
+                                    <p className="text-xs font-bold text-slate-500 uppercase tracking-wider mb-1">Phone</p>
+                                    <p className="text-slate-900 font-semibold">{applicant.phone || 'Not provided'}</p>
                                 </div>
                             </div>
-
                         </div>
 
                         <div className="bg-white rounded-3xl shadow-sm border border-slate-200 p-6">
                             <h2 className="text-sm font-extrabold text-slate-700 uppercase tracking-widest mb-6">Professional Information</h2>
-                            <div className="space-y-4">
-                                <div className="grid grid-cols-2 gap-4">
-                                    <div className="flex items-center gap-3">
-                                        <div className="w-10 h-10 rounded-xl bg-blue-50 flex items-center justify-center">
-                                            <Briefcase className="w-5 h-5 text-blue-600" />
-                                        </div>
-                                        <div>
-                                            <p className="text-xs font-bold text-slate-500 uppercase tracking-wider">Position Applied</p>
-                                            {applicant.jobId ? (
-                                                <Link
-                                                    href={`/applicants?jobId=${applicant.jobId}`}
-                                                    className="text-blue-600 hover:text-blue-800 font-medium hover:underline"
-                                                >
-                                                    {applicant.positionApplied || 'Not specified'}
-                                                </Link>
-                                            ) : (
-                                                <p className="text-slate-900 font-medium">{applicant.positionApplied || 'Not specified'}</p>
-                                            )}
-                                        </div>
-                                    </div>
-                                    <div className="flex items-center gap-3">
-                                        <div className="w-10 h-10 rounded-xl bg-blue-50 flex items-center justify-center">
-                                            <Building2 className="w-5 h-5 text-blue-600" />
-                                        </div>
-                                        <div>
-                                            <p className="text-xs font-bold text-slate-500 uppercase tracking-wider">Department</p>
-                                            <p className="text-slate-900 font-medium">{applicant.departmentName || 'Not specified'}</p>
-                                        </div>
-                                    </div>
+                            <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-4">
+                                <div className="rounded-2xl border border-slate-200 p-4">
+                                    <p className="text-xs font-bold text-slate-500 uppercase tracking-wider mb-1">Position Applied</p>
+                                    {applicant.jobId ? (
+                                        <Link
+                                            href={`/applicants?jobId=${applicant.jobId}`}
+                                            className="text-blue-600 hover:text-blue-800 font-semibold hover:underline"
+                                        >
+                                            {applicant.positionApplied || 'Not specified'}
+                                        </Link>
+                                    ) : (
+                                        <p className="text-slate-900 font-semibold">{applicant.positionApplied || 'Not specified'}</p>
+                                    )}
                                 </div>
-                                <div className="grid grid-cols-3 gap-4">
-                                    <div>
-                                        <p className="text-xs font-bold text-slate-500 uppercase tracking-wider mb-1">Experience</p>
-                                        <p className="text-slate-900 font-bold text-lg">
-                                            {applicant.yearsOfExperience !== undefined && applicant.yearsOfExperience !== null
-                                                ? `${applicant.yearsOfExperience} ${applicant.yearsOfExperience === 1 ? 'year' : 'years'}`
-                                                : 'N/A'}
-                                        </p>
-                                    </div>
-                                    <div>
-                                        <p className="text-xs font-bold text-slate-500 uppercase tracking-wider mb-1">Current Salary</p>
-                                        <p className="text-slate-900 font-bold text-lg">
-                                            {applicant.currentSalary
-                                                ? applicant.currentSalary.toLocaleString()
-                                                : 'N/A'}
-                                        </p>
-                                    </div>
-                                    <div>
-                                        <p className="text-xs font-bold text-slate-500 uppercase tracking-wider mb-1">Expected Salary</p>
-                                        <p className="text-slate-900 font-bold text-lg">
-                                            {applicant.expectedSalary
-                                                ? applicant.expectedSalary.toLocaleString()
-                                                : 'N/A'}
-                                        </p>
-                                    </div>
+                                <div className="rounded-2xl border border-slate-200 p-4">
+                                    <p className="text-xs font-bold text-slate-500 uppercase tracking-wider mb-1">Department</p>
+                                    <p className="text-slate-900 font-semibold">{applicant.departmentName || 'Not specified'}</p>
                                 </div>
-                                <div className="flex items-center gap-3 pt-2">
-                                    <div className="w-10 h-10 rounded-xl bg-blue-50 flex items-center justify-center">
-                                        <Clock className="w-5 h-5 text-blue-600" />
-                                    </div>
-                                    <div>
-                                        <p className="text-xs font-bold text-slate-500 uppercase tracking-wider">Notice Period</p>
-                                        <p className="text-slate-900 font-medium">{applicant.noticePeriod || 'Not specified'}</p>
-                                    </div>
+                                <div className="rounded-2xl border border-slate-200 p-4">
+                                    <p className="text-xs font-bold text-slate-500 uppercase tracking-wider mb-1">Experience</p>
+                                    <p className="text-slate-900 font-semibold">
+                                        {applicant.yearsOfExperience !== undefined && applicant.yearsOfExperience !== null
+                                            ? `${applicant.yearsOfExperience} ${applicant.yearsOfExperience === 1 ? 'year' : 'years'}`
+                                            : 'N/A'}
+                                    </p>
+                                </div>
+                                <div className="rounded-2xl border border-slate-200 p-4">
+                                    <p className="text-xs font-bold text-slate-500 uppercase tracking-wider mb-1">Current Salary</p>
+                                    <p className="text-slate-900 font-semibold">
+                                        {applicant.currentSalary ? applicant.currentSalary.toLocaleString() : 'N/A'}
+                                    </p>
+                                </div>
+                                <div className="rounded-2xl border border-slate-200 p-4">
+                                    <p className="text-xs font-bold text-slate-500 uppercase tracking-wider mb-1">Expected Salary</p>
+                                    <p className="text-slate-900 font-semibold">
+                                        {applicant.expectedSalary ? applicant.expectedSalary.toLocaleString() : 'N/A'}
+                                    </p>
+                                </div>
+                                <div className="rounded-2xl border border-slate-200 p-4">
+                                    <p className="text-xs font-bold text-slate-500 uppercase tracking-wider mb-1">Notice Period</p>
+                                    <p className="text-slate-900 font-semibold">{applicant.noticePeriod || 'Not specified'}</p>
                                 </div>
                             </div>
                         </div>
@@ -258,58 +388,83 @@ export default function ApplicantDetailPage() {
 
                     <div className="space-y-6">
                         <div className="bg-white rounded-3xl shadow-sm border border-slate-200 p-6">
+                            <h2 className="text-sm font-extrabold text-slate-700 uppercase tracking-widest mb-4">Feedback Scores</h2>
+                            {feedbackScoreSummary.length > 0 ? (
+                                <div className="space-y-3">
+                                    <div className="rounded-2xl border border-blue-200 bg-blue-50/60 p-4">
+                                        <p className="text-xs font-extrabold uppercase tracking-widest text-blue-700">Latest Score</p>
+                                        <p className="text-3xl font-black text-slate-900 mt-1">
+                                            {feedbackScoreSummary[0].total} / {feedbackScoreSummary[0].max}
+                                        </p>
+                                    </div>
+                                    {feedbackScoreSummary.slice(1).map(item => (
+                                        <div key={item.id} className="flex items-center justify-between rounded-xl border border-slate-200 p-3">
+                                            <p className="text-lg font-extrabold text-slate-900">{item.total} / {item.max}</p>
+                                            <p className="text-sm font-semibold text-slate-700 text-right">{item.title}</p>
+                                        </div>
+                                    ))}
+                                </div>
+                            ) : (
+                                <p className="text-sm text-slate-500">No applicant feedback scores yet.</p>
+                            )}
+                        </div>
+
+                        <div className="bg-white rounded-3xl shadow-sm border border-slate-200 p-6">
                             <h2 className="text-sm font-extrabold text-slate-700 uppercase tracking-widest mb-6">Application Status</h2>
                             <div className="space-y-4">
                                 <div>
                                     <p className="text-xs font-bold text-slate-500 uppercase tracking-wider mb-2">Current Status</p>
-                                    <span className={`inline-flex items-center px-4 py-2 rounded-full text-sm font-bold ${getStatusColor(applicant.status)}`}>
-                                        {applicant.status.charAt(0).toUpperCase() + applicant.status.slice(1)}
-                                    </span>
-                                </div>
-                                <div className="pt-4 border-t border-slate-100 space-y-4">
-                                    <div className="flex items-center gap-3">
-                                        <div className="w-10 h-10 rounded-xl bg-blue-50 flex items-center justify-center">
-                                            <Calendar className="w-5 h-5 text-blue-600" />
-                                        </div>
-                                        <div>
-                                            <p className="text-xs font-bold text-slate-500 uppercase tracking-wider">Applied Date</p>
-                                            <p className="text-slate-900 font-medium">
-                                                {applicant.appliedDate
-                                                    ? new Date(applicant.appliedDate).toLocaleDateString('en-US', { year: 'numeric', month: 'long', day: 'numeric' })
-                                                    : 'Not specified'}
-                                            </p>
-                                        </div>
+                                    <div className="space-y-3">
+                                        <span className={`inline-flex items-center px-4 py-2 rounded-full text-sm font-bold ${getStatusColor(applicant.status)}`}>
+                                            {applicant.status.charAt(0).toUpperCase() + applicant.status.slice(1)}
+                                        </span>
+                                        <Select value={applicant.status} onValueChange={(value) => void handleStatusChange(value as ApplicantStatus)}>
+                                            <SelectTrigger className="w-full bg-slate-50 border-slate-200 rounded-xl h-11">
+                                                <SelectValue placeholder="Change status" />
+                                            </SelectTrigger>
+                                            <SelectContent>
+                                                {APPLICANT_STATUSES.map(status => (
+                                                    <SelectItem key={status} value={status}>
+                                                        {status.charAt(0).toUpperCase() + status.slice(1)}
+                                                    </SelectItem>
+                                                ))}
+                                            </SelectContent>
+                                        </Select>
                                     </div>
+                                </div>
+                                <div className="pt-4 border-t border-slate-100">
+                                    <p className="text-xs font-bold text-slate-500 uppercase tracking-wider mb-1">Applied Date</p>
+                                    <p className="text-slate-900 font-semibold">
+                                        {applicant.appliedDate
+                                            ? new Date(applicant.appliedDate).toLocaleDateString('en-US', { year: 'numeric', month: 'long', day: 'numeric' })
+                                            : 'Not specified'}
+                                    </p>
                                 </div>
                             </div>
                         </div>
 
-                        {/* Documents & Links */}
                         <div className="bg-white rounded-3xl shadow-sm border border-slate-200 p-6">
                             <h2 className="text-sm font-extrabold text-slate-700 uppercase tracking-widest mb-4">Documents & Links</h2>
                             <div className="space-y-3">
                                 {documentFiles.length > 0 ? (
-                                    documentFiles.map((url) => {
-                                        const name = 'Resume'
-                                        return (
-                                            <a
-                                                key={url}
-                                                href={url}
-                                                target="_blank"
-                                                rel="noopener noreferrer"
-                                                className="flex items-center gap-3 p-4 rounded-xl border border-slate-200 hover:border-blue-300 hover:bg-blue-50/50 transition-colors"
-                                            >
-                                                <div className="w-10 h-10 rounded-xl bg-blue-50 flex items-center justify-center">
-                                                    <FileText className="w-5 h-5 text-blue-600" />
-                                                </div>
-                                                <div className="flex-1">
-                                                    <p className="text-sm font-bold text-slate-900">{name}</p>
-                                                    <p className="text-xs text-slate-500">View document</p>
-                                                </div>
-                                                <ExternalLink className="w-4 h-4 text-slate-400" />
-                                            </a>
-                                        )
-                                    })
+                                    documentFiles.map((url) => (
+                                        <a
+                                            key={url}
+                                            href={url}
+                                            target="_blank"
+                                            rel="noopener noreferrer"
+                                            className="flex items-center gap-3 p-4 rounded-xl border border-slate-200 hover:border-blue-300 hover:bg-blue-50/50 transition-colors"
+                                        >
+                                            <div className="w-10 h-10 rounded-xl bg-blue-50 flex items-center justify-center">
+                                                <FileText className="w-5 h-5 text-blue-600" />
+                                            </div>
+                                            <div className="flex-1">
+                                                <p className="text-sm font-bold text-slate-900">Resume</p>
+                                                <p className="text-xs text-slate-500">View document</p>
+                                            </div>
+                                            <ExternalLink className="w-4 h-4 text-slate-400" />
+                                        </a>
+                                    ))
                                 ) : (
                                     <div className="flex items-center gap-3 p-4 rounded-xl border border-slate-200 bg-slate-50">
                                         <div className="w-10 h-10 rounded-xl bg-slate-100 flex items-center justify-center">
@@ -322,9 +477,9 @@ export default function ApplicantDetailPage() {
                                     </div>
                                 )}
 
-                                {applicant.linkedinUrl ? (
+                                {linkedinUrl ? (
                                     <a
-                                        href={applicant.linkedinUrl}
+                                        href={linkedinUrl}
                                         target="_blank"
                                         rel="noopener noreferrer"
                                         className="flex items-center gap-3 p-4 rounded-xl border border-slate-200 hover:border-blue-300 hover:bg-blue-50/50 transition-colors"
@@ -357,68 +512,153 @@ export default function ApplicantDetailPage() {
 
             {activeTab === 'feedback' && (
                 <div className="space-y-6">
-                    {applicantFeedback.map((entry) => {
-                        const card = cardsById.get(entry.cardId) as FeedbackCard | undefined
-                        const questionById = new Map(card?.questions.map(q => [q.id, q]) || [])
-                        const scoreAnswers = entry.answers.filter(a => (questionById.get(a.questionId)?.kind || 'score') === 'score')
-                        // Get score from API 'answer' field or 'score' field
-                        const getScore = (a: typeof entry.answers[0]) => {
-                            if (a.score !== undefined) return a.score
-                            if (a.answer) {
-                                const parsed = parseFloat(a.answer)
-                                if (!isNaN(parsed)) return parsed
+                    {applicantFeedback.length === 0 ? (
+                        <div className="bg-white rounded-3xl shadow-sm border border-slate-200 p-6">
+                            <p className="text-sm text-slate-500">No feedback entries found for this applicant.</p>
+                        </div>
+                    ) : (
+                        applicantFeedback.map((entry) => {
+                            const detail = feedbackEntryDetails[entry.id]
+                            const card = cardsById.get(entry.cardId) as FeedbackCard | undefined
+                            const questions = detail?.card?.questions || []
+                            const answerByQuestionId = new Map(entry.answers.map(answer => [answer.questionId, answer]))
+                            const scoreQuestions = questions
+                                .map((question, index) => ({
+                                    question,
+                                    index,
+                                    questionId: question.id || question.answer?.questionId || `q-${index}`
+                                }))
+                                .filter(item => item.question.kind === 'score')
+
+                            const getScore = (questionId: string, questionScore?: string) => {
+                                if (questionScore) {
+                                    const parsedQuestionScore = parseFloat(questionScore)
+                                    if (!Number.isNaN(parsedQuestionScore)) return parsedQuestionScore
+                                }
+                                const answer = answerByQuestionId.get(questionId)
+                                if (!answer) return 0
+                                if (typeof answer.score === 'number') return answer.score
+                                if (answer.answer) {
+                                    const parsed = parseFloat(answer.answer)
+                                    if (!Number.isNaN(parsed)) return parsed
+                                }
+                                return 0
                             }
-                            return 0
-                        }
-                        const totalScore = scoreAnswers.reduce((sum, a) => sum + getScore(a), 0)
-                        const maxScore = scoreAnswers.length * 5
-                        const percentScore = maxScore > 0 ? Math.round((totalScore / maxScore) * 100) : 0
-                        return (
-                            <div key={entry.id} className="bg-white rounded-3xl shadow-sm border border-slate-200 p-6 space-y-4">
-                                <div className="flex items-center justify-between">
-                                    <div>
-                                        <p className="text-xs font-bold text-slate-400 uppercase tracking-widest">Feedback</p>
-                                        <p className="text-lg font-extrabold text-slate-900">{card?.title || 'Feedback Card'}</p>
-                                        <p className="text-xs text-slate-500">{new Date(entry.createdAt).toLocaleDateString()}</p>
+
+                            const totalScore = scoreQuestions.reduce(
+                                (sum, item) => sum + getScore(item.questionId, item.question.answer?.answer),
+                                0
+                            )
+                            const maxScore = scoreQuestions.length * 5
+                            const percentScore = maxScore > 0 ? Math.round((totalScore / maxScore) * 100) : 0
+                            const avgScore = scoreQuestions.length > 0 ? (totalScore / scoreQuestions.length).toFixed(1) : '0.0'
+
+                            return (
+                                <div key={entry.id} className="space-y-6">
+                                    <div className="bg-white rounded-3xl shadow-sm border border-slate-200 overflow-hidden">
+                                        <div className="p-8 space-y-4">
+                                            <div className="grid grid-cols-1 md:grid-cols-4 gap-4 text-sm">
+                                                <div>
+                                                    <p className="text-xs font-bold text-slate-400 uppercase tracking-widest">Type</p>
+                                                    <p className="font-semibold text-slate-900">{entry.type || entry.subjectType || 'Applicant'}</p>
+                                                </div>
+                                                <div>
+                                                    <p className="text-xs font-bold text-slate-400 uppercase tracking-widest">From</p>
+                                                    <p className="font-semibold text-slate-900">{detail?.authorName || entry.authorName || 'Unknown'}</p>
+                                                </div>
+                                                <div>
+                                                    <p className="text-xs font-bold text-slate-400 uppercase tracking-widest">Card</p>
+                                                    <p className="font-semibold text-slate-900">{detail?.card?.title || card?.title || 'Feedback Card'}</p>
+                                                </div>
+                                                <div>
+                                                    <p className="text-xs font-bold text-slate-400 uppercase tracking-widest">Date</p>
+                                                    <p className="font-semibold text-slate-900">{new Date((detail?.createdAt || entry.createdAt)).toLocaleDateString()}</p>
+                                                </div>
+                                            </div>
+                                            <div className="grid grid-cols-1 md:grid-cols-3 gap-4 pt-2">
+                                                <div className="rounded-2xl border border-slate-200 p-4">
+                                                    <p className="text-xs font-bold text-slate-400 uppercase tracking-widest">Total Score</p>
+                                                    <p className="text-2xl font-extrabold text-slate-900">{totalScore} / {maxScore}</p>
+                                                </div>
+                                                <div className="rounded-2xl border border-slate-200 p-4">
+                                                    <p className="text-xs font-bold text-slate-400 uppercase tracking-widest">Average</p>
+                                                    <p className="text-2xl font-extrabold text-slate-900">{avgScore}</p>
+                                                </div>
+                                                <div className="rounded-2xl border border-slate-200 p-4 space-y-2">
+                                                    <p className="text-xs font-bold text-slate-400 uppercase tracking-widest">Score %</p>
+                                                    <p className="text-2xl font-extrabold text-slate-900">{percentScore}%</p>
+                                                    <Progress value={percentScore} className="h-2" />
+                                                </div>
+                                            </div>
+                                        </div>
                                     </div>
-                                    <div className="text-right">
-                                        <p className="text-xs font-bold text-slate-400 uppercase tracking-widest">Score</p>
-                                        <p className="text-2xl font-extrabold text-slate-900">{totalScore} / {maxScore}</p>
-                                        <div className="mt-2 w-40">
-                                            <Progress value={percentScore} />
+
+                                    <div className="bg-white rounded-3xl shadow-sm border border-slate-200 overflow-hidden">
+                                        <div className="p-6 space-y-4">
+                                            {questions.length === 0 ? (
+                                                <p className="text-sm text-slate-500">No question details available for this feedback entry.</p>
+                                            ) : (
+                                                questions.map((question, index) => {
+                                                    const questionId = question.id || question.answer?.questionId || `q-${index}`
+                                                    const answer = answerByQuestionId.get(questionId) || (
+                                                        question.answer?.questionId
+                                                            ? answerByQuestionId.get(question.answer.questionId)
+                                                            : undefined
+                                                    )
+                                                    if (question.kind === 'content') {
+                                                        return (
+                                                            <div key={`${entry.id}-content-${questionId}-${index}`} className="pt-2">
+                                                                <div className="ql-snow">
+                                                                    <div
+                                                                        className="ql-editor p-0 text-sm text-slate-700"
+                                                                        dangerouslySetInnerHTML={{ __html: question.prompt }}
+                                                                    />
+                                                                </div>
+                                                            </div>
+                                                        )
+                                                    }
+
+                                                    if (question.kind === 'score') {
+                                                        const selectedScore = getScore(questionId, question.answer?.answer)
+                                                        return (
+                                                            <div key={`${entry.id}-${questionId}-${index}`} className="rounded-2xl border border-slate-200 p-4 space-y-3">
+                                                                <p className="text-sm font-semibold text-slate-800">{question.prompt}</p>
+                                                                <div className="flex items-center gap-2">
+                                                                    {[1, 2, 3, 4, 5].map((s) => (
+                                                                        <div
+                                                                            key={s}
+                                                                            className={`w-9 h-9 rounded-full flex items-center justify-center text-sm font-bold transition-all ${
+                                                                                selectedScore === s
+                                                                                    ? 'bg-blue-600 text-white shadow-md'
+                                                                                    : 'bg-slate-100 text-slate-400'
+                                                                            }`}
+                                                                        >
+                                                                            {s}
+                                                                        </div>
+                                                                    ))}
+                                                                </div>
+                                                            </div>
+                                                        )
+                                                    }
+
+                                                    return (
+                                                        <div key={`${entry.id}-${questionId}-${index}`} className="rounded-2xl border border-slate-200 p-4 space-y-3">
+                                                            <p className="text-sm font-semibold text-slate-800">{question.prompt}</p>
+                                                            <p className="text-sm text-slate-600 whitespace-pre-wrap">
+                                                                {question.answer?.answer || answer?.comment || answer?.answer || '—'}
+                                                            </p>
+                                                        </div>
+                                                    )
+                                                })
+                                            )}
                                         </div>
                                     </div>
                                 </div>
-
-                                <div className="space-y-3">
-                                    {entry.answers.map((answer) => {
-                                        const question = questionById.get(answer.questionId)
-                                        return (
-                                            <div key={answer.questionId} className="rounded-2xl border border-slate-200 p-4">
-                                                <p className="text-sm font-semibold text-slate-800">{question?.prompt || 'Question'}</p>
-                                                {question?.kind === 'comment' ? (
-                                                    <p className="text-sm text-slate-600 mt-2 whitespace-pre-wrap">{answer.comment || '—'}</p>
-                                                ) : (
-                                                    <div className="mt-3 flex items-center gap-3">
-                                                        {[1, 2, 3, 4, 5].map((score) => (
-                                                            <span
-                                                                key={score}
-                                                                className={`inline-flex items-center justify-center w-8 h-8 rounded-full text-xs font-bold ${answer.score === score ? 'bg-blue-600 text-white' : 'bg-slate-100 text-slate-400'}`}
-                                                            >
-                                                                {score}
-                                                            </span>
-                                                        ))}
-                                                    </div>
-                                                )}
-                                            </div>
-                                        )
-                                        })}
-                                    </div>
-                                </div>
                             )
-                        })}
-                    </div>
-                )}
+                        })
+                    )}
+                </div>
+            )}
             </div>
 
         </>

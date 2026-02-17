@@ -686,6 +686,13 @@ export function AppProvider({ children }: { children: ReactNode }) {
         return () => unsubscribe()
     }, [])
 
+    useEffect(() => {
+        // Ensure middleware sees company state on hard refresh and deep links opened in a new tab.
+        if (currentCompany?.id) {
+            persistHasCompany(true)
+        }
+    }, [currentCompany?.id])
+
     const login = async (email: string, password: string): Promise<{ success: boolean; message: string }> => {
         try {
             const credential = await signInWithEmailAndPassword(firebaseAuth, email, password)
@@ -1041,10 +1048,6 @@ export function AppProvider({ children }: { children: ReactNode }) {
         }
     }
 
-    useEffect(() => {
-        if (!currentCompany || !apiAccessToken) return
-        void refreshEmployees()
-    }, [currentCompany?.id, apiAccessToken])
 
     const createDepartment = async (departmentData: Omit<Department, 'id' | 'companyId' | 'createdAt'>): Promise<Department> => {
         try {
@@ -1130,20 +1133,6 @@ export function AppProvider({ children }: { children: ReactNode }) {
         }
     }
 
-    useEffect(() => {
-        if (!currentCompany || !apiAccessToken) return
-        void refreshDepartments()
-    }, [currentCompany?.id, apiAccessToken])
-
-    useEffect(() => {
-        if (!currentCompany || !apiAccessToken) return
-        void refreshLeaveTypes()
-    }, [currentCompany?.id, apiAccessToken])
-
-    useEffect(() => {
-        if (!currentCompany || !apiAccessToken) return
-        void refreshHolidays()
-    }, [currentCompany?.id, apiAccessToken])
 
     useEffect(() => {
         if (!currentCompany || !apiAccessToken || !currentUser) return
@@ -1332,10 +1321,6 @@ export function AppProvider({ children }: { children: ReactNode }) {
         }
     }
 
-    useEffect(() => {
-        if (!currentCompany || !apiAccessToken) return
-        void refreshFeedbackCards()
-    }, [currentCompany?.id, apiAccessToken])
 
     const createFeedbackEntry = async (entry: Omit<FeedbackEntry, 'id' | 'companyId' | 'createdAt' | 'updatedAt'>): Promise<FeedbackEntry> => {
         try {
@@ -1461,10 +1446,6 @@ export function AppProvider({ children }: { children: ReactNode }) {
         }
     }
 
-    useEffect(() => {
-        if (!currentCompany || !apiAccessToken) return
-        void refreshFeedbackEntries()
-    }, [currentCompany?.id, apiAccessToken])
 
     const addDocument = async (doc: Omit<EmployeeDocument, 'id' | 'uploadedAt'>): Promise<EmployeeDocument> => {
         try {
@@ -1677,10 +1658,6 @@ export function AppProvider({ children }: { children: ReactNode }) {
         }
     }
 
-    useEffect(() => {
-        if (!currentCompany || !apiAccessToken) return
-        void refreshLeaves()
-    }, [currentCompany?.id, apiAccessToken])
 
     const createRole = async (roleData: Omit<Role, 'id' | 'companyId' | 'createdAt'>): Promise<Role> => {
         try {
@@ -1759,15 +1736,6 @@ export function AppProvider({ children }: { children: ReactNode }) {
         }
     }
 
-    useEffect(() => {
-        if (!currentCompany || !apiAccessToken) return
-        void refreshRoles()
-    }, [currentCompany?.id, apiAccessToken])
-
-    useEffect(() => {
-        if (!currentCompany || !apiAccessToken) return
-        void refreshJobs()
-    }, [currentCompany?.id, apiAccessToken])
 
     const createJob = async (jobData: Omit<Job, 'id' | 'companyId' | 'createdAt'>): Promise<Job> => {
         try {

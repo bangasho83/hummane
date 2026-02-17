@@ -1245,10 +1245,16 @@ export const createFeedbackEntryApi = async (
   }
 
   const data = await response.json().catch(() => null)
+  console.info('Feedback Entry Create response:', JSON.stringify(data, null, 2))
   return (data?.data || data?.feedbackEntry || data) as FeedbackEntry
 }
 
 export const fetchFeedbackEntriesApi = async (accessToken: string): Promise<FeedbackEntry[]> => {
+  console.info(
+    `\n📋 Feedback Entries Fetch - Copy this curl command:\n\n` +
+      `curl -X GET "${FEEDBACK_ENTRIES_PATH}" \\\n` +
+      `  -H "Authorization: Bearer ${accessToken}"\n`
+  )
   let response: Response
   try {
     response = await fetch(FEEDBACK_ENTRIES_PATH, {
@@ -1268,6 +1274,7 @@ export const fetchFeedbackEntriesApi = async (accessToken: string): Promise<Feed
   }
 
   const data = await response.json().catch(() => null)
+  console.info('Feedback Entries Fetch response:', JSON.stringify(data, null, 2))
   const list = data?.data || data?.feedbackEntries || data
   return Array.isArray(list) ? (list as FeedbackEntry[]) : []
 }
@@ -1314,6 +1321,13 @@ export const updateFeedbackEntryApi = async (
   },
   accessToken: string
 ): Promise<FeedbackEntry> => {
+  console.info(
+    `\n📋 Feedback Entry Update - Copy this curl command:\n\n` +
+      `curl -X PUT "${FEEDBACK_ENTRIES_PATH}/${encodeURIComponent(entryId)}" \\\n` +
+      `  -H "Authorization: Bearer ${accessToken}" \\\n` +
+      `  -H "Content-Type: application/json" \\\n` +
+      `  -d '${JSON.stringify(payload, null, 2)}'\n`
+  )
   let response: Response
   try {
     response = await fetch(`${FEEDBACK_ENTRIES_PATH}/${encodeURIComponent(entryId)}`, {
@@ -1335,6 +1349,7 @@ export const updateFeedbackEntryApi = async (
   }
 
   const data = await response.json().catch(() => null)
+  console.info('Feedback Entry Update response:', JSON.stringify(data, null, 2))
   const entry = (data?.data || data?.feedbackEntry || data) as FeedbackEntry | null
   if (!entry || typeof entry !== 'object') {
     return {

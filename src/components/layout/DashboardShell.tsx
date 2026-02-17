@@ -1,9 +1,7 @@
 'use client'
 
-import { useEffect } from 'react'
-import { usePathname, useRouter } from 'next/navigation'
 import { Sidebar } from './Sidebar'
-import { Bell, Search, User, ChevronDown } from 'lucide-react'
+import { Bell, Search, ChevronDown } from 'lucide-react'
 import { useApp } from '@/lib/context/AppContext'
 import { Input } from '@/components/ui/input'
 
@@ -12,18 +10,7 @@ interface DashboardShellProps {
 }
 
 export function DashboardShell({ children }: DashboardShellProps) {
-    const { currentUser, currentCompany, isHydrating } = useApp()
-    const router = useRouter()
-    const pathname = usePathname()
-
-    useEffect(() => {
-        // Wait for hydration to complete before redirecting
-        if (isHydrating) return
-        if (!currentUser) return
-        if (currentCompany) return
-        if (pathname === '/company-setup') return
-        router.push('/company-setup')
-    }, [currentUser, currentCompany, pathname, router, isHydrating])
+    const { currentUser } = useApp()
 
     return (
         <div className="flex min-h-screen bg-slate-50/50">
