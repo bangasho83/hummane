@@ -48,6 +48,7 @@ export default function ApplicantDetailPage() {
     const [applicant, setApplicant] = useState<Applicant | null>(null)
     const [pageFeedbackEntries, setPageFeedbackEntries] = useState<FeedbackEntry[] | null>(null)
     const [feedbackEntryDetails, setFeedbackEntryDetails] = useState<Record<string, FeedbackEntryDetail>>({})
+    const [statusUpdating, setStatusUpdating] = useState<ApplicantStatus | null>(null)
     const [pageLoading, setPageLoading] = useState(true)
     const [activeTab, setActiveTab] = useState<'details' | 'feedback'>('details')
     const lastFetchedApplicantId = useRef<string | null>(null)
@@ -201,6 +202,7 @@ export default function ApplicantDetailPage() {
                     title: detail?.card?.title || card?.title || 'Feedback',
                     total,
                     max,
+                    complete: max > 0 ? total >= max : false,
                     createdAt: detail?.createdAt || entry.createdAt
                 }
             })
@@ -242,7 +244,8 @@ export default function ApplicantDetailPage() {
     }
 
     const handleStatusChange = async (status: ApplicantStatus) => {
-        if (!applicant || status === applicant.status) return
+        if (!applicant || status === applicant.status || statusUpdating) return
+        setStatusUpdating(status)
         try {
             const updated = await updateApplicant(applicant.id, { status })
             setApplicant(prev => (prev ? { ...prev, status: updated?.status || status } : prev))
@@ -250,8 +253,16 @@ export default function ApplicantDetailPage() {
         } catch (error) {
             console.error('Failed to update applicant status:', error)
             toast('Failed to update applicant status', 'error')
+        } finally {
+            setStatusUpdating(null)
         }
     }
+
+    const formatStatusLabel = (status: ApplicantStatus) =>
+        status
+            .split(' ')
+            .map(word => word.charAt(0).toUpperCase() + word.slice(1))
+            .join(' ')
 
     // Handle resumeFile as either a string URL (from API) or an object with dataUrl
     const getResumeUrl = (): string | null => {
@@ -325,20 +336,6 @@ export default function ApplicantDetailPage() {
                 <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
                     <div className="lg:col-span-2 space-y-6">
                         <div className="bg-white rounded-3xl shadow-sm border border-slate-200 p-6">
-                            <h2 className="text-sm font-extrabold text-slate-700 uppercase tracking-widest mb-6">Personal Information</h2>
-                            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                                <div className="rounded-2xl border border-slate-200 p-4">
-                                    <p className="text-xs font-bold text-slate-500 uppercase tracking-wider mb-1">Email</p>
-                                    <p className="text-slate-900 font-semibold break-all">{applicant.email}</p>
-                                </div>
-                                <div className="rounded-2xl border border-slate-200 p-4">
-                                    <p className="text-xs font-bold text-slate-500 uppercase tracking-wider mb-1">Phone</p>
-                                    <p className="text-slate-900 font-semibold">{applicant.phone || 'Not provided'}</p>
-                                </div>
-                            </div>
-                        </div>
-
-                        <div className="bg-white rounded-3xl shadow-sm border border-slate-200 p-6">
                             <h2 className="text-sm font-extrabold text-slate-700 uppercase tracking-widest mb-6">Professional Information</h2>
                             <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-4">
                                 <div className="rounded-2xl border border-slate-200 p-4">
@@ -384,6 +381,20 @@ export default function ApplicantDetailPage() {
                                 </div>
                             </div>
                         </div>
+
+                        <div className="bg-white rounded-3xl shadow-sm border border-slate-200 p-6">
+                            <h2 className="text-sm font-extrabold text-slate-700 uppercase tracking-widest mb-6">Personal Information</h2>
+                            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                                <div className="rounded-2xl border border-slate-200 p-4">
+                                    <p className="text-xs font-bold text-slate-500 uppercase tracking-wider mb-1">Email</p>
+                                    <p className="text-slate-900 font-semibold break-all">{applicant.email}</p>
+                                </div>
+                                <div className="rounded-2xl border border-slate-200 p-4">
+                                    <p className="text-xs font-bold text-slate-500 uppercase tracking-wider mb-1">Phone</p>
+                                    <p className="text-slate-900 font-semibold">{applicant.phone || 'Not provided'}</p>
+                                </div>
+                            </div>
+                        </div>
                     </div>
 
                     <div className="space-y-6">
@@ -392,15 +403,30 @@ export default function ApplicantDetailPage() {
                             {feedbackScoreSummary.length > 0 ? (
                                 <div className="space-y-3">
                                     <div className="rounded-2xl border border-blue-200 bg-blue-50/60 p-4">
-                                        <p className="text-xs font-extrabold uppercase tracking-widest text-blue-700">Latest Score</p>
+                                        <button
+                                            type="button"
+                                            onClick={() => setActiveTab('feedback')}
+                                            className="text-xs font-extrabold uppercase tracking-widest text-blue-700 hover:text-blue-900 hover:underline transition-colors"
+                                            title="Open feedback details"
+                                        >
+                                            {feedbackScoreSummary[0].title}
+                                        </button>
                                         <p className="text-3xl font-black text-slate-900 mt-1">
                                             {feedbackScoreSummary[0].total} / {feedbackScoreSummary[0].max}
+                                        </p>
+                                        <p className={`text-xs font-extrabold uppercase tracking-widest mt-2 ${feedbackScoreSummary[0].complete ? 'text-emerald-700' : 'text-amber-700'}`}>
+                                            {feedbackScoreSummary[0].complete ? 'Complete' : 'Incomplete'}
                                         </p>
                                     </div>
                                     {feedbackScoreSummary.slice(1).map(item => (
                                         <div key={item.id} className="flex items-center justify-between rounded-xl border border-slate-200 p-3">
-                                            <p className="text-lg font-extrabold text-slate-900">{item.total} / {item.max}</p>
-                                            <p className="text-sm font-semibold text-slate-700 text-right">{item.title}</p>
+                                            <div>
+                                                <p className="text-lg font-extrabold text-slate-900">{item.total} / {item.max}</p>
+                                                <p className="text-sm font-semibold text-slate-700">{item.title}</p>
+                                            </div>
+                                            <p className={`text-xs font-extrabold uppercase tracking-widest ${item.complete ? 'text-emerald-700' : 'text-amber-700'}`}>
+                                                {item.complete ? 'Complete' : 'Incomplete'}
+                                            </p>
                                         </div>
                                     ))}
                                 </div>
@@ -414,22 +440,30 @@ export default function ApplicantDetailPage() {
                             <div className="space-y-4">
                                 <div>
                                     <p className="text-xs font-bold text-slate-500 uppercase tracking-wider mb-2">Current Status</p>
-                                    <div className="space-y-3">
-                                        <span className={`inline-flex items-center px-4 py-2 rounded-full text-sm font-bold ${getStatusColor(applicant.status)}`}>
-                                            {applicant.status.charAt(0).toUpperCase() + applicant.status.slice(1)}
-                                        </span>
-                                        <Select value={applicant.status} onValueChange={(value) => void handleStatusChange(value as ApplicantStatus)}>
-                                            <SelectTrigger className="w-full bg-slate-50 border-slate-200 rounded-xl h-11">
-                                                <SelectValue placeholder="Change status" />
+                                    <div className="flex items-center gap-3">
+                                        <Select
+                                            value={applicant.status}
+                                            onValueChange={(value) => void handleStatusChange(value as ApplicantStatus)}
+                                            disabled={!!statusUpdating}
+                                        >
+                                            <SelectTrigger
+                                                className={`h-9 w-auto min-w-[170px] rounded-full border-0 px-4 text-sm font-bold shadow-none ${getStatusColor(applicant.status)}`}
+                                            >
+                                                <SelectValue>
+                                                    {formatStatusLabel(applicant.status)}
+                                                </SelectValue>
                                             </SelectTrigger>
                                             <SelectContent>
-                                                {APPLICANT_STATUSES.map(status => (
+                                                {APPLICANT_STATUSES.map((status) => (
                                                     <SelectItem key={status} value={status}>
-                                                        {status.charAt(0).toUpperCase() + status.slice(1)}
+                                                        {formatStatusLabel(status)}
                                                     </SelectItem>
                                                 ))}
                                             </SelectContent>
                                         </Select>
+                                        {statusUpdating && (
+                                            <span className="text-xs font-semibold text-slate-500">Updating...</span>
+                                        )}
                                     </div>
                                 </div>
                                 <div className="pt-4 border-t border-slate-100">
