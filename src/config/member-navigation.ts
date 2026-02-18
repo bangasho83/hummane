@@ -4,6 +4,7 @@ import {
   CalendarDays,
   LayoutDashboard,
   MessageSquare,
+  Users,
   User,
 } from 'lucide-react'
 
@@ -16,9 +17,9 @@ export type MemberNavItem = {
 
 export const memberNavigationItems: MemberNavItem[] = [
   { name: 'Dashboard', href: '/member', icon: LayoutDashboard, exact: true },
+  { name: 'Applicants', href: '/member/applicants', icon: Users },
   { name: 'Feedback', href: '/member/feedback', icon: MessageSquare },
   { name: 'Leaves', href: '/member/leaves', icon: CalendarDays },
   { name: 'Attendance', href: '/member/attendance', icon: Calendar },
   { name: 'Profile', href: '/member/profile', icon: User },
 ]
-

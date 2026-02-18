@@ -155,23 +155,27 @@ export default function MemberFeedbackGivenPage() {
                             ) : (
                                 entries.map((entry) => {
                                     const card = cardsById.get(entry.cardId) as FeedbackCard | undefined
-                                    // Calculate score from answers
+                                    // Calculate score against the full card, not only answered questions.
                                     // eslint-disable-next-line @typescript-eslint/no-explicit-any
-                                    const scoreAnswers = entry.answers.filter((a: any) => a.question?.kind === 'score')
+                                    const scoreAnswers = (entry.answers || []).filter((a: any) => a.question?.kind === 'score')
+                                    const totalScoreQuestions = (card?.questions || []).filter((q) => q.kind === 'score').length
                                     let scorePercent: number | null = null
                                     let isIncomplete = false
-                                    if (scoreAnswers.length > 0) {
-                                        let total = 0, max = 0
+                                    if (scoreAnswers.length > 0 || totalScoreQuestions > 0) {
+                                        let total = 0
                                         // eslint-disable-next-line @typescript-eslint/no-explicit-any
                                         scoreAnswers.forEach((a: any) => {
                                             const val = parseInt(a.answer || '0', 10)
                                             if (!isNaN(val) && val > 0) {
                                                 total += val
-                                                max += 5
                                             } else {
                                                 isIncomplete = true
                                             }
                                         })
+                                        const max = Math.max(totalScoreQuestions, scoreAnswers.length) * 5
+                                        if (scoreAnswers.length < totalScoreQuestions) {
+                                            isIncomplete = true
+                                        }
                                         if (max > 0) {
                                             scorePercent = Math.round((total / max) * 100)
                                         }
@@ -238,4 +242,3 @@ export default function MemberFeedbackGivenPage() {
         </div>
     )
 }
-
