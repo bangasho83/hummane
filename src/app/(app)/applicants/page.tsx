@@ -113,6 +113,11 @@ export default function ApplicantsPage() {
         return ''
     }
 
+    const formatSalary = (value?: number) => {
+        if (!value) return 'Not specified'
+        return Math.round(value).toLocaleString('en-US', { maximumFractionDigits: 0 })
+    }
+
     const filteredApplicants = applicants.filter(applicant => {
         const job = getApplicantJob(applicant)
         const matchesSearch =
@@ -594,8 +599,8 @@ export default function ApplicantsPage() {
                             <TableRow className="hover:bg-transparent border-slate-100">
                                 <TableHead className="pl-8 py-4 text-[10px] font-extrabold uppercase tracking-widest text-slate-400">Name</TableHead>
                                 <TableHead className="py-4 text-[10px] font-extrabold uppercase tracking-widest text-slate-400">Position</TableHead>
-                                <TableHead className="py-4 text-[10px] font-extrabold uppercase tracking-widest text-slate-400">Department</TableHead>
                                 <TableHead className="py-4 text-[10px] font-extrabold uppercase tracking-widest text-slate-400">Experience</TableHead>
+                                <TableHead className="py-4 text-[10px] font-extrabold uppercase tracking-widest text-slate-400">Current Salary</TableHead>
                                 <TableHead className="py-4 text-[10px] font-extrabold uppercase tracking-widest text-slate-400">Expected Salary</TableHead>
                                 <TableHead className="py-4 text-[10px] font-extrabold uppercase tracking-widest text-slate-400">LinkedIn</TableHead>
                                 <TableHead className="py-4 text-[10px] font-extrabold uppercase tracking-widest text-slate-400">Resume</TableHead>
@@ -606,7 +611,6 @@ export default function ApplicantsPage() {
                         </TableHeader>
                         <TableBody>
                             {filteredApplicants.map((applicant) => {
-                                const job = getApplicantJob(applicant)
                                 const linkedinUrl = toExternalUrl(applicant.linkedinUrl)
                                 const resumeUrl = getResumeUrl(applicant)
                                 return (
@@ -638,9 +642,9 @@ export default function ApplicantsPage() {
                                             </div>
                                         </TableCell>
                                         <TableCell className="text-slate-600">{applicant.positionApplied}</TableCell>
-                                        <TableCell className="text-slate-600">{applicant.departmentName || job?.department || '—'}</TableCell>
                                         <TableCell className="text-slate-600">{applicant.yearsOfExperience} {applicant.yearsOfExperience === 1 ? 'year' : 'years'}</TableCell>
-                                        <TableCell className="text-slate-600">{applicant.expectedSalary || 'Not specified'}</TableCell>
+                                        <TableCell className="text-right text-slate-600 tabular-nums">{formatSalary(applicant.currentSalary)}</TableCell>
+                                        <TableCell className="text-right text-slate-600 tabular-nums">{formatSalary(applicant.expectedSalary)}</TableCell>
                                         <TableCell className="text-slate-600">
                                             {linkedinUrl ? (
                                                 <a

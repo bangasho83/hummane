@@ -284,6 +284,10 @@ export interface Applicant {
         files: string[]
     }
     linkedinUrl?: string
+    assignments?: {
+        status: ApplicantStatus
+        employeeId: string
+    }[]
     status: ApplicantStatus
     appliedDate: string
     createdAt: string

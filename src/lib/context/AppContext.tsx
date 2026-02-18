@@ -589,6 +589,7 @@ export function AppProvider({ children }: { children: ReactNode }) {
             resumeFile: applicant.resumeFile ?? resumeFromDocuments ?? fallbackResume,
             documents,
             linkedinUrl: applicant.linkedinUrl ?? fallback.linkedinUrl,
+            assignments: applicant.assignments ?? fallback.assignments ?? [],
             status: (applicant.status || fallback.status || 'new') as Applicant['status'],
             appliedDate: applicant.appliedDate || fallback.appliedDate || new Date().toISOString().split('T')[0],
             createdAt: applicant.createdAt || fallback.createdAt || now,
@@ -1905,10 +1906,12 @@ export function AppProvider({ children }: { children: ReactNode }) {
 
             const existing = applicants.find(applicant => applicant.id === id)
             const status = (applicantData.status || existing?.status || 'new') as Applicant['status']
+            const assignments = applicantData.assignments ?? existing?.assignments
             const apiApplicant = await updateApplicantApi(
                 id,
                 {
                     status,
+                    assignments,
                     companyId: currentCompany.id
                 },
                 apiAccessToken

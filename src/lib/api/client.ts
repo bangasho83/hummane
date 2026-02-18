@@ -1790,7 +1790,14 @@ export const fetchApplicantApiResponse = async (applicantId: string, accessToken
 
 export const updateApplicantApi = async (
   applicantId: string,
-  payload: { status?: string; companyId: string },
+  payload: {
+    status?: string
+    companyId: string
+    assignments?: {
+      status: Applicant['status']
+      employeeId: string
+    }[]
+  },
   accessToken: string
 ): Promise<Applicant> => {
   let response: Response

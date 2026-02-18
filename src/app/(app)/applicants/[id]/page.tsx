@@ -9,6 +9,7 @@ import { FileText, ExternalLink, Linkedin } from 'lucide-react'
 import { useApp } from '@/lib/context/AppContext'
 import { Button } from '@/components/ui/button'
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select'
+import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog'
 import { toast } from '@/components/ui/toast'
 import { APPLICANT_STATUSES, type Applicant, type ApplicantStatus, type FeedbackCard, type FeedbackEntry } from '@/types'
 import { Progress } from '@/components/ui/progress'
@@ -44,11 +45,14 @@ interface FeedbackEntryDetail {
 export default function ApplicantDetailPage() {
     const router = useRouter()
     const params = useParams()
-    const { applicants, feedbackEntries, feedbackCards, apiAccessToken, updateApplicant } = useApp()
+    const { applicants, feedbackEntries, feedbackCards, apiAccessToken, updateApplicant, employees } = useApp()
     const [applicant, setApplicant] = useState<Applicant | null>(null)
     const [pageFeedbackEntries, setPageFeedbackEntries] = useState<FeedbackEntry[] | null>(null)
     const [feedbackEntryDetails, setFeedbackEntryDetails] = useState<Record<string, FeedbackEntryDetail>>({})
     const [statusUpdating, setStatusUpdating] = useState<ApplicantStatus | null>(null)
+    const [pendingStatus, setPendingStatus] = useState<ApplicantStatus | null>(null)
+    const [selectedStatusEmployeeId, setSelectedStatusEmployeeId] = useState('')
+    const [isAssignmentDialogOpen, setIsAssignmentDialogOpen] = useState(false)
     const [pageLoading, setPageLoading] = useState(true)
     const [activeTab, setActiveTab] = useState<'details' | 'feedback'>('details')
     const lastFetchedApplicantId = useRef<string | null>(null)
@@ -210,6 +214,16 @@ export default function ApplicantDetailPage() {
             .sort((a, b) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime())
     }, [applicantFeedback, feedbackEntryDetails, cardsById])
 
+    const employeeNameById = useMemo(
+        () => new Map(employees.map(employee => [employee.id, employee.name])),
+        [employees]
+    )
+
+    const currentStatusAssignment = applicant?.assignments?.find(item => item.status === applicant.status)
+    const currentStatusEmployeeName = currentStatusAssignment?.employeeId
+        ? employeeNameById.get(currentStatusAssignment.employeeId) || 'Unknown employee'
+        : null
+
     if (pageLoading) {
         return (
             <div className="text-center py-16">
@@ -243,12 +257,19 @@ export default function ApplicantDetailPage() {
         }
     }
 
-    const handleStatusChange = async (status: ApplicantStatus) => {
+    const handleStatusChange = async (status: ApplicantStatus, assignments?: Applicant['assignments']) => {
         if (!applicant || status === applicant.status || statusUpdating) return
         setStatusUpdating(status)
         try {
-            const updated = await updateApplicant(applicant.id, { status })
-            setApplicant(prev => (prev ? { ...prev, status: updated?.status || status } : prev))
+            const updated = await updateApplicant(applicant.id, { status, assignments })
+            setApplicant(prev => (prev
+                ? {
+                    ...prev,
+                    status: updated?.status || status,
+                    assignments: updated?.assignments || assignments || prev.assignments
+                }
+                : prev
+            ))
             toast('Applicant status updated', 'success')
         } catch (error) {
             console.error('Failed to update applicant status:', error)
@@ -263,6 +284,30 @@ export default function ApplicantDetailPage() {
             .split(' ')
             .map(word => word.charAt(0).toUpperCase() + word.slice(1))
             .join(' ')
+
+    const openStatusAssignmentDialog = (status: ApplicantStatus) => {
+        if (!applicant || status === applicant.status || statusUpdating) return
+        setPendingStatus(status)
+        setSelectedStatusEmployeeId('')
+        setIsAssignmentDialogOpen(true)
+    }
+
+    const confirmStatusAssignment = async () => {
+        if (!applicant || !pendingStatus) return
+        if (!selectedStatusEmployeeId) {
+            toast('Please select an employee for this status', 'error')
+            return
+        }
+        const existingAssignments = applicant.assignments || []
+        const mergedAssignments: NonNullable<Applicant['assignments']> = [
+            ...existingAssignments.filter(item => item.status !== pendingStatus),
+            { status: pendingStatus, employeeId: selectedStatusEmployeeId }
+        ]
+        await handleStatusChange(pendingStatus, mergedAssignments)
+        setIsAssignmentDialogOpen(false)
+        setPendingStatus(null)
+        setSelectedStatusEmployeeId('')
+    }
 
     // Handle resumeFile as either a string URL (from API) or an object with dataUrl
     const getResumeUrl = (): string | null => {
@@ -443,7 +488,7 @@ export default function ApplicantDetailPage() {
                                     <div className="flex items-center gap-3">
                                         <Select
                                             value={applicant.status}
-                                            onValueChange={(value) => void handleStatusChange(value as ApplicantStatus)}
+                                            onValueChange={(value) => openStatusAssignmentDialog(value as ApplicantStatus)}
                                             disabled={!!statusUpdating}
                                         >
                                             <SelectTrigger
@@ -465,6 +510,11 @@ export default function ApplicantDetailPage() {
                                             <span className="text-xs font-semibold text-slate-500">Updating...</span>
                                         )}
                                     </div>
+                                    {currentStatusEmployeeName && (
+                                        <p className="text-xs font-semibold text-slate-500 mt-2">
+                                            Assigned: {currentStatusEmployeeName}
+                                        </p>
+                                    )}
                                 </div>
                                 <div className="pt-4 border-t border-slate-100">
                                     <p className="text-xs font-bold text-slate-500 uppercase tracking-wider mb-1">Applied Date</p>
@@ -694,6 +744,53 @@ export default function ApplicantDetailPage() {
                 </div>
             )}
             </div>
+
+            <Dialog open={isAssignmentDialogOpen} onOpenChange={setIsAssignmentDialogOpen}>
+                <DialogContent className="sm:max-w-md rounded-2xl">
+                    <DialogHeader>
+                        <DialogTitle>Assign Employee</DialogTitle>
+                    </DialogHeader>
+                    <div className="space-y-4">
+                        <p className="text-sm text-slate-600">
+                            Select who will handle <span className="font-semibold">{pendingStatus ? formatStatusLabel(pendingStatus) : 'this stage'}</span>.
+                        </p>
+                        <Select value={selectedStatusEmployeeId} onValueChange={setSelectedStatusEmployeeId}>
+                            <SelectTrigger className="h-11 rounded-xl">
+                                <SelectValue placeholder="Select employee" />
+                            </SelectTrigger>
+                            <SelectContent>
+                                {employees.map(employee => (
+                                    <SelectItem key={employee.id} value={employee.id}>
+                                        {employee.name}
+                                    </SelectItem>
+                                ))}
+                            </SelectContent>
+                        </Select>
+                        <div className="flex justify-end gap-2">
+                            <Button
+                                type="button"
+                                variant="outline"
+                                onClick={() => {
+                                    setIsAssignmentDialogOpen(false)
+                                    setPendingStatus(null)
+                                    setSelectedStatusEmployeeId('')
+                                }}
+                                className="rounded-xl"
+                            >
+                                Cancel
+                            </Button>
+                            <Button
+                                type="button"
+                                onClick={() => void confirmStatusAssignment()}
+                                className="rounded-xl"
+                                disabled={!selectedStatusEmployeeId || !!statusUpdating}
+                            >
+                                Save
+                            </Button>
+                        </div>
+                    </div>
+                </DialogContent>
+            </Dialog>
 
         </>
     )
