@@ -3,6 +3,27 @@ import type { NextRequest } from 'next/server'
 
 // Cookie names
 const IS_AUTHENTICATED_COOKIE = 'hummane_is_authenticated'
+const USER_ROLE_COOKIE = 'hummane_user_role'
+
+// Admin routes that member users should not access
+const ADMIN_ROUTES = [
+  '/dashboard',
+  '/team',
+  '/attendance',
+  '/payroll',
+  '/organization',
+  '/jobs',
+  '/applicants',
+  '/settings',
+  '/support',
+  '/users',
+  '/departments',
+  '/roles',
+  '/performance',
+]
+
+// Member area root
+const MEMBER_ROOT = '/member'
 
 // Auth routes (login/signup)
 const AUTH_ROUTES = ['/login', '/signup']
@@ -13,6 +34,7 @@ const PUBLIC_ROUTES = ['/', ...AUTH_ROUTES]
 export function middleware(request: NextRequest) {
   const { pathname } = request.nextUrl
   const isAuthenticated = request.cookies.get(IS_AUTHENTICATED_COOKIE)?.value === 'true'
+  const userRole = request.cookies.get(USER_ROLE_COOKIE)?.value
 
   // ===== UNAUTHENTICATED USERS =====
   if (!isAuthenticated) {
@@ -25,8 +47,19 @@ export function middleware(request: NextRequest) {
   }
 
   // ===== AUTHENTICATED USERS =====
-  // Allow direct links and deep links to resolve without middleware rerouting.
-  // Route-level pages/components can still enforce finer-grained behavior.
+  // Keep role-based boundaries while still allowing deep links within each area.
+  if (userRole === 'member') {
+    if (ADMIN_ROUTES.some(route => pathname.startsWith(route))) {
+      return NextResponse.redirect(new URL(MEMBER_ROOT, request.url))
+    }
+  }
+
+  if (userRole === 'owner') {
+    if (pathname.startsWith(MEMBER_ROOT)) {
+      return NextResponse.redirect(new URL('/dashboard', request.url))
+    }
+  }
+
   return NextResponse.next()
 }
 
