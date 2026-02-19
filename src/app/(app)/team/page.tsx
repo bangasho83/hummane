@@ -1,12 +1,11 @@
 'use client'
 
-import { useState, useEffect } from 'react'
+import { useState, useEffect, useCallback } from 'react'
 import { useRouter } from 'next/navigation'
 import { useApp } from '@/lib/context/AppContext'
 import { Button } from '@/components/ui/button'
-import { Plus } from 'lucide-react'
+import { Network, Plus } from 'lucide-react'
 import { EmployeeTable } from '@/features/employees'
-import { Card, CardContent } from '@/components/ui/card'
 import type { Employee } from '@/types'
 
 const API_BASE_URL = process.env.NEXT_PUBLIC_API_BASE_URL || 'https://hummane-api.vercel.app'
@@ -17,7 +16,7 @@ export default function EmployeesPage() {
     const [rawApiResponse, setRawApiResponse] = useState<Employee[] | null>(null)
     const [isLoading, setIsLoading] = useState(true)
 
-    const fetchEmployees = async () => {
+    const fetchEmployees = useCallback(async () => {
         if (!apiAccessToken) return
         setIsLoading(true)
         try {
@@ -35,11 +34,11 @@ export default function EmployeesPage() {
         } finally {
             setIsLoading(false)
         }
-    }
+    }, [apiAccessToken])
 
     useEffect(() => {
-        fetchEmployees()
-    }, [apiAccessToken])
+        void fetchEmployees()
+    }, [fetchEmployees])
 
     // Redirect if not logged in or no company
     useEffect(() => {
@@ -71,13 +70,24 @@ export default function EmployeesPage() {
                     </p>
                 </div>
 
-                <Button
-                    onClick={handleAddEmployee}
-                    className="bg-blue-600 hover:bg-blue-700 text-white rounded-2xl font-bold shadow-lg shadow-blue-500/20 px-6 py-6 h-auto"
-                >
-                    <Plus className="w-5 h-5 mr-2" />
-                    Add Team Member
-                </Button>
+                <div className="flex items-center gap-2">
+                    <Button
+                        variant="outline"
+                        onClick={() => router.push('/team/organo')}
+                        className="rounded-2xl font-bold border-slate-200 px-5 py-6 h-auto"
+                    >
+                        <Network className="w-5 h-5 mr-2" />
+                        Organo
+                    </Button>
+
+                    <Button
+                        onClick={handleAddEmployee}
+                        className="bg-blue-600 hover:bg-blue-700 text-white rounded-2xl font-bold shadow-lg shadow-blue-500/20 px-6 py-6 h-auto"
+                    >
+                        <Plus className="w-5 h-5 mr-2" />
+                        Add Team Member
+                    </Button>
+                </div>
             </div>
 
             <div className="bg-white rounded-3xl shadow-premium border border-slate-100 overflow-hidden">
