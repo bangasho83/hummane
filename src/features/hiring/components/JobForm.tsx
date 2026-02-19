@@ -1,6 +1,6 @@
 'use client'
 
-import { useEffect, useState } from 'react'
+import { useEffect, useMemo, useState } from 'react'
 import { useRouter } from 'next/navigation'
 import { Button } from '@/components/ui/button'
 import { Card, CardContent } from '@/components/ui/card'
@@ -41,6 +41,7 @@ export function JobForm({ mode, job }: JobFormProps) {
     const { roles, departments, currentCompany, createJob, updateJob } = useApp()
     const router = useRouter()
     const [loading, setLoading] = useState(false)
+    const [roleQuery, setRoleQuery] = useState('')
     const [form, setForm] = useState<JobFormState>({
         title: job?.title || '',
         roleId: job?.roleId || '',
@@ -76,6 +77,12 @@ export function JobForm({ mode, job }: JobFormProps) {
             })
         }
     }, [job, currentCompany?.currency])
+
+    const filteredRoles = useMemo(() => {
+        const query = roleQuery.trim().toLowerCase()
+        if (!query) return roles
+        return roles.filter((role) => role.title.toLowerCase().includes(query))
+    }, [roles, roleQuery])
 
     const handleSubmit = async (e: React.FormEvent) => {
         e.preventDefault()
@@ -124,8 +131,18 @@ export function JobForm({ mode, job }: JobFormProps) {
                                 <SelectValue placeholder="Select Role" />
                             </SelectTrigger>
                             <SelectContent>
+                                <div className="p-2 sticky top-0 bg-white z-10 border-b border-slate-100">
+                                    <Input
+                                        value={roleQuery}
+                                        onChange={(e) => setRoleQuery(e.target.value)}
+                                        placeholder="Search roles..."
+                                        className="h-9 rounded-lg"
+                                        onKeyDown={(e) => e.stopPropagation()}
+                                        onClick={(e) => e.stopPropagation()}
+                                    />
+                                </div>
                                 <SelectItem value="none">None</SelectItem>
-                                {roles.map((role) => (
+                                {filteredRoles.map((role) => (
                                     <SelectItem key={role.id} value={role.id}>
                                         {role.title}
                                     </SelectItem>

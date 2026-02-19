@@ -1,6 +1,6 @@
 'use client'
 
-import { useState, useEffect, useRef } from 'react'
+import { useState, useEffect, useMemo, useRef } from 'react'
 import { Input } from '@/components/ui/input'
 import { Button } from '@/components/ui/button'
 import { Label } from '@/components/ui/label'
@@ -135,6 +135,9 @@ export function EmployeeForm({
     const [formData, setFormData] = useState<EmployeeFormState>(getDefaultFormData)
     const [errors, setErrors] = useState<Record<string, string>>({})
     const [uploadingPhoto, setUploadingPhoto] = useState(false)
+    const [departmentQuery, setDepartmentQuery] = useState('')
+    const [roleQuery, setRoleQuery] = useState('')
+    const [managerQuery, setManagerQuery] = useState('')
     const fileInputRef = useRef<HTMLInputElement>(null)
     useEffect(() => {
         console.log('EmployeeForm useEffect triggered - employee:', !!employee, 'deps.length:', departments.length, roles.length, employees.length)
@@ -275,6 +278,24 @@ export function EmployeeForm({
     const showMissingEmploymentMode = Boolean(formData.employmentMode && !normalizedEmploymentModeValue)
     const normalizedGenderValue = normalizeEnumValue(formData.gender as string, GENDER_OPTIONS)
     const showMissingGender = Boolean(formData.gender && !normalizedGenderValue)
+    const filteredDepartments = useMemo(() => {
+        const query = departmentQuery.trim().toLowerCase()
+        if (!query) return departments
+        return departments.filter((dept) => dept.name.toLowerCase().includes(query))
+    }, [departments, departmentQuery])
+    const filteredRoles = useMemo(() => {
+        const query = roleQuery.trim().toLowerCase()
+        if (!query) return roles
+        return roles.filter((role) => role.title.toLowerCase().includes(query))
+    }, [roles, roleQuery])
+    const filteredManagers = useMemo(() => {
+        const query = managerQuery.trim().toLowerCase()
+        if (!query) return managerOptions
+        return managerOptions.filter((emp) => {
+            const haystack = `${emp.name} ${emp.employeeId}`.toLowerCase()
+            return haystack.includes(query)
+        })
+    }, [managerOptions, managerQuery])
 
     useEffect(() => {
         if (onRoleChange) {
@@ -612,7 +633,17 @@ export function EmployeeForm({
                                         <SelectValue placeholder="Select Department" />
                                     </SelectTrigger>
                                     <SelectContent>
-                                        {departments.map((dept) => <SelectItem key={dept.id} value={dept.id}>{dept.name}</SelectItem>)}
+                                        <div className="p-2 sticky top-0 bg-white z-10 border-b border-slate-100">
+                                            <Input
+                                                value={departmentQuery}
+                                                onChange={(e) => setDepartmentQuery(e.target.value)}
+                                                placeholder="Search departments..."
+                                                className="h-9 rounded-lg"
+                                                onKeyDown={(e) => e.stopPropagation()}
+                                                onClick={(e) => e.stopPropagation()}
+                                            />
+                                        </div>
+                                        {filteredDepartments.map((dept) => <SelectItem key={dept.id} value={dept.id}>{dept.name}</SelectItem>)}
                                     </SelectContent>
                                 </Select>
                                 {errors.department && <p className="text-xs text-red-600 mt-1">{errors.department}</p>}
@@ -632,7 +663,17 @@ export function EmployeeForm({
                                         <SelectValue placeholder="Select Role" />
                                     </SelectTrigger>
                                     <SelectContent>
-                                        {roles.map((role) => <SelectItem key={role.id} value={role.id}>{role.title}</SelectItem>)}
+                                        <div className="p-2 sticky top-0 bg-white z-10 border-b border-slate-100">
+                                            <Input
+                                                value={roleQuery}
+                                                onChange={(e) => setRoleQuery(e.target.value)}
+                                                placeholder="Search roles..."
+                                                className="h-9 rounded-lg"
+                                                onKeyDown={(e) => e.stopPropagation()}
+                                                onClick={(e) => e.stopPropagation()}
+                                            />
+                                        </div>
+                                        {filteredRoles.map((role) => <SelectItem key={role.id} value={role.id}>{role.title}</SelectItem>)}
                                     </SelectContent>
                                 </Select>
                                 {errors.roleId && <p className="text-xs text-red-600 mt-1">{errors.roleId}</p>}
@@ -679,15 +720,41 @@ export function EmployeeForm({
                                 <SelectValue placeholder="Select Manager" />
                             </SelectTrigger>
                             <SelectContent>
+                                <div className="p-2 sticky top-0 bg-white z-10 border-b border-slate-100">
+                                    <Input
+                                        value={managerQuery}
+                                        onChange={(e) => setManagerQuery(e.target.value)}
+                                        placeholder="Search managers..."
+                                        className="h-9 rounded-lg"
+                                        onKeyDown={(e) => e.stopPropagation()}
+                                        onClick={(e) => e.stopPropagation()}
+                                    />
+                                </div>
                                 <SelectItem value="self">Self / This employee leads</SelectItem>
                                 {showMissingManager && <SelectItem value={reportingManagerId as string}>{missingManagerLabel}</SelectItem>}
-                                {managerOptions.map((emp) => <SelectItem key={emp.id} value={emp.id}>{emp.name} [{emp.employeeId}]</SelectItem>)}
+                                {filteredManagers.map((emp) => <SelectItem key={emp.id} value={emp.id}>{emp.name} [{emp.employeeId}]</SelectItem>)}
                             </SelectContent>
                         </Select>
                     </div>
                     <div className="space-y-2">
                         <Label htmlFor="salary">Monthly Salary</Label>
-                        <Input id="salary" type="number" placeholder="50000" step="1" min="0" value={formData.salary} onChange={(e) => handleChange('salary', e.target.value)} required className={errors.salary ? 'border-red-500' : ''} />
+                        <Input
+                            id="salary"
+                            type="number"
+                            placeholder="50000"
+                            step="1"
+                            min="0"
+                            value={formData.salary}
+                            onChange={(e) => handleChange('salary', e.target.value)}
+                            onWheel={(e) => (e.currentTarget as HTMLInputElement).blur()}
+                            onKeyDown={(e) => {
+                                if (e.key === 'ArrowUp' || e.key === 'ArrowDown') {
+                                    e.preventDefault()
+                                }
+                            }}
+                            required
+                            className={errors.salary ? 'border-red-500' : ''}
+                        />
                         {errors.salary && <p className="text-xs text-red-600 mt-1">{errors.salary}</p>}
                     </div>
                 </div>

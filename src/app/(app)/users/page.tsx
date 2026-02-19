@@ -1,6 +1,6 @@
 'use client'
 
-import { useEffect, useState } from 'react'
+import { useEffect, useMemo, useState } from 'react'
 import { useApp } from '@/lib/context/AppContext'
 import { fetchUsersApi, inviteUserApi, type ApiUserItem } from '@/lib/api/client'
 import { Card, CardContent } from '@/components/ui/card'
@@ -22,6 +22,22 @@ export default function UsersPage() {
     const [inviteRole, setInviteRole] = useState<'owner' | 'member'>('member')
     const [inviteEmployeeId, setInviteEmployeeId] = useState<string>('')
     const [isInviting, setIsInviting] = useState(false)
+    const employeeById = useMemo(
+        () => new Map(employees.map((employee) => [employee.id, employee])),
+        [employees]
+    )
+    const employeeByCode = useMemo(
+        () => new Map(employees.map((employee) => [employee.employeeId, employee])),
+        [employees]
+    )
+    const employeeByEmail = useMemo(
+        () => new Map(
+            employees
+                .filter((employee) => Boolean(employee.email))
+                .map((employee) => [employee.email.toLowerCase(), employee])
+        ),
+        [employees]
+    )
 
     const fetchUsers = async () => {
         if (!apiAccessToken) {
@@ -200,6 +216,7 @@ export default function UsersPage() {
                             <table className="w-full">
                                 <thead>
                                     <tr className="border-b border-slate-100">
+                                        <th className="text-left text-xs font-bold text-slate-500 uppercase tracking-wider px-6 py-4">Employee ID</th>
                                         <th className="text-left text-xs font-bold text-slate-500 uppercase tracking-wider px-6 py-4">Name</th>
                                         <th className="text-left text-xs font-bold text-slate-500 uppercase tracking-wider px-6 py-4">Email</th>
                                         <th className="text-left text-xs font-bold text-slate-500 uppercase tracking-wider px-6 py-4">Role</th>
@@ -207,16 +224,25 @@ export default function UsersPage() {
                                     </tr>
                                 </thead>
                                 <tbody>
-                                    {users.map((user) => (
-                                        <tr key={user.id} className="border-b border-slate-50 hover:bg-slate-50/50 transition-colors">
+                                    {users.map((user) => {
+                                        const linkedEmployee =
+                                            (user.employeeId ? employeeById.get(user.employeeId) : undefined) ||
+                                            (user.employeeId ? employeeByCode.get(user.employeeId) : undefined) ||
+                                            (user.email ? employeeByEmail.get(user.email.toLowerCase()) : undefined)
+                                        const displayName = linkedEmployee?.name || user.name || '-'
+                                        const displayEmployeeId = linkedEmployee?.employeeId || user.employeeId || '-'
+                                        const avatarSeed = displayName !== '-' ? displayName : (user.email || '?')
+                                        return (
+                                            <tr key={user.id} className="border-b border-slate-50 hover:bg-slate-50/50 transition-colors">
+                                            <td className="px-6 py-4 text-slate-600">{displayEmployeeId}</td>
                                             <td className="px-6 py-4">
                                                 <div className="flex items-center gap-3">
                                                     <div className="w-10 h-10 bg-blue-100 rounded-xl flex items-center justify-center">
                                                         <span className="text-blue-600 font-bold text-sm">
-                                                            {(user.name || user.email || '?').charAt(0).toUpperCase()}
+                                                            {avatarSeed.charAt(0).toUpperCase()}
                                                         </span>
                                                     </div>
-                                                    <span className="font-semibold text-slate-900">{user.name || '-'}</span>
+                                                    <span className="font-semibold text-slate-900">{displayName}</span>
                                                 </div>
                                             </td>
                                             <td className="px-6 py-4 text-slate-600">{user.email}</td>
@@ -228,8 +254,9 @@ export default function UsersPage() {
                                             <td className="px-6 py-4 text-slate-500 text-sm">
                                                 {user.createdAt ? new Date(user.createdAt).toLocaleDateString() : '-'}
                                             </td>
-                                        </tr>
-                                    ))}
+                                            </tr>
+                                        )
+                                    })}
                                 </tbody>
                             </table>
                         </div>
@@ -239,4 +266,3 @@ export default function UsersPage() {
         </div>
     )
 }
-

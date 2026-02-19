@@ -1946,6 +1946,7 @@ export type ApiUserItem = {
   id: string
   email: string
   name?: string
+  employeeId?: string
   role?: string
   createdAt?: string
   updatedAt?: string
