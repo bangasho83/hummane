@@ -1,13 +1,10 @@
 'use client'
 
 import { useMemo } from 'react'
-import Link from 'next/link'
 import { useRouter } from 'next/navigation'
 import { Card, CardContent } from '@/components/ui/card'
-import { Button } from '@/components/ui/button'
 import { Badge } from '@/components/ui/badge'
 import { useApp } from '@/lib/context/AppContext'
-import { toast } from '@/components/ui/toast'
 import { APPLICANT_STATUSES, type Applicant, type ApplicantStatus, type Job } from '@/types'
 import { Briefcase } from 'lucide-react'
 
@@ -15,7 +12,7 @@ const STATUSES = [...APPLICANT_STATUSES] as const satisfies ApplicantStatus[]
 
 export default function ApplicantsProgressPage() {
     const router = useRouter()
-    const { applicants, jobs, roles, updateApplicant } = useApp()
+    const { applicants, jobs, roles } = useApp()
 
     const rolesById = useMemo(() => {
         const map = new Map<string, string>()
@@ -82,20 +79,6 @@ export default function ApplicantsProgressPage() {
                             <Card
                                 key={status}
                                 className="min-w-[280px] border border-slate-100 shadow-premium rounded-3xl bg-white"
-                                onDragOver={(e) => e.preventDefault()}
-                                onDrop={async (e) => {
-                                    e.preventDefault()
-                                    const applicantId = e.dataTransfer.getData('text/applicant')
-                                    if (!applicantId) return
-                                    const applicant = applicants.find(a => a.id === applicantId)
-                                    if (!applicant || applicant.status === status) return
-                                    try {
-                                        await updateApplicant(applicantId, { status })
-                                        toast('Applicant status updated', 'success')
-                                    } catch (error) {
-                                        toast('Failed to update applicant status', 'error')
-                                    }
-                                }}
                             >
                                 <CardContent className="p-4 space-y-4">
                                     <div className="flex items-center justify-between">
@@ -125,11 +108,6 @@ export default function ApplicantsProgressPage() {
                                                                 sessionStorage.setItem('applicantDetailBack', '/applicants/progress')
                                                             }
                                                             router.push(`/applicants/${applicant.id}`)
-                                                        }}
-                                                        draggable
-                                                        onDragStart={(e) => {
-                                                            e.dataTransfer.setData('text/applicant', applicant.id)
-                                                            e.dataTransfer.effectAllowed = 'move'
                                                         }}
                                                         className="w-full text-left border border-slate-100 rounded-2xl p-4 hover:border-blue-200 hover:bg-blue-50/30 transition-colors"
                                                     >

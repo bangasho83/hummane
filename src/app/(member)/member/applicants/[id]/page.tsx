@@ -628,7 +628,7 @@ export default function ApplicantDetailPage() {
                                         <Select
                                             value={applicant.status}
                                             onValueChange={(value) => openStatusAssignmentDialog(value as ApplicantStatus)}
-                                            disabled={!!statusUpdating}
+                                            disabled
                                         >
                                             <SelectTrigger
                                                 className={`h-9 w-auto min-w-[170px] rounded-full border-0 px-4 text-sm font-bold shadow-none ${getStatusColor(applicant.status)}`}
