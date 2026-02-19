@@ -1,6 +1,6 @@
 'use client'
 
-import { useEffect, useState } from 'react'
+import { useEffect, useMemo, useState } from 'react'
 import { Calendar as CalendarIcon, Plus, Check } from 'lucide-react'
 import Link from 'next/link'
 import { useApp } from '@/lib/context/AppContext'
@@ -24,6 +24,7 @@ export default function AttendancePage() {
     const [leaves, setLeaves] = useState<LeaveRecord[]>([])
     const [isDialogOpen, setIsDialogOpen] = useState(false)
     const [selectedEmployee, setSelectedEmployee] = useState('')
+    const [employeeQuery, setEmployeeQuery] = useState('')
     const [selectedType, setSelectedType] = useState<string>('')
     const [startDate, setStartDate] = useState('')
     const [endDate, setEndDate] = useState('')
@@ -302,6 +303,22 @@ export default function AttendancePage() {
         }
     }
 
+    const leaveTypesForEmployee = (empId: string) => {
+        const emp = employees.find(e => e.id === empId)
+        return emp ? leaveTypes.filter(lt => lt.employmentType === emp.employmentType) : []
+    }
+
+    const filteredEmployees = useMemo(() => {
+        const query = employeeQuery.trim().toLowerCase()
+        if (!query) return employees
+        return employees.filter((emp) => {
+            const haystack = `${emp.name} ${emp.employeeId}`.toLowerCase()
+            return haystack.includes(query)
+        })
+    }, [employees, employeeQuery])
+
+    const filteredLeaveTypes = leaveTypesForEmployee(selectedEmployee)
+
     if (!today || dates.length === 0) {
         return (
             <div className="animate-in fade-in duration-500 slide-in-from-bottom-4">
@@ -313,13 +330,6 @@ export default function AttendancePage() {
             </div>
         )
     }
-
-    const leaveTypesForEmployee = (empId: string) => {
-        const emp = employees.find(e => e.id === empId)
-        return emp ? leaveTypes.filter(lt => lt.employmentType === emp.employmentType) : []
-    }
-
-    const filteredLeaveTypes = leaveTypesForEmployee(selectedEmployee)
     return (
         <div className="animate-in fade-in duration-500 slide-in-from-bottom-4">
             <div className="flex justify-between items-end mb-4">
@@ -356,8 +366,18 @@ export default function AttendancePage() {
                                     <SelectTrigger className="h-12 rounded-xl border-slate-200">
                                         <SelectValue placeholder="Select Employee" />
                                     </SelectTrigger>
-                                    <SelectContent>
-                                        {employees.map(emp => (
+                                    <SelectContent className="max-h-72 overflow-y-auto">
+                                        <div className="p-2 sticky top-0 bg-white z-10 border-b border-slate-100">
+                                            <Input
+                                                value={employeeQuery}
+                                                onChange={(e) => setEmployeeQuery(e.target.value)}
+                                                placeholder="Search employees..."
+                                                className="h-9 rounded-lg"
+                                                onKeyDown={(e) => e.stopPropagation()}
+                                                onClick={(e) => e.stopPropagation()}
+                                            />
+                                        </div>
+                                        {filteredEmployees.map(emp => (
                                             <SelectItem key={emp.id} value={emp.id}>{emp.name}</SelectItem>
                                         ))}
                                     </SelectContent>
