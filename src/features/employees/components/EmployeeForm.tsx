@@ -31,6 +31,7 @@ interface EmployeeFormProps {
     onCancel: () => void
     submitLabel?: string
     loading?: boolean
+    showEmploymentSection?: boolean
     onRoleChange?: (roleId: string) => void
     onPhotoUploadDebug?: (info: PhotoUploadDebugInfo) => void
 }
@@ -128,6 +129,7 @@ export function EmployeeForm({
     onCancel,
     submitLabel = 'Save Employee',
     loading = false,
+    showEmploymentSection = true,
     onRoleChange,
     onPhotoUploadDebug
 }: EmployeeFormProps) {
@@ -608,9 +610,10 @@ export function EmployeeForm({
             {/* ═══════════════════════════════════════════════════════════════════════════
                 SECTION: Employment Details
             ═══════════════════════════════════════════════════════════════════════════ */}
-            <div>
-                <SectionHeader title="Employment Details" />
-                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+            {showEmploymentSection && (
+                <div>
+                    <SectionHeader title="Employment Details" />
+                    <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                     <div className="space-y-2">
                         <Label htmlFor="email">Work Email</Label>
                         <Input
@@ -757,8 +760,9 @@ export function EmployeeForm({
                         />
                         {errors.salary && <p className="text-xs text-red-600 mt-1">{errors.salary}</p>}
                     </div>
+                    </div>
                 </div>
-            </div>
+            )}
 
             {/* ═══════════════════════════════════════════════════════════════════════════
                 SECTION: Personal Details
