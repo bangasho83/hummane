@@ -130,7 +130,7 @@ export function JobForm({ mode, job }: JobFormProps) {
                             <SelectTrigger className="rounded-xl border-slate-200 h-12">
                                 <SelectValue placeholder="Select Role" />
                             </SelectTrigger>
-                            <SelectContent>
+                            <SelectContent className="max-h-72 overflow-y-auto">
                                 <div className="p-2 sticky top-0 bg-white z-10 border-b border-slate-100">
                                     <Input
                                         value={roleQuery}

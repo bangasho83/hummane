@@ -8,6 +8,7 @@ import Link from 'next/link'
 import { FileText, ExternalLink, Linkedin } from 'lucide-react'
 import { useApp } from '@/lib/context/AppContext'
 import { Button } from '@/components/ui/button'
+import { Input } from '@/components/ui/input'
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select'
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog'
 import { toast } from '@/components/ui/toast'
@@ -52,6 +53,7 @@ export default function ApplicantDetailPage() {
     const [statusUpdating, setStatusUpdating] = useState<ApplicantStatus | null>(null)
     const [pendingStatus, setPendingStatus] = useState<ApplicantStatus | null>(null)
     const [selectedStatusEmployeeId, setSelectedStatusEmployeeId] = useState('')
+    const [statusEmployeeQuery, setStatusEmployeeQuery] = useState('')
     const [isAssignmentDialogOpen, setIsAssignmentDialogOpen] = useState(false)
     const [pageLoading, setPageLoading] = useState(true)
     const [activeTab, setActiveTab] = useState<'details' | 'feedback'>('details')
@@ -223,6 +225,14 @@ export default function ApplicantDetailPage() {
     const currentStatusEmployeeName = currentStatusAssignment?.employeeId
         ? employeeNameById.get(currentStatusAssignment.employeeId) || 'Unknown employee'
         : null
+    const filteredStatusEmployees = useMemo(() => {
+        const query = statusEmployeeQuery.trim().toLowerCase()
+        if (!query) return employees
+        return employees.filter((employee) => {
+            const haystack = `${employee.name} ${employee.employeeId}`.toLowerCase()
+            return haystack.includes(query)
+        })
+    }, [employees, statusEmployeeQuery])
 
     if (pageLoading) {
         return (
@@ -289,6 +299,7 @@ export default function ApplicantDetailPage() {
         if (!applicant || status === applicant.status || statusUpdating) return
         setPendingStatus(status)
         setSelectedStatusEmployeeId('')
+        setStatusEmployeeQuery('')
         setIsAssignmentDialogOpen(true)
     }
 
@@ -307,6 +318,7 @@ export default function ApplicantDetailPage() {
         setIsAssignmentDialogOpen(false)
         setPendingStatus(null)
         setSelectedStatusEmployeeId('')
+        setStatusEmployeeQuery('')
     }
 
     // Handle resumeFile as either a string URL (from API) or an object with dataUrl
@@ -758,8 +770,18 @@ export default function ApplicantDetailPage() {
                             <SelectTrigger className="h-11 rounded-xl">
                                 <SelectValue placeholder="Select employee" />
                             </SelectTrigger>
-                            <SelectContent>
-                                {employees.map(employee => (
+                            <SelectContent className="max-h-72 overflow-y-auto">
+                                <div className="p-2 sticky top-0 bg-white z-10 border-b border-slate-100">
+                                    <Input
+                                        value={statusEmployeeQuery}
+                                        onChange={(e) => setStatusEmployeeQuery(e.target.value)}
+                                        placeholder="Search employees..."
+                                        className="h-9 rounded-lg"
+                                        onKeyDown={(e) => e.stopPropagation()}
+                                        onClick={(e) => e.stopPropagation()}
+                                    />
+                                </div>
+                                {filteredStatusEmployees.map(employee => (
                                     <SelectItem key={employee.id} value={employee.id}>
                                         {employee.name}
                                     </SelectItem>
@@ -774,6 +796,7 @@ export default function ApplicantDetailPage() {
                                     setIsAssignmentDialogOpen(false)
                                     setPendingStatus(null)
                                     setSelectedStatusEmployeeId('')
+                                    setStatusEmployeeQuery('')
                                 }}
                                 className="rounded-xl"
                             >

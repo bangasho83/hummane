@@ -492,7 +492,7 @@ export default function EmployeeProfilePage() {
                                                 <SelectTrigger className="h-12 rounded-xl border-slate-200">
                                                     <SelectValue placeholder="Select role" />
                                                 </SelectTrigger>
-                                                <SelectContent>
+                                                <SelectContent className="max-h-72 overflow-y-auto">
                                                     <div className="p-2 sticky top-0 bg-white z-10 border-b border-slate-100">
                                                         <Input
                                                             value={employmentRoleQuery}

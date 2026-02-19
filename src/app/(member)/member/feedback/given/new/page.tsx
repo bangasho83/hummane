@@ -180,7 +180,7 @@ export default function MemberNewFeedbackPage() {
                                 <SelectTrigger className="h-11 rounded-xl border-slate-200">
                                     <SelectValue placeholder="Select team member" />
                                 </SelectTrigger>
-                                <SelectContent>
+                                <SelectContent className="max-h-72 overflow-y-auto">
                                     <div className="p-2 sticky top-0 bg-white z-10 border-b border-slate-100">
                                         <Input
                                             value={subjectQuery}

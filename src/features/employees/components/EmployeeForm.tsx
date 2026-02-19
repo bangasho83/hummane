@@ -32,6 +32,7 @@ interface EmployeeFormProps {
     submitLabel?: string
     loading?: boolean
     showEmploymentSection?: boolean
+    showJoiningDateField?: boolean
     onRoleChange?: (roleId: string) => void
     onPhotoUploadDebug?: (info: PhotoUploadDebugInfo) => void
 }
@@ -130,6 +131,7 @@ export function EmployeeForm({
     submitLabel = 'Save Employee',
     loading = false,
     showEmploymentSection = true,
+    showJoiningDateField = false,
     onRoleChange,
     onPhotoUploadDebug
 }: EmployeeFormProps) {
@@ -540,6 +542,20 @@ export function EmployeeForm({
                             />
                             {errors.employeeId && <p className="text-xs text-red-600 mt-1">{errors.employeeId}</p>}
                         </div>
+                        {!showEmploymentSection && showJoiningDateField && (
+                            <div className="space-y-2">
+                                <Label htmlFor="startDate-inline">Joining Date</Label>
+                                <Input
+                                    id="startDate-inline"
+                                    type="date"
+                                    value={formData.startDate}
+                                    onChange={(e) => handleChange('startDate', e.target.value)}
+                                    required
+                                    className={errors.startDate ? 'border-red-500' : ''}
+                                />
+                                {errors.startDate && <p className="text-xs text-red-600 mt-1">{errors.startDate}</p>}
+                            </div>
+                        )}
                         <div className="space-y-2">
                             <Label htmlFor="name">Full Name</Label>
                             <Input
@@ -635,7 +651,7 @@ export function EmployeeForm({
                                     <SelectTrigger id="department" className={`rounded-xl border-slate-200 ${errors.department ? 'border-red-500' : ''}`}>
                                         <SelectValue placeholder="Select Department" />
                                     </SelectTrigger>
-                                    <SelectContent>
+                                    <SelectContent className="max-h-72 overflow-y-auto">
                                         <div className="p-2 sticky top-0 bg-white z-10 border-b border-slate-100">
                                             <Input
                                                 value={departmentQuery}
@@ -665,7 +681,7 @@ export function EmployeeForm({
                                     <SelectTrigger id="role" className={`rounded-xl border-slate-200 ${errors.roleId ? 'border-red-500' : ''}`}>
                                         <SelectValue placeholder="Select Role" />
                                     </SelectTrigger>
-                                    <SelectContent>
+                                    <SelectContent className="max-h-72 overflow-y-auto">
                                         <div className="p-2 sticky top-0 bg-white z-10 border-b border-slate-100">
                                             <Input
                                                 value={roleQuery}
@@ -693,7 +709,7 @@ export function EmployeeForm({
                             <SelectTrigger id="employmentType" className="rounded-xl border-slate-200">
                                 <SelectValue placeholder="Select employment type" />
                             </SelectTrigger>
-                            <SelectContent>
+                            <SelectContent className="max-h-72 overflow-y-auto">
                                 {showMissingEmploymentType && <SelectItem value={formData.employmentType}>{formData.employmentType}</SelectItem>}
                                 {EMPLOYMENT_TYPES.map((type) => <SelectItem key={type} value={type}>{type}</SelectItem>)}
                             </SelectContent>
@@ -722,7 +738,7 @@ export function EmployeeForm({
                             <SelectTrigger id="reportingManager" className={`rounded-xl border-slate-200 ${errors.reportingManager ? 'border-red-500' : ''}`}>
                                 <SelectValue placeholder="Select Manager" />
                             </SelectTrigger>
-                            <SelectContent>
+                            <SelectContent className="max-h-72 overflow-y-auto">
                                 <div className="p-2 sticky top-0 bg-white z-10 border-b border-slate-100">
                                     <Input
                                         value={managerQuery}
