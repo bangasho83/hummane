@@ -124,6 +124,7 @@ export default function MemberDashboardPage() {
                 id: lt.id,
                 name: lt.name,
                 code: lt.code,
+                employmentType: lt.employmentType,
                 quota: lt.quota,
                 used,
                 remaining: Math.max(0, lt.quota - used),
@@ -299,13 +300,14 @@ export default function MemberDashboardPage() {
                                 <div>
                                     <h3 className="text-lg font-bold text-slate-900">Leave Balance</h3>
                                     <p className="text-sm text-slate-500">Your leave quota for this year</p>
+                                    <p className="text-xs text-slate-400">Your employment type: {employee?.employmentType || '—'}</p>
                                 </div>
                                 <Link href="/member/leaves" className="text-sm font-semibold text-blue-600 hover:text-blue-700">
                                     View All →
                                 </Link>
                             </div>
                             {leaveBalance.length === 0 ? (
-                                <p className="text-sm text-slate-500 py-4">No leave types configured for your employment type.</p>
+                                <p className="text-sm text-slate-500 py-4">No leave types configured.</p>
                             ) : (
                                 <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
                                     {leaveBalance.map(lb => (
@@ -322,6 +324,11 @@ export default function MemberDashboardPage() {
                                                 <div className="text-right">
                                                     <p className="text-sm font-semibold text-amber-600">{lb.used} used</p>
                                                 </div>
+                                            </div>
+                                            <div className="mt-2 flex items-center justify-between gap-2">
+                                                <span className="text-xs text-slate-500">
+                                                    Employment: {lb.employmentType || '—'}
+                                                </span>
                                             </div>
                                             <div className="mt-3 h-2 rounded-full bg-slate-100 overflow-hidden">
                                                 <div

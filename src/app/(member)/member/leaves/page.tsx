@@ -454,6 +454,7 @@ export default function MemberLeavesPage() {
                                 <TableHead className="py-4 text-[10px] font-extrabold uppercase tracking-widest text-slate-400">Unit</TableHead>
                                 <TableHead className="py-4 text-[10px] font-extrabold uppercase tracking-widest text-slate-400">Amount</TableHead>
                                 <TableHead className="py-4 text-[10px] font-extrabold uppercase tracking-widest text-slate-400">Quota</TableHead>
+                                <TableHead className="py-4 text-[10px] font-extrabold uppercase tracking-widest text-slate-400">Employment Type</TableHead>
                                 <TableHead className="py-4 text-[10px] font-extrabold uppercase tracking-widest text-slate-400">Note</TableHead>
                                 <TableHead className="py-4 text-[10px] font-extrabold uppercase tracking-widest text-slate-400">Document</TableHead>
                             </TableRow>
@@ -461,13 +462,32 @@ export default function MemberLeavesPage() {
                         <TableBody>
                             {employeeLeaves.length === 0 ? (
                                 <TableRow>
-                                    <TableCell colSpan={8} className="p-10 text-center text-slate-500">
+                                    <TableCell colSpan={9} className="p-10 text-center text-slate-500">
                                         No leaves recorded.
                                     </TableCell>
                                 </TableRow>
                             ) : (
                                 employeeLeaves.map((leave) => {
                                     const lt = leaveTypes.find(t => t.id === leave.leaveTypeId)
+                                    const leaveEmploymentType =
+                                        (leave as LeaveRecord & {
+                                            employmentType?: string
+                                            employment_type?: string
+                                            leaveTypeEmploymentType?: string
+                                        }).employmentType
+                                        || (leave as LeaveRecord & {
+                                            employmentType?: string
+                                            employment_type?: string
+                                            leaveTypeEmploymentType?: string
+                                        }).employment_type
+                                        || (leave as LeaveRecord & {
+                                            employmentType?: string
+                                            employment_type?: string
+                                            leaveTypeEmploymentType?: string
+                                        }).leaveTypeEmploymentType
+                                        || lt?.employmentType
+                                        || '—'
+                                    const matchesEmploymentType = leaveEmploymentType !== '—' && leaveEmploymentType === employee.employmentType
                                     const files = leave.documents?.files || []
                                     const firstFile = files[0]
                                     return (
@@ -483,6 +503,20 @@ export default function MemberLeavesPage() {
                                             <TableCell className="text-sm text-slate-500">{leave.unit || lt?.unit || 'Day'}</TableCell>
                                             <TableCell className="text-sm text-slate-500">{leave.amount ?? 1}</TableCell>
                                             <TableCell className="text-sm text-slate-500">{leave.leaveTypeQuota ?? lt?.quota ?? '—'}</TableCell>
+                                            <TableCell className="text-sm text-slate-500">
+                                                <div className="flex items-center gap-2">
+                                                    <span>{leaveEmploymentType}</span>
+                                                    <span
+                                                        className={`px-2 py-0.5 rounded-full text-[10px] font-bold uppercase tracking-wide ${
+                                                            matchesEmploymentType
+                                                                ? 'bg-emerald-100 text-emerald-700'
+                                                                : 'bg-amber-100 text-amber-700'
+                                                        }`}
+                                                    >
+                                                        {matchesEmploymentType ? 'Match' : 'Mismatch'}
+                                                    </span>
+                                                </div>
+                                            </TableCell>
                                             <TableCell className="text-sm text-slate-500">{leave.note || '—'}</TableCell>
                                             <TableCell className="text-sm text-slate-500">
                                                 {firstFile ? (
