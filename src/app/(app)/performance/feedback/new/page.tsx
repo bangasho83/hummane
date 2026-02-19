@@ -172,6 +172,46 @@ export default function NewFeedbackPage() {
                 <CardContent className="p-8 space-y-5">
                     <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
                         <div className="space-y-2">
+                            <Label className="text-sm font-bold text-slate-700 px-1">Type</Label>
+                            <Select
+                                value={type}
+                                onValueChange={(value: 'Team Member' | 'Applicant') => {
+                                    setType(value)
+                                    setCardId('')
+                                    setSubjectId('')
+                                    setSubjectQuery('')
+                                    setAnswers([])
+                                }}
+                            >
+                                <SelectTrigger className="h-11 rounded-xl border-slate-200">
+                                    <SelectValue placeholder="Select type" />
+                                </SelectTrigger>
+                                <SelectContent>
+                                    <SelectItem value="Team Member">Team Member</SelectItem>
+                                    <SelectItem value="Applicant">Applicant</SelectItem>
+                                </SelectContent>
+                            </Select>
+                        </div>
+                        <div className="space-y-2">
+                            <Label className="text-sm font-bold text-slate-700 px-1">Feedback Card</Label>
+                            <Select
+                                value={cardId || 'none'}
+                                onValueChange={(value) => handleSelectCard(value === 'none' ? '' : value)}
+                            >
+                                <SelectTrigger className="h-11 rounded-xl border-slate-200">
+                                    <SelectValue placeholder="Select card" />
+                                </SelectTrigger>
+                                <SelectContent>
+                                    <SelectItem value="none">Select</SelectItem>
+                                    {filteredCards.map(card => (
+                                        <SelectItem key={card.id} value={card.id}>
+                                            {card.title}
+                                        </SelectItem>
+                                    ))}
+                                </SelectContent>
+                            </Select>
+                        </div>
+                        <div className="space-y-2">
                             <Label className="text-sm font-bold text-slate-700 px-1">From</Label>
                             <Select
                                 value={authorId || 'none'}
@@ -201,27 +241,6 @@ export default function NewFeedbackPage() {
                             </Select>
                         </div>
                         <div className="space-y-2">
-                            <Label className="text-sm font-bold text-slate-700 px-1">Type</Label>
-                            <Select
-                                value={type}
-                                onValueChange={(value: 'Team Member' | 'Applicant') => {
-                                    setType(value)
-                                    setCardId('')
-                                    setSubjectId('')
-                                    setSubjectQuery('')
-                                    setAnswers([])
-                                }}
-                            >
-                                <SelectTrigger className="h-11 rounded-xl border-slate-200">
-                                    <SelectValue placeholder="Select type" />
-                                </SelectTrigger>
-                                <SelectContent>
-                                    <SelectItem value="Team Member">Team Member</SelectItem>
-                                    <SelectItem value="Applicant">Applicant</SelectItem>
-                                </SelectContent>
-                            </Select>
-                        </div>
-                        <div className="space-y-2">
                             <Label className="text-sm font-bold text-slate-700 px-1">
                                 {type === 'Applicant' ? 'Applicant' : 'Team Member'}
                             </Label>
@@ -229,8 +248,6 @@ export default function NewFeedbackPage() {
                                 value={subjectId || 'none'}
                                 onValueChange={(value) => {
                                     setSubjectId(value === 'none' ? '' : value)
-                                    setCardId('')
-                                    setAnswers([])
                                 }}
                             >
                                 <SelectTrigger className="h-11 rounded-xl border-slate-200">
@@ -251,26 +268,6 @@ export default function NewFeedbackPage() {
                                     {filteredSubjects.map(subject => (
                                         <SelectItem key={subject.id} value={subject.id}>
                                             {subject.label}
-                                        </SelectItem>
-                                    ))}
-                                </SelectContent>
-                            </Select>
-                        </div>
-                        <div className="space-y-2">
-                            <Label className="text-sm font-bold text-slate-700 px-1">Feedback Card</Label>
-                            <Select
-                                value={cardId || 'none'}
-                                onValueChange={(value) => handleSelectCard(value === 'none' ? '' : value)}
-                                disabled={!subjectId}
-                            >
-                                <SelectTrigger className="h-11 rounded-xl border-slate-200">
-                                    <SelectValue placeholder="Select card" />
-                                </SelectTrigger>
-                                <SelectContent>
-                                    <SelectItem value="none">Select</SelectItem>
-                                    {filteredCards.map(card => (
-                                        <SelectItem key={card.id} value={card.id}>
-                                            {card.title}
                                         </SelectItem>
                                     ))}
                                 </SelectContent>
