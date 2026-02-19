@@ -1363,8 +1363,9 @@ export const updateFeedbackEntryApi = async (
       authorName: undefined,
       answers: payload.answers.map((answer) => ({
         questionId: answer.questionId,
-        score: 0,
-        comment: answer.answer
+        answer: answer.answer,
+        score: answer.question.kind === 'score' ? Number.parseFloat(answer.answer) || 0 : undefined,
+        comment: answer.question.kind === 'comment' ? answer.answer : undefined
       })),
       createdAt: new Date().toISOString()
     }

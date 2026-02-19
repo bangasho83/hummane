@@ -19,7 +19,8 @@ const API_BASE_URL = process.env.NEXT_PUBLIC_API_BASE_URL || 'https://hummane-ap
 
 interface CardQuestion {
     id: string
-    kind: 'content' | 'score' | 'comment'
+    questionId?: string
+    kind: 'content' | 'score' | 'comment' | 'text'
     prompt: string
     weight?: number
     answer?: {
@@ -304,14 +305,32 @@ export default function ApplicantDetailPage() {
             return
         }
 
+        const resolveQuestionId = (question: CardQuestion, index: number) => {
+            const byIndex = card?.questions[index]?.id
+            return (
+                question.id ||
+                question.questionId ||
+                question.answer?.questionId ||
+                byIndex ||
+                ''
+            )
+        }
+        const normalizeKind = (kind?: CardQuestion['kind']) => {
+            if (kind === 'content') return 'content' as const
+            if (kind === 'comment' || kind === 'text') return 'comment' as const
+            return 'score' as const
+        }
+
         const apiAnswers = questions
             .map((question, index) => {
-                if (question.kind === 'content') return null
-                const questionId = question.id || question.answer?.questionId || `q_${index}`
+                const normalizedKind = normalizeKind(question.kind)
+                if (normalizedKind === 'content') return null
+                const questionId = resolveQuestionId(question, index)
+                if (!questionId) return null
                 const answer = answerByQuestionId.get(questionId)
                 const key = draftKey(entry.id, questionId)
 
-                if (question.kind === 'comment') {
+                if (normalizedKind === 'comment') {
                     const existingComment = (answer?.comment || answer?.answer || '').trim()
                     const value = existingComment || (feedbackDraftComments[key] || '').trim()
                     if (!value) return null
@@ -320,7 +339,7 @@ export default function ApplicantDetailPage() {
                         questionId,
                         question: {
                             id: questionId,
-                            kind: 'comment' as const,
+                            kind: normalizedKind,
                             prompt: question.prompt,
                             ...(question.weight !== undefined ? { weight: question.weight } : {}),
                             questionId
@@ -338,7 +357,7 @@ export default function ApplicantDetailPage() {
                     questionId,
                     question: {
                         id: questionId,
-                        kind: 'score' as const,
+                        kind: normalizedKind,
                         prompt: question.prompt,
                         ...(question.weight !== undefined ? { weight: question.weight } : {}),
                         questionId
@@ -348,7 +367,7 @@ export default function ApplicantDetailPage() {
             .filter((item): item is NonNullable<typeof item> => item !== null)
 
         if (apiAnswers.length === 0) {
-            toast('Please fill at least one unfilled item before saving.', 'error')
+            toast('No valid editable responses found to save.', 'error')
             return
         }
 
@@ -380,7 +399,13 @@ export default function ApplicantDetailPage() {
 
             setPageFeedbackEntries(prev => {
                 if (!prev) return prev
-                return prev.map(row => row.id === entry.id ? { ...row, answers: normalizedAnswers } : row)
+                return prev.map(row => {
+                    if (row.id !== entry.id) return row
+                    const merged = new Map<string, FeedbackEntry['answers'][number]>()
+                    row.answers.forEach(a => merged.set(a.questionId, a))
+                    normalizedAnswers.forEach(a => merged.set(a.questionId, a))
+                    return { ...row, answers: [...merged.values()] }
+                })
             })
             toast('Feedback updated.', 'success')
         } catch (error) {
@@ -720,11 +745,21 @@ export default function ApplicantDetailPage() {
                             const card = cardsById.get(entry.cardId) as FeedbackCard | undefined
                             const questions = detail?.card?.questions || []
                             const answerByQuestionId = new Map(entry.answers.map(answer => [answer.questionId, answer]))
+                            const getQuestionId = (question: CardQuestion, index: number) => {
+                                const byIndex = card?.questions[index]?.id
+                                return (
+                                    question.id ||
+                                    question.questionId ||
+                                    question.answer?.questionId ||
+                                    byIndex ||
+                                    `idx-${index}`
+                                )
+                            }
                             const scoreQuestions = questions
                                 .map((question, index) => ({
                                     question,
                                     index,
-                                    questionId: question.id || question.answer?.questionId || `q-${index}`
+                                    questionId: getQuestionId(question, index)
                                 }))
                                 .filter(item => item.question.kind === 'score')
 
@@ -782,7 +817,7 @@ export default function ApplicantDetailPage() {
                                                 <p className="text-sm text-slate-500">No question details available for this feedback entry.</p>
                                             ) : (
                                                 questions.map((question, index) => {
-                                                    const questionId = question.id || question.answer?.questionId || `q-${index}`
+                                                    const questionId = getQuestionId(question, index)
                                                     const answer = answerByQuestionId.get(questionId) || (
                                                         question.answer?.questionId
                                                             ? answerByQuestionId.get(question.answer.questionId)
