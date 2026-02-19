@@ -66,6 +66,13 @@ export interface EmployeePersonalDetails {
     }
 }
 
+export interface EmployeeStatusHistoryItem {
+    status?: string
+    date?: string
+    employeeId?: string
+    [key: string]: unknown
+}
+
 export interface Employee {
     id: string
     employeeId: string
@@ -98,6 +105,8 @@ export interface Employee {
     jobConfirmationDate?: string
     // Personal details as JSON (matches API)
     personalDetails?: EmployeePersonalDetails
+    status_history?: EmployeeStatusHistoryItem[]
+    statusHistory?: EmployeeStatusHistoryItem[]
     // Legacy fields (kept for backward compatibility)
     personalEmail?: string
     personalContact?: string
@@ -144,6 +153,8 @@ export interface EmployeeApi {
     jobConfirmationDate?: string | null
     // Personal details as JSON (matches API)
     personalDetails?: EmployeePersonalDetails | null
+    status_history?: EmployeeStatusHistoryItem[] | null
+    statusHistory?: EmployeeStatusHistoryItem[] | null
     // Legacy fields (for backward compatibility)
     personalEmail?: string | null
     personalContact?: string | null

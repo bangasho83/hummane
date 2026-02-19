@@ -1,10 +1,10 @@
 'use client'
 
-import { useEffect, useState } from 'react'
+import { useEffect, useMemo, useState } from 'react'
 import { useParams, useRouter } from 'next/navigation'
 import { useApp } from '@/lib/context/AppContext'
-import { DOCUMENT_KINDS } from '@/types'
-import type { Employee, EmployeeDocument, DocumentKind, EmployeeApi } from '@/types'
+import { DOCUMENT_KINDS, EMPLOYMENT_TYPES } from '@/types'
+import type { Employee, EmployeeDocument, DocumentKind, EmployeeApi, EmploymentType } from '@/types'
 import { Card, CardContent } from '@/components/ui/card'
 import { Badge } from '@/components/ui/badge'
 import { formatCurrency, formatDate } from '@/lib/utils'
@@ -23,7 +23,7 @@ const API_URL = 'https://hummane-api.vercel.app'
 export default function EmployeeProfilePage() {
     const params = useParams()
     const router = useRouter()
-    const { employees, currentCompany, addDocument, deleteDocument, getDocuments, apiAccessToken } = useApp()
+    const { employees, currentCompany, addDocument, deleteDocument, getDocuments, apiAccessToken, roles, refreshEmployees } = useApp()
     const [employee, setEmployee] = useState<Employee | null>(null)
     const [docs, setDocs] = useState<EmployeeDocument[]>([])
     const [isDocDialogOpen, setIsDocDialogOpen] = useState(false)
@@ -33,6 +33,14 @@ export default function EmployeeProfilePage() {
     const [isPhotoDialogOpen, setIsPhotoDialogOpen] = useState(false)
     const [photoFile, setPhotoFile] = useState<File | null>(null)
     const [photoUploading, setPhotoUploading] = useState(false)
+    const [isEmploymentDialogOpen, setIsEmploymentDialogOpen] = useState(false)
+    const [employmentSaving, setEmploymentSaving] = useState(false)
+    const [employmentRoleId, setEmploymentRoleId] = useState('')
+    const [employmentRoleName, setEmploymentRoleName] = useState('')
+    const [employmentRoleQuery, setEmploymentRoleQuery] = useState('')
+    const [employmentSalary, setEmploymentSalary] = useState('')
+    const [employmentType, setEmploymentType] = useState<EmploymentType>(EMPLOYMENT_TYPES[1])
+    const [employmentDate, setEmploymentDate] = useState('')
     const employeeId = params.id as string
 
     useEffect(() => {
@@ -64,6 +72,77 @@ export default function EmployeeProfilePage() {
             isActive = false
         }
     }, [employee?.id])
+
+    const filteredEmploymentRoles = useMemo(() => {
+        const query = employmentRoleQuery.trim().toLowerCase()
+        if (!query) return roles
+        return roles.filter((role) => role.title.toLowerCase().includes(query))
+    }, [roles, employmentRoleQuery])
+
+    const openEmploymentEditDialog = () => {
+        if (!employee) return
+        setEmploymentRoleId(employee.roleId || '')
+        setEmploymentRoleName(employee.roleName || employee.position || '')
+        setEmploymentRoleQuery('')
+        setEmploymentSalary(String(employee.salary ?? ''))
+        setEmploymentType((employee.employmentType || EMPLOYMENT_TYPES[1]) as EmploymentType)
+        setEmploymentDate((employee.startDate || '').split('T')[0] || '')
+        setIsEmploymentDialogOpen(true)
+    }
+
+    const handleEmploymentSave = async () => {
+        if (!employee) return
+        if (!apiAccessToken) {
+            toast('Not authenticated', 'error')
+            return
+        }
+        if (!employmentRoleId || !employmentRoleName.trim() || !employmentSalary || !employmentType || !employmentDate) {
+            toast('Please fill all employment fields', 'error')
+            return
+        }
+        const salaryNumber = Number(employmentSalary)
+        if (!Number.isFinite(salaryNumber) || salaryNumber < 0) {
+            toast('Salary must be a valid number', 'error')
+            return
+        }
+        setEmploymentSaving(true)
+        try {
+            const payload = {
+                roleId: employmentRoleId,
+                roleName: employmentRoleName.trim(),
+                salary: Math.round(salaryNumber),
+                employmentType,
+                date: employmentDate
+            }
+            const response = await fetch(`${API_URL}/employees/${encodeURIComponent(employee.id)}`, {
+                method: 'PUT',
+                headers: {
+                    'Content-Type': 'application/json',
+                    Authorization: `Bearer ${apiAccessToken}`
+                },
+                body: JSON.stringify(payload)
+            })
+            if (!response.ok) {
+                const message = await response.text().catch(() => '')
+                throw new Error(message || 'Failed to update employment record')
+            }
+            await refreshEmployees()
+            setEmployee((prev) => prev ? {
+                ...prev,
+                roleId: employmentRoleId,
+                roleName: employmentRoleName.trim(),
+                salary: Math.round(salaryNumber),
+                employmentType,
+                startDate: employmentDate
+            } : prev)
+            setIsEmploymentDialogOpen(false)
+            toast('Employment record updated', 'success')
+        } catch (error) {
+            toast(error instanceof Error ? error.message : 'Failed to update employment record', 'error')
+        } finally {
+            setEmploymentSaving(false)
+        }
+    }
 
 
 
@@ -139,6 +218,10 @@ export default function EmployeeProfilePage() {
             <div className="p-8 text-slate-500">Loading profile...</div>
         )
     }
+    const employmentStatusHistory =
+        (Array.isArray(employee.status_history) && employee.status_history.length > 0
+            ? employee.status_history
+            : (Array.isArray((employee as EmployeeApi).statusHistory) ? (employee as EmployeeApi).statusHistory : [])) || []
 
     return (
         <div className="space-y-6">
@@ -198,14 +281,11 @@ export default function EmployeeProfilePage() {
                             <p className="text-sm font-bold text-slate-700">Employment Information</p>
                             <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
                                 <InfoRow label="Employee ID" value={employee.employeeId} />
-                                <InfoRow label="Work Email" value={employee.email} />
-                                <InfoRow label="Department" value={employee.departmentName || employee.department || '—'} />
-                                <InfoRow label="Role" value={employee.roleName || employee.position || '—'} />
-                                <InfoRow label="Reporting Manager" value={employee.reportingManagerName || employee.reportingManager || '—'} />
-                                <InfoRow label="Employment Type" value={employee.employmentType} />
                                 <InfoRow label="Employment Mode" value={employee.employmentMode || '—'} />
+                                <InfoRow label="Department" value={employee.departmentName || employee.department || '—'} />
+                                <InfoRow label="Reporting Manager" value={employee.reportingManagerName || employee.reportingManager || '—'} />
+                                <InfoRow label="Work Email" value={employee.email} />
                                 <InfoRow label="Joining Date" value={formatDate(employee.startDate)} />
-                                <InfoRow label="Monthly Salary" value={formatCurrency(employee.salary ?? 0, currentCompany?.currency)} />
                             </div>
                         </CardContent>
                     </Card>
@@ -314,6 +394,164 @@ export default function EmployeeProfilePage() {
                             </div>
                             <p className="mt-4 text-lg font-bold text-slate-900">{employee.name}</p>
                             <p className="text-sm text-slate-500">{employee.roleName || employee.position || '—'}</p>
+                        </CardContent>
+                    </Card>
+
+                    {/* Employment Record */}
+                    <Card className="border border-slate-100 shadow-premium rounded-3xl bg-white">
+                        <CardContent className="p-6 space-y-4">
+                            <div className="flex items-center justify-between">
+                                <p className="text-sm font-bold text-slate-700">Employment Record</p>
+                                <Button
+                                    type="button"
+                                    size="sm"
+                                    className="rounded-xl bg-blue-600 text-white font-bold shadow-blue-500/20"
+                                    onClick={openEmploymentEditDialog}
+                                >
+                                    Edit
+                                </Button>
+                            </div>
+                            <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                                <InfoRow label="Employment Type" value={employee.employmentType || '—'} />
+                                <InfoRow label="Role" value={employee.roleName || employee.position || '—'} />
+                                <InfoRow label="Salary" value={formatCurrency(employee.salary ?? 0, currentCompany?.currency)} />
+                            </div>
+                            {employmentStatusHistory.length > 0 && (
+                                <div className="pt-1 space-y-3">
+                                    <p className="text-xs font-extrabold text-slate-400 uppercase tracking-wide">Status History</p>
+                                    <div className="space-y-2">
+                                        {employmentStatusHistory.map((entry, index) => {
+                                            const employmentType = typeof entry?.employmentType === 'string' && entry.employmentType.trim()
+                                                ? entry.employmentType
+                                                : '—'
+                                            const roleName = typeof entry?.roleName === 'string' && entry.roleName.trim()
+                                                ? entry.roleName
+                                                : '—'
+                                            const salary = Number.isFinite(Number(entry?.salary))
+                                                ? formatCurrency(Number(entry?.salary), currentCompany?.currency)
+                                                : '—'
+                                            const date = typeof entry?.date === 'string' && entry.date
+                                                ? formatDate(entry.date)
+                                                : '—'
+                                            return (
+                                                <div key={`${roleName}-${date}-${index}`} className="rounded-xl border border-slate-100 bg-slate-50 px-3 py-2">
+                                                    <div className="flex items-center justify-between gap-2">
+                                                        <span className="text-sm font-semibold text-slate-800">{roleName}</span>
+                                                        <span className="text-xs font-medium text-slate-500">{date}</span>
+                                                    </div>
+                                                    <div className="mt-1 text-xs text-slate-500">
+                                                        {employmentType} • {salary}
+                                                    </div>
+                                                </div>
+                                            )
+                                        })}
+                                    </div>
+                                </div>
+                            )}
+                            <Dialog open={isEmploymentDialogOpen} onOpenChange={setIsEmploymentDialogOpen}>
+                                <DialogContent className="sm:max-w-lg rounded-3xl bg-white border-slate-200">
+                                    <DialogHeader>
+                                        <DialogTitle className="text-2xl font-bold text-slate-900">Edit Employment Record</DialogTitle>
+                                    </DialogHeader>
+                                    <div className="space-y-4 py-2">
+                                        <div className="space-y-2">
+                                            <Label className="text-sm font-bold text-slate-700 px-1">Employment Type</Label>
+                                            <Select value={employmentType} onValueChange={(value) => setEmploymentType(value as EmploymentType)}>
+                                                <SelectTrigger className="h-12 rounded-xl border-slate-200">
+                                                    <SelectValue placeholder="Select employment type" />
+                                                </SelectTrigger>
+                                                <SelectContent>
+                                                    {EMPLOYMENT_TYPES.map((type) => (
+                                                        <SelectItem key={type} value={type}>{type}</SelectItem>
+                                                    ))}
+                                                </SelectContent>
+                                            </Select>
+                                        </div>
+                                        <div className="space-y-2">
+                                            <Label className="text-sm font-bold text-slate-700 px-1">Date</Label>
+                                            <Input
+                                                type="date"
+                                                value={employmentDate}
+                                                onChange={(e) => setEmploymentDate(e.target.value)}
+                                                className="h-12 rounded-xl border-slate-200"
+                                            />
+                                        </div>
+                                        <div className="space-y-2">
+                                            <Label className="text-sm font-bold text-slate-700 px-1">Role</Label>
+                                            <Select
+                                                value={employmentRoleId || 'none'}
+                                                onValueChange={(value) => {
+                                                    const nextRoleId = value === 'none' ? '' : value
+                                                    setEmploymentRoleId(nextRoleId)
+                                                    const selectedRole = roles.find((role) => role.id === nextRoleId)
+                                                    if (selectedRole) {
+                                                        setEmploymentRoleName(selectedRole.title)
+                                                    }
+                                                }}
+                                            >
+                                                <SelectTrigger className="h-12 rounded-xl border-slate-200">
+                                                    <SelectValue placeholder="Select role" />
+                                                </SelectTrigger>
+                                                <SelectContent>
+                                                    <div className="p-2 sticky top-0 bg-white z-10 border-b border-slate-100">
+                                                        <Input
+                                                            value={employmentRoleQuery}
+                                                            onChange={(e) => setEmploymentRoleQuery(e.target.value)}
+                                                            placeholder="Search roles..."
+                                                            className="h-9 rounded-lg"
+                                                            onKeyDown={(e) => e.stopPropagation()}
+                                                            onClick={(e) => e.stopPropagation()}
+                                                        />
+                                                    </div>
+                                                    <SelectItem value="none">Select</SelectItem>
+                                                    {filteredEmploymentRoles.map((role) => (
+                                                        <SelectItem key={role.id} value={role.id}>
+                                                            {role.title}
+                                                        </SelectItem>
+                                                    ))}
+                                                </SelectContent>
+                                            </Select>
+                                        </div>
+                                        <div className="space-y-2">
+                                            <Label className="text-sm font-bold text-slate-700 px-1">Salary</Label>
+                                            <Input
+                                                type="number"
+                                                step="1"
+                                                min="0"
+                                                value={employmentSalary}
+                                                onChange={(e) => setEmploymentSalary(e.target.value)}
+                                                onWheel={(e) => (e.currentTarget as HTMLInputElement).blur()}
+                                                onKeyDown={(e) => {
+                                                    if (e.key === 'ArrowUp' || e.key === 'ArrowDown') {
+                                                        e.preventDefault()
+                                                    }
+                                                }}
+                                                placeholder="e.g. 125000"
+                                                className="h-12 rounded-xl border-slate-200"
+                                            />
+                                        </div>
+                                        <div className="flex justify-end gap-3 pt-2">
+                                            <Button
+                                                type="button"
+                                                variant="outline"
+                                                className="rounded-xl border-slate-200"
+                                                onClick={() => setIsEmploymentDialogOpen(false)}
+                                                disabled={employmentSaving}
+                                            >
+                                                Cancel
+                                            </Button>
+                                            <Button
+                                                type="button"
+                                                className="rounded-xl bg-blue-600 text-white"
+                                                onClick={handleEmploymentSave}
+                                                disabled={employmentSaving}
+                                            >
+                                                {employmentSaving ? 'Saving...' : 'Save'}
+                                            </Button>
+                                        </div>
+                                    </div>
+                                </DialogContent>
+                            </Dialog>
                         </CardContent>
                     </Card>
 

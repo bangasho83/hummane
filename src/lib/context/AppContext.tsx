@@ -512,6 +512,11 @@ export function AppProvider({ children }: { children: ReactNode }) {
 
         const salaryValue = employee.salary ?? fallback.salary
         const salary = Number.isFinite(salaryValue) ? Number(salaryValue) : 0
+        const statusHistoryRaw = (employee as { status_history?: Employee['status_history']; statusHistory?: Employee['status_history'] }).status_history
+            ?? (employee as { status_history?: Employee['status_history']; statusHistory?: Employee['status_history'] }).statusHistory
+            ?? (fallback as { status_history?: Employee['status_history']; statusHistory?: Employee['status_history'] }).status_history
+            ?? (fallback as { status_history?: Employee['status_history']; statusHistory?: Employee['status_history'] }).statusHistory
+        const statusHistory = Array.isArray(statusHistoryRaw) ? statusHistoryRaw : []
 
         return {
             id,
@@ -542,7 +547,9 @@ export function AppProvider({ children }: { children: ReactNode }) {
             // New fields for personal details (no fallback - use API data only)
             photoUrl: employee.photoUrl,
             dob: employee.dob,
-            personalDetails: employee.personalDetails
+            personalDetails: employee.personalDetails,
+            status_history: statusHistory,
+            statusHistory
         }
     }
 
