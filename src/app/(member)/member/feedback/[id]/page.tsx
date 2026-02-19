@@ -4,12 +4,11 @@ import 'quill/dist/quill.snow.css'
 
 import { useState, useEffect } from 'react'
 import { useParams, useRouter } from 'next/navigation'
-import Link from 'next/link'
 import { Card, CardContent } from '@/components/ui/card'
 import { Button } from '@/components/ui/button'
 import { Progress } from '@/components/ui/progress'
 import { useApp } from '@/lib/context/AppContext'
-import { ArrowLeft, Loader2, Pencil } from 'lucide-react'
+import { ArrowLeft, Loader2 } from 'lucide-react'
 import { Badge } from '@/components/ui/badge'
 
 const API_BASE_URL = process.env.NEXT_PUBLIC_API_BASE_URL || 'https://api.hummane.com'
@@ -48,7 +47,7 @@ interface ApiEntry {
 export default function MemberFeedbackDetailPage() {
     const params = useParams()
     const router = useRouter()
-    const { apiAccessToken, meProfile } = useApp()
+    const { apiAccessToken } = useApp()
 
     const entryId = params.id as string
 
@@ -112,7 +111,6 @@ export default function MemberFeedbackDetailPage() {
     const isIncomplete = scoreQuestions.some(q => getScore(q) <= 0)
 
     const displayType = apiEntry.type || (apiEntry.subjectType === 'Employee' ? 'Team Member' : apiEntry.subjectType) || '—'
-    const isAuthor = Boolean(apiEntry.authorId && meProfile?.employeeId && apiEntry.authorId === meProfile.employeeId)
 
     return (
         <div className="animate-in fade-in duration-500 slide-in-from-bottom-4 space-y-6">
@@ -144,17 +142,6 @@ export default function MemberFeedbackDetailPage() {
                 </div>
                 {isIncomplete && (
                     <Badge className="bg-yellow-100 text-yellow-700 border-yellow-200">Incomplete</Badge>
-                )}
-                {isAuthor && (
-                    <Button
-                        asChild
-                        className="bg-blue-600 hover:bg-blue-700 text-white rounded-2xl font-bold shadow-lg shadow-blue-500/20 px-5 py-2.5 h-auto"
-                    >
-                        <Link href={`/member/feedback/${encodeURIComponent(entryId)}/edit`}>
-                            <Pencil className="w-4 h-4 mr-2" />
-                            Edit Feedback
-                        </Link>
-                    </Button>
                 )}
             </div>
 

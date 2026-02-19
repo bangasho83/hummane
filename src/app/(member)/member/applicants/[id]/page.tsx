@@ -5,7 +5,7 @@ import 'quill/dist/quill.snow.css'
 import { useEffect, useMemo, useState, useCallback, useRef } from 'react'
 import { useRouter, useParams } from 'next/navigation'
 import Link from 'next/link'
-import { FileText, ExternalLink, Linkedin, Pencil } from 'lucide-react'
+import { ArrowLeft, FileText, ExternalLink, Linkedin } from 'lucide-react'
 import { useApp } from '@/lib/context/AppContext'
 import { Button } from '@/components/ui/button'
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select'
@@ -54,6 +54,9 @@ export default function ApplicantDetailPage() {
     const [selectedStatusEmployeeId, setSelectedStatusEmployeeId] = useState('')
     const [isAssignmentDialogOpen, setIsAssignmentDialogOpen] = useState(false)
     const [pageLoading, setPageLoading] = useState(true)
+    const [savingFeedbackEntryId, setSavingFeedbackEntryId] = useState<string | null>(null)
+    const [feedbackDraftScores, setFeedbackDraftScores] = useState<Record<string, number>>({})
+    const [feedbackDraftComments, setFeedbackDraftComments] = useState<Record<string, string>>({})
     const [activeTab, setActiveTab] = useState<'details' | 'feedback'>('details')
     const lastFetchedApplicantId = useRef<string | null>(null)
 
@@ -187,14 +190,14 @@ export default function ApplicantDetailPage() {
                 const scoreQuestions = questions.filter(question => question.kind === 'score')
 
                 const getScore = (question: CardQuestion) => {
-                    if (question.answer?.answer) {
-                        const parsed = parseFloat(question.answer.answer)
-                        if (!Number.isNaN(parsed)) return parsed
-                    }
                     const entryAnswer = question.id ? answerByQuestionId.get(question.id) : undefined
                     if (typeof entryAnswer?.score === 'number') return entryAnswer.score
                     if (entryAnswer?.answer) {
                         const parsed = parseFloat(entryAnswer.answer)
+                        if (!Number.isNaN(parsed)) return parsed
+                    }
+                    if (question.answer?.answer) {
+                        const parsed = parseFloat(question.answer.answer)
                         if (!Number.isNaN(parsed)) return parsed
                     }
                     return 0
@@ -227,7 +230,6 @@ export default function ApplicantDetailPage() {
         meProfile?.employeeId &&
         applicant?.assignments?.some(item => item.employeeId === meProfile.employeeId)
     )
-
     if (pageLoading) {
         return (
             <div className="text-center py-16">
@@ -241,8 +243,14 @@ export default function ApplicantDetailPage() {
         return (
             <div className="text-center py-16">
                 <h3 className="text-lg font-bold text-slate-900 mb-2">Applicant not found</h3>
-                <Button onClick={() => router.push('/member/applicants')} className="mt-4">
-                    Back to Applicants
+                <Button
+                    variant="ghost"
+                    size="icon"
+                    onClick={() => router.push('/member/applicants')}
+                    className="mt-4 rounded-xl hover:bg-white hover:shadow-sm border border-transparent hover:border-slate-100"
+                    aria-label="Back to applicants"
+                >
+                    <ArrowLeft className="w-5 h-5" />
                 </Button>
             </div>
         )
@@ -280,6 +288,106 @@ export default function ApplicantDetailPage() {
             toast('Failed to update applicant status', 'error')
         } finally {
             setStatusUpdating(null)
+        }
+    }
+
+    const draftKey = (entryId: string, questionId: string) => `${entryId}::${questionId}`
+
+    const handleSaveFeedbackEntry = async (
+        entry: FeedbackEntry,
+        questions: CardQuestion[],
+        answerByQuestionId: Map<string, FeedbackEntry['answers'][number]>,
+        card?: FeedbackCard
+    ) => {
+        if (!apiAccessToken) {
+            toast('API access required', 'error')
+            return
+        }
+
+        const apiAnswers = questions
+            .map((question, index) => {
+                if (question.kind === 'content') return null
+                const questionId = question.id || question.answer?.questionId || `q_${index}`
+                const answer = answerByQuestionId.get(questionId)
+                const key = draftKey(entry.id, questionId)
+
+                if (question.kind === 'comment') {
+                    const existingComment = (answer?.comment || answer?.answer || '').trim()
+                    const value = existingComment || (feedbackDraftComments[key] || '').trim()
+                    if (!value) return null
+                    return {
+                        answer: value,
+                        questionId,
+                        question: {
+                            id: questionId,
+                            kind: 'comment' as const,
+                            prompt: question.prompt,
+                            ...(question.weight !== undefined ? { weight: question.weight } : {}),
+                            questionId
+                        }
+                    }
+                }
+
+                const existingScore = typeof answer?.score === 'number'
+                    ? answer.score
+                    : Number.parseFloat(answer?.answer || '0')
+                const valueNum = existingScore > 0 ? existingScore : (feedbackDraftScores[key] || 0)
+                if (valueNum <= 0) return null
+                return {
+                    answer: String(valueNum),
+                    questionId,
+                    question: {
+                        id: questionId,
+                        kind: 'score' as const,
+                        prompt: question.prompt,
+                        ...(question.weight !== undefined ? { weight: question.weight } : {}),
+                        questionId
+                    }
+                }
+            })
+            .filter((item): item is NonNullable<typeof item> => item !== null)
+
+        if (apiAnswers.length === 0) {
+            toast('Please fill at least one unfilled item before saving.', 'error')
+            return
+        }
+
+        setSavingFeedbackEntryId(entry.id)
+        try {
+            const response = await fetch(`${API_BASE_URL}/feedback-entries/${encodeURIComponent(entry.id)}`, {
+                method: 'PUT',
+                headers: {
+                    'Content-Type': 'application/json',
+                    Authorization: `Bearer ${apiAccessToken}`,
+                },
+                body: JSON.stringify({
+                    answers: apiAnswers,
+                    companyId: card?.companyId || applicant?.companyId
+                }),
+            })
+
+            const data = await response.json().catch(() => null)
+            if (!response.ok) {
+                throw new Error(data?.message || 'Failed to update feedback entry')
+            }
+
+            const normalizedAnswers = apiAnswers.map(item => ({
+                questionId: item.questionId,
+                answer: item.answer,
+                score: item.question.kind === 'score' ? Number.parseFloat(item.answer) : undefined,
+                comment: item.question.kind === 'comment' ? item.answer : undefined
+            }))
+
+            setPageFeedbackEntries(prev => {
+                if (!prev) return prev
+                return prev.map(row => row.id === entry.id ? { ...row, answers: normalizedAnswers } : row)
+            })
+            toast('Feedback updated.', 'success')
+        } catch (error) {
+            console.error('Failed to update feedback entry:', error)
+            toast('Failed to update feedback.', 'error')
+        } finally {
+            setSavingFeedbackEntryId(null)
         }
     }
 
@@ -337,7 +445,8 @@ export default function ApplicantDetailPage() {
             <div className="animate-in fade-in duration-500 slide-in-from-bottom-4">
             <div className="flex items-center gap-4 mb-8">
                 <Button
-                    variant="outline"
+                    variant="ghost"
+                    size="icon"
                     onClick={() => {
                         if (typeof window !== 'undefined') {
                             const backTarget = sessionStorage.getItem('applicantDetailBack')
@@ -348,9 +457,9 @@ export default function ApplicantDetailPage() {
                         }
                         router.push('/member/applicants')
                     }}
-                    className="rounded-xl"
+                    className="rounded-xl hover:bg-white hover:shadow-sm border border-transparent hover:border-slate-100"
                 >
-                    Back
+                    <ArrowLeft className="w-5 h-5" />
                 </Button>
                 <div className="flex-1">
                     <h1 className="text-3xl font-extrabold text-slate-900 tracking-tight">
@@ -444,6 +553,7 @@ export default function ApplicantDetailPage() {
                                 </div>
                             </div>
                         </div>
+
                     </div>
 
                     <div className="space-y-6">
@@ -618,11 +728,7 @@ export default function ApplicantDetailPage() {
                                 }))
                                 .filter(item => item.question.kind === 'score')
 
-                            const getScore = (questionId: string, questionScore?: string) => {
-                                if (questionScore) {
-                                    const parsedQuestionScore = parseFloat(questionScore)
-                                    if (!Number.isNaN(parsedQuestionScore)) return parsedQuestionScore
-                                }
+                            const getScore = (questionId: string) => {
                                 const answer = answerByQuestionId.get(questionId)
                                 if (!answer) return 0
                                 if (typeof answer.score === 'number') return answer.score
@@ -634,7 +740,7 @@ export default function ApplicantDetailPage() {
                             }
 
                             const totalScore = scoreQuestions.reduce(
-                                (sum, item) => sum + getScore(item.questionId, item.question.answer?.answer),
+                                (sum, item) => sum + getScore(item.questionId),
                                 0
                             )
                             const maxScore = scoreQuestions.length * 5
@@ -645,37 +751,6 @@ export default function ApplicantDetailPage() {
                                 <div key={entry.id} className="space-y-6">
                                     <div className="bg-white rounded-3xl shadow-sm border border-slate-200 overflow-hidden">
                                         <div className="p-8 space-y-4">
-                                            <div className="grid grid-cols-1 md:grid-cols-4 gap-4 text-sm">
-                                                <div>
-                                                    <p className="text-xs font-bold text-slate-400 uppercase tracking-widest">Type</p>
-                                                    <p className="font-semibold text-slate-900">{entry.type || entry.subjectType || 'Applicant'}</p>
-                                                </div>
-                                                <div>
-                                                    <p className="text-xs font-bold text-slate-400 uppercase tracking-widest">From</p>
-                                                    <p className="font-semibold text-slate-900">{detail?.authorName || entry.authorName || 'Unknown'}</p>
-                                                </div>
-                                                <div>
-                                                    <p className="text-xs font-bold text-slate-400 uppercase tracking-widest">Card</p>
-                                                    <p className="font-semibold text-slate-900">{detail?.card?.title || card?.title || 'Feedback Card'}</p>
-                                                </div>
-                                                <div>
-                                                    <p className="text-xs font-bold text-slate-400 uppercase tracking-widest">Date</p>
-                                                    <p className="font-semibold text-slate-900">{new Date((detail?.createdAt || entry.createdAt)).toLocaleDateString()}</p>
-                                                </div>
-                                            </div>
-                                            {isAssignedToMe && (
-                                                <div className="flex justify-end">
-                                                    <Button
-                                                        asChild
-                                                        className="bg-blue-600 hover:bg-blue-700 text-white rounded-xl font-bold"
-                                                    >
-                                                        <Link href={`/member/feedback/${encodeURIComponent(entry.id)}/edit`}>
-                                                            <Pencil className="w-4 h-4 mr-2" />
-                                                            Edit Feedback
-                                                        </Link>
-                                                    </Button>
-                                                </div>
-                                            )}
                                             <div className="grid grid-cols-1 md:grid-cols-3 gap-4 pt-2">
                                                 <div className="rounded-2xl border border-slate-200 p-4">
                                                     <p className="text-xs font-bold text-slate-400 uppercase tracking-widest">Total Score</p>
@@ -696,6 +771,13 @@ export default function ApplicantDetailPage() {
 
                                     <div className="bg-white rounded-3xl shadow-sm border border-slate-200 overflow-hidden">
                                         <div className="p-6 space-y-4">
+                                            {isAssignedToMe && (
+                                                <div className="rounded-xl border border-amber-200 bg-amber-50 px-4 py-3">
+                                                    <p className="text-sm font-semibold text-amber-800">
+                                                        You may not be able to edit the score once you save, please review before your submit
+                                                    </p>
+                                                </div>
+                                            )}
                                             {questions.length === 0 ? (
                                                 <p className="text-sm text-slate-500">No question details available for this feedback entry.</p>
                                             ) : (
@@ -720,37 +802,81 @@ export default function ApplicantDetailPage() {
                                                     }
 
                                                     if (question.kind === 'score') {
-                                                        const selectedScore = getScore(questionId, question.answer?.answer)
+                                                        const selectedScore = getScore(questionId)
+                                                        const scoreKey = draftKey(entry.id, questionId)
+                                                        const draftScore = feedbackDraftScores[scoreKey]
+                                                        const displayedScore = draftScore ?? selectedScore
+                                                        const isFilled = selectedScore > 0
                                                         return (
                                                             <div key={`${entry.id}-${questionId}-${index}`} className="rounded-2xl border border-slate-200 p-4 space-y-3">
                                                                 <p className="text-sm font-semibold text-slate-800">{question.prompt}</p>
-                                                                <div className="flex items-center gap-2">
-                                                                    {[1, 2, 3, 4, 5].map((s) => (
-                                                                        <div
-                                                                            key={s}
-                                                                            className={`w-9 h-9 rounded-full flex items-center justify-center text-sm font-bold transition-all ${
-                                                                                selectedScore === s
-                                                                                    ? 'bg-blue-600 text-white shadow-md'
-                                                                                    : 'bg-slate-100 text-slate-400'
-                                                                            }`}
-                                                                        >
-                                                                            {s}
-                                                                        </div>
-                                                                    ))}
-                                                                </div>
+                                                                {!isAssignedToMe || isFilled ? (
+                                                                    <div className="flex items-center gap-2">
+                                                                        {[1, 2, 3, 4, 5].map((s) => (
+                                                                            <div
+                                                                                key={s}
+                                                                                className={`w-9 h-9 rounded-full flex items-center justify-center text-sm font-bold transition-all ${
+                                                                                    displayedScore === s
+                                                                                        ? 'bg-blue-600 text-white shadow-md'
+                                                                                        : 'bg-slate-100 text-slate-400'
+                                                                                }`}
+                                                                            >
+                                                                                {s}
+                                                                            </div>
+                                                                        ))}
+                                                                    </div>
+                                                                ) : (
+                                                                    <div className="flex flex-wrap gap-3">
+                                                                        {[1, 2, 3, 4, 5].map((score) => (
+                                                                            <label key={score} className="flex items-center gap-2 text-sm text-slate-600 font-medium">
+                                                                                <input
+                                                                                    type="radio"
+                                                                                    name={`score-${entry.id}-${questionId}`}
+                                                                                    value={score}
+                                                                                    checked={displayedScore === score}
+                                                                                    onChange={() => setFeedbackDraftScores(prev => ({ ...prev, [scoreKey]: score }))}
+                                                                                />
+                                                                                {score}
+                                                                            </label>
+                                                                        ))}
+                                                                    </div>
+                                                                )}
                                                             </div>
                                                         )
                                                     }
 
+                                                    const commentKey = draftKey(entry.id, questionId)
+                                                    const existingComment = answer?.comment || answer?.answer || ''
+                                                    const commentValue = feedbackDraftComments[commentKey] ?? existingComment
+                                                    const isCommentFilled = existingComment.trim().length > 0
                                                     return (
                                                         <div key={`${entry.id}-${questionId}-${index}`} className="rounded-2xl border border-slate-200 p-4 space-y-3">
                                                             <p className="text-sm font-semibold text-slate-800">{question.prompt}</p>
-                                                            <p className="text-sm text-slate-600 whitespace-pre-wrap">
-                                                                {question.answer?.answer || answer?.comment || answer?.answer || '—'}
-                                                            </p>
+                                                            {isAssignedToMe && !isCommentFilled ? (
+                                                                <textarea
+                                                                    value={commentValue}
+                                                                    onChange={(e) => setFeedbackDraftComments(prev => ({ ...prev, [commentKey]: e.target.value }))}
+                                                                    className="w-full min-h-[100px] rounded-xl border border-slate-200 p-3 text-sm text-slate-700"
+                                                                    placeholder="Add comments..."
+                                                                />
+                                                            ) : (
+                                                                <p className="text-sm text-slate-600 whitespace-pre-wrap">{commentValue || '—'}</p>
+                                                            )}
                                                         </div>
                                                     )
                                                 })
+                                            )}
+                                            {isAssignedToMe && (
+                                                <div className="flex justify-end pt-2">
+                                                    <Button
+                                                        type="button"
+                                                        className="rounded-xl bg-blue-600 hover:bg-blue-700 text-white"
+                                                        disabled={savingFeedbackEntryId === entry.id}
+                                                        onClick={() => void handleSaveFeedbackEntry(entry, questions, answerByQuestionId, card)}
+                                                    >
+                                                        {savingFeedbackEntryId === entry.id ? 'Saving...' : 'Save'}
+                                                    </Button>
+                                                </div>
                                             )}
                                         </div>
                                     </div>
