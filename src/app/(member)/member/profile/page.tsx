@@ -232,7 +232,6 @@ export default function MemberProfilePage() {
                                 <InfoRow label="Department" value={employee.departmentName || employee.department || '—'} />
                                 <InfoRow label="Role" value={employee.roleName || employee.position || '—'} />
                                 <InfoRow label="Reporting Manager" value={employee.reportingManagerName || employee.reportingManager || '—'} />
-                                <InfoRow label="Employment Type" value={employee.employmentType} />
                                 <InfoRow label="Employment Mode" value={employee.employmentMode || '—'} />
                                 <InfoRow label="Joining Date" value={formatDate(employee.startDate)} />
                                 <InfoRow label="Monthly Salary" value={formatCurrency(employee.salary ?? 0, currentCompany?.currency)} />

@@ -300,7 +300,6 @@ export default function MemberDashboardPage() {
                                 <div>
                                     <h3 className="text-lg font-bold text-slate-900">Leave Balance</h3>
                                     <p className="text-sm text-slate-500">Your leave quota for this year</p>
-                                    <p className="text-xs text-slate-400">Your employment type: {employee?.employmentType || '—'}</p>
                                 </div>
                                 <Link href="/member/leaves" className="text-sm font-semibold text-blue-600 hover:text-blue-700">
                                     View All →
@@ -324,11 +323,6 @@ export default function MemberDashboardPage() {
                                                 <div className="text-right">
                                                     <p className="text-sm font-semibold text-amber-600">{lb.used} used</p>
                                                 </div>
-                                            </div>
-                                            <div className="mt-2 flex items-center justify-between gap-2">
-                                                <span className="text-xs text-slate-500">
-                                                    Employment: {lb.employmentType || '—'}
-                                                </span>
                                             </div>
                                             <div className="mt-3 h-2 rounded-full bg-slate-100 overflow-hidden">
                                                 <div
@@ -432,9 +426,17 @@ export default function MemberDashboardPage() {
                                 <div className="space-y-3">
                                     {onLeaveToday.slice(0, 5).map(emp => (
                                         <div key={emp.id} className="flex items-center gap-3 p-3 rounded-xl bg-slate-50">
-                                            <div className="w-10 h-10 rounded-full bg-gradient-to-br from-blue-500 to-purple-500 flex items-center justify-center text-white font-bold text-sm">
-                                                {emp.name?.charAt(0) || '?'}
-                                            </div>
+                                            {emp.profilePicture || emp.photoUrl ? (
+                                                <img
+                                                    src={emp.profilePicture || emp.photoUrl}
+                                                    alt={emp.name}
+                                                    className="w-10 h-10 rounded-full object-cover border border-slate-200"
+                                                />
+                                            ) : (
+                                                <div className="w-10 h-10 rounded-full bg-slate-200 flex items-center justify-center text-slate-500">
+                                                    <User className="w-5 h-5" />
+                                                </div>
+                                            )}
                                             <div>
                                                 <p className="text-sm font-semibold text-slate-900">{emp.name}</p>
                                                 <p className="text-xs text-slate-500">{emp.departmentName || emp.department || 'No department'}</p>

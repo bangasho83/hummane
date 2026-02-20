@@ -292,12 +292,12 @@ export default function MemberLeavesPage() {
                                     <SelectContent>
                                         {filteredLeaveTypes.length === 0 ? (
                                             <SelectItem value="none" disabled>
-                                                No leave type defined for your employment type
+                                                No leave type defined for your profile
                                             </SelectItem>
                                         ) : (
                                             filteredLeaveTypes.map((lt) => (
                                                 <SelectItem key={lt.id} value={lt.id}>
-                                                    {lt.name} ({lt.code}) — {lt.unit} • {lt.employmentType}
+                                                    {lt.name} ({lt.code}) — {lt.unit}
                                                 </SelectItem>
                                             ))
                                         )}
@@ -465,7 +465,7 @@ export default function MemberLeavesPage() {
                                 <TableHead className="py-4 text-[10px] font-extrabold uppercase tracking-widest text-slate-400">Unit</TableHead>
                                 <TableHead className="py-4 text-[10px] font-extrabold uppercase tracking-widest text-slate-400">Amount</TableHead>
                                 <TableHead className="py-4 text-[10px] font-extrabold uppercase tracking-widest text-slate-400">Quota</TableHead>
-                                <TableHead className="py-4 text-[10px] font-extrabold uppercase tracking-widest text-slate-400">Employment Type</TableHead>
+                                <TableHead className="py-4 text-[10px] font-extrabold uppercase tracking-widest text-slate-400">Eligibility</TableHead>
                                 <TableHead className="py-4 text-[10px] font-extrabold uppercase tracking-widest text-slate-400">Note</TableHead>
                                 <TableHead className="py-4 text-[10px] font-extrabold uppercase tracking-widest text-slate-400">Document</TableHead>
                             </TableRow>
