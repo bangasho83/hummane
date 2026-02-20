@@ -388,16 +388,23 @@ export default function ApplicantDetailPage() {
 
         setSavingFeedbackEntryId(entry.id)
         try {
+            const payload = {
+                answers: apiAnswers,
+                companyId: card?.companyId || applicant?.companyId
+            }
+            const curl = `curl -X PUT "${API_BASE_URL}/feedback-entries/${encodeURIComponent(entry.id)}" \\\n` +
+                `  -H "Authorization: Bearer ${apiAccessToken}" \\\n` +
+                `  -H "Content-Type: application/json" \\\n` +
+                `  -d '${JSON.stringify(payload)}'`
+            console.info(`Update feedback entry CURL:\n${curl}`)
+
             const response = await fetch(`${API_BASE_URL}/feedback-entries/${encodeURIComponent(entry.id)}`, {
                 method: 'PUT',
                 headers: {
                     'Content-Type': 'application/json',
                     Authorization: `Bearer ${apiAccessToken}`,
                 },
-                body: JSON.stringify({
-                    answers: apiAnswers,
-                    companyId: card?.companyId || applicant?.companyId
-                }),
+                body: JSON.stringify(payload),
             })
 
             const data = await response.json().catch(() => null)
