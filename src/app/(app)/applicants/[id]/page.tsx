@@ -5,7 +5,7 @@ import 'quill/dist/quill.snow.css'
 import { useEffect, useMemo, useState, useCallback, useRef } from 'react'
 import { useRouter, useParams } from 'next/navigation'
 import Link from 'next/link'
-import { FileText, ExternalLink, Linkedin } from 'lucide-react'
+import { ArrowLeft, FileText, ExternalLink, Linkedin } from 'lucide-react'
 import { useApp } from '@/lib/context/AppContext'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
@@ -184,9 +184,10 @@ export default function ApplicantDetailPage() {
             .map((entry) => {
                 const detail = feedbackEntryDetails[entry.id]
                 const card = cardsById.get(entry.cardId) as FeedbackCard | undefined
-                const questions = detail?.card?.questions || []
+                const questions = detail?.card?.questions || card?.questions || []
                 const answerByQuestionId = new Map(entry.answers.map(answer => [answer.questionId, answer]))
                 const scoreQuestions = questions.filter(question => question.kind === 'score')
+                const requiredQuestions = questions.filter(question => (question.kind ?? 'score') !== 'content')
 
                 const getScore = (question: CardQuestion) => {
                     if (question.answer?.answer) {
@@ -201,6 +202,18 @@ export default function ApplicantDetailPage() {
                     }
                     return 0
                 }
+                const hasQuestionValue = (question: CardQuestion) => {
+                    const entryAnswer = question.id ? answerByQuestionId.get(question.id) : undefined
+                    const kind = question.kind ?? 'score'
+                    if (kind === 'comment') {
+                        const commentValue = entryAnswer?.comment || entryAnswer?.answer || question.answer?.answer || ''
+                        return String(commentValue).trim().length > 0
+                    }
+                    const numericValue = typeof entryAnswer?.score === 'number'
+                        ? entryAnswer.score
+                        : Number.parseFloat(entryAnswer?.answer || question.answer?.answer || '')
+                    return Number.isFinite(numericValue) && numericValue > 0
+                }
                 const total = scoreQuestions.reduce((sum, question) => sum + getScore(question), 0)
                 const max = scoreQuestions.length * 5
                 return {
@@ -208,7 +221,9 @@ export default function ApplicantDetailPage() {
                     title: detail?.card?.title || card?.title || 'Feedback',
                     total,
                     max,
-                    complete: max > 0 ? total >= max : false,
+                    complete: requiredQuestions.length > 0
+                        ? requiredQuestions.every(hasQuestionValue)
+                        : false,
                     createdAt: detail?.createdAt || entry.createdAt
                 }
             })
@@ -225,6 +240,7 @@ export default function ApplicantDetailPage() {
     const currentStatusEmployeeName = currentStatusAssignment?.employeeId
         ? employeeNameById.get(currentStatusAssignment.employeeId) || 'Unknown employee'
         : null
+    const assignmentHistory = applicant?.assignments || []
     const filteredStatusEmployees = useMemo(() => {
         const query = statusEmployeeQuery.trim().toLowerCase()
         if (!query) return employees
@@ -247,8 +263,14 @@ export default function ApplicantDetailPage() {
         return (
             <div className="text-center py-16">
                 <h3 className="text-lg font-bold text-slate-900 mb-2">Applicant not found</h3>
-                <Button onClick={() => router.push('/applicants')} className="mt-4">
-                    Back to Applicants
+                <Button
+                    variant="ghost"
+                    size="icon"
+                    onClick={() => router.push('/applicants')}
+                    className="mt-4 rounded-xl hover:bg-white hover:shadow-sm border border-transparent hover:border-slate-100"
+                    aria-label="Back to applicants"
+                >
+                    <ArrowLeft className="w-5 h-5" />
                 </Button>
             </div>
         )
@@ -345,7 +367,8 @@ export default function ApplicantDetailPage() {
             <div className="animate-in fade-in duration-500 slide-in-from-bottom-4">
             <div className="flex items-center gap-4 mb-8">
                 <Button
-                    variant="outline"
+                    variant="ghost"
+                    size="icon"
                     onClick={() => {
                         if (typeof window !== 'undefined') {
                             const backTarget = sessionStorage.getItem('applicantDetailBack')
@@ -356,9 +379,10 @@ export default function ApplicantDetailPage() {
                         }
                         router.push('/applicants')
                     }}
-                    className="rounded-xl"
+                    className="rounded-xl hover:bg-white hover:shadow-sm border border-transparent hover:border-slate-100"
+                    aria-label="Back to applicants"
                 >
-                    Back
+                    <ArrowLeft className="w-5 h-5" />
                 </Button>
                 <div className="flex-1">
                     <h1 className="text-3xl font-extrabold text-slate-900 tracking-tight">
@@ -488,7 +512,17 @@ export default function ApplicantDetailPage() {
                                     ))}
                                 </div>
                             ) : (
-                                <p className="text-sm text-slate-500">No applicant feedback scores yet.</p>
+                                <div className="space-y-3">
+                                    <p className="text-sm text-slate-500">No applicant feedback scores yet.</p>
+                                    <Button
+                                        type="button"
+                                        size="sm"
+                                        className="rounded-xl bg-blue-600 text-white font-bold shadow-blue-500/20"
+                                        onClick={() => router.push(`/performance/feedback/new?type=applicant&subjectId=${encodeURIComponent(applicant.id)}`)}
+                                    >
+                                        Add Feedback
+                                    </Button>
+                                </div>
                             )}
                         </div>
 
@@ -526,6 +560,27 @@ export default function ApplicantDetailPage() {
                                         <p className="text-xs font-semibold text-slate-500 mt-2">
                                             Assigned: {currentStatusEmployeeName}
                                         </p>
+                                    )}
+                                </div>
+                                <div className="pt-4 border-t border-slate-100">
+                                    <p className="text-xs font-bold text-slate-500 uppercase tracking-wider mb-2">Assignments History</p>
+                                    {assignmentHistory.length > 0 ? (
+                                        <div className="space-y-2">
+                                            {assignmentHistory.map((item, index) => (
+                                                <div key={`${item.status}-${item.employeeId}-${index}`} className="rounded-xl border border-slate-200 p-3">
+                                                    <div className="flex items-center justify-between gap-2">
+                                                        <span className={`inline-flex h-7 items-center rounded-full px-3 text-xs font-bold ${getStatusColor(item.status)}`}>
+                                                            {formatStatusLabel(item.status)}
+                                                        </span>
+                                                        <span className="text-xs font-semibold text-slate-600">
+                                                            {employeeNameById.get(item.employeeId) || 'Unknown employee'}
+                                                        </span>
+                                                    </div>
+                                                </div>
+                                            ))}
+                                        </div>
+                                    ) : (
+                                        <p className="text-sm text-slate-500">No status assignments yet.</p>
                                     )}
                                 </div>
                                 <div className="pt-4 border-t border-slate-100">

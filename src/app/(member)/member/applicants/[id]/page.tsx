@@ -186,9 +186,10 @@ export default function ApplicantDetailPage() {
             .map((entry) => {
                 const detail = feedbackEntryDetails[entry.id]
                 const card = cardsById.get(entry.cardId) as FeedbackCard | undefined
-                const questions = detail?.card?.questions || []
+                const questions = detail?.card?.questions || card?.questions || []
                 const answerByQuestionId = new Map(entry.answers.map(answer => [answer.questionId, answer]))
                 const scoreQuestions = questions.filter(question => question.kind === 'score')
+                const requiredQuestions = questions.filter(question => (question.kind ?? 'score') !== 'content')
 
                 const getScore = (question: CardQuestion) => {
                     const entryAnswer = question.id ? answerByQuestionId.get(question.id) : undefined
@@ -203,6 +204,18 @@ export default function ApplicantDetailPage() {
                     }
                     return 0
                 }
+                const hasQuestionValue = (question: CardQuestion) => {
+                    const entryAnswer = question.id ? answerByQuestionId.get(question.id) : undefined
+                    const kind = question.kind ?? 'score'
+                    if (kind === 'comment') {
+                        const commentValue = entryAnswer?.comment || entryAnswer?.answer || question.answer?.answer || ''
+                        return String(commentValue).trim().length > 0
+                    }
+                    const numericValue = typeof entryAnswer?.score === 'number'
+                        ? entryAnswer.score
+                        : Number.parseFloat(entryAnswer?.answer || question.answer?.answer || '')
+                    return Number.isFinite(numericValue) && numericValue > 0
+                }
                 const total = scoreQuestions.reduce((sum, question) => sum + getScore(question), 0)
                 const max = scoreQuestions.length * 5
                 return {
@@ -210,7 +223,9 @@ export default function ApplicantDetailPage() {
                     title: detail?.card?.title || card?.title || 'Feedback',
                     total,
                     max,
-                    complete: max > 0 ? total >= max : false,
+                    complete: requiredQuestions.length > 0
+                        ? requiredQuestions.every(hasQuestionValue)
+                        : false,
                     createdAt: detail?.createdAt || entry.createdAt
                 }
             })
@@ -615,7 +630,17 @@ export default function ApplicantDetailPage() {
                                     ))}
                                 </div>
                             ) : (
-                                <p className="text-sm text-slate-500">No applicant feedback scores yet.</p>
+                                <div className="space-y-3">
+                                    <p className="text-sm text-slate-500">No applicant feedback scores yet.</p>
+                                    <Button
+                                        type="button"
+                                        size="sm"
+                                        className="rounded-xl bg-blue-600 text-white font-bold shadow-blue-500/20"
+                                        onClick={() => router.push('/member/feedback/given/new')}
+                                    >
+                                        Add Feedback
+                                    </Button>
+                                </div>
                             )}
                         </div>
 

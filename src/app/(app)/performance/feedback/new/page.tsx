@@ -2,8 +2,8 @@
 
 import 'quill/dist/quill.snow.css'
 
-import { useMemo, useState } from 'react'
-import { useRouter } from 'next/navigation'
+import { useEffect, useMemo, useState } from 'react'
+import { usePathname, useRouter, useSearchParams } from 'next/navigation'
 import { Card, CardContent } from '@/components/ui/card'
 import { Button } from '@/components/ui/button'
 import { Label } from '@/components/ui/label'
@@ -21,11 +21,21 @@ type DraftAnswer = {
 
 export default function NewFeedbackPage() {
     const router = useRouter()
-    const { feedbackCards, employees, applicants, createFeedbackEntry } = useApp()
-    const [type, setType] = useState<'Team Member' | 'Applicant'>('Team Member')
-    const [cardId, setCardId] = useState<string>('')
-    const [subjectId, setSubjectId] = useState<string>('')
-    const [authorId, setAuthorId] = useState<string>('')
+    const pathname = usePathname()
+    const searchParams = useSearchParams()
+    const { feedbackCards, employees, applicants, createFeedbackEntry, isHydrating } = useApp()
+    const parseTypeParam = (value: string | null): 'Team Member' | 'Applicant' => {
+        if (!value) return 'Team Member'
+        const normalized = value.trim().toLowerCase()
+        if (normalized === 'applicant') return 'Applicant'
+        if (normalized === 'member' || normalized === 'team-member' || normalized === 'team_member' || normalized === 'employee') return 'Team Member'
+        return 'Team Member'
+    }
+    const toTypeParam = (value: 'Team Member' | 'Applicant') => (value === 'Applicant' ? 'applicant' : 'member')
+    const [type, setType] = useState<'Team Member' | 'Applicant'>(() => parseTypeParam(searchParams.get('type')))
+    const [cardId, setCardId] = useState<string>(() => searchParams.get('cardId') || '')
+    const [subjectId, setSubjectId] = useState<string>(() => searchParams.get('subjectId') || '')
+    const [authorId, setAuthorId] = useState<string>(() => searchParams.get('fromId') || '')
     const [answers, setAnswers] = useState<DraftAnswer[]>([])
     const [saving, setSaving] = useState(false)
     const [authorQuery, setAuthorQuery] = useState('')
@@ -63,6 +73,65 @@ export default function NewFeedbackPage() {
         if (!query) return subjects
         return subjects.filter(subject => subject.label.toLowerCase().includes(query))
     }, [subjects, subjectQuery])
+
+    useEffect(() => {
+        const params = new URLSearchParams(searchParams.toString())
+        params.set('type', toTypeParam(type))
+        if (cardId) params.set('cardId', cardId)
+        else params.delete('cardId')
+        if (authorId) params.set('fromId', authorId)
+        else params.delete('fromId')
+        if (subjectId) params.set('subjectId', subjectId)
+        else params.delete('subjectId')
+        const nextQuery = params.toString()
+        const currentQuery = searchParams.toString()
+        if (nextQuery === currentQuery) return
+        const nextUrl = nextQuery ? `${pathname}?${nextQuery}` : pathname
+        router.replace(nextUrl, { scroll: false })
+    }, [type, cardId, authorId, subjectId, pathname, router, searchParams])
+
+    useEffect(() => {
+        if (!cardId) return
+        if (filteredCards.length === 0) return
+        if (!filteredCards.some(card => card.id === cardId)) {
+            setCardId('')
+            setAnswers([])
+        }
+    }, [cardId, filteredCards])
+
+    useEffect(() => {
+        if (!authorId) return
+        if (authors.length === 0) return
+        if (!authors.some(author => author.id === authorId)) {
+            setAuthorId('')
+        }
+    }, [authorId, authors])
+
+    useEffect(() => {
+        if (!subjectId) return
+        if (subjects.length === 0) return
+        if (!subjects.some(subject => subject.id === subjectId)) {
+            setSubjectId('')
+        }
+    }, [subjectId, subjects])
+
+    useEffect(() => {
+        if (!selectedCard) {
+            setAnswers([])
+            return
+        }
+        const answerQuestions = selectedCard.questions.filter(q => (q.kind ?? 'score') !== 'content')
+        setAnswers((prev) => {
+            const hasSameQuestions = prev.length === answerQuestions.length &&
+                answerQuestions.every(question => prev.some(answer => answer.questionId === question.id))
+            if (hasSameQuestions) return prev
+            return answerQuestions.map(q => ({
+                questionId: q.id,
+                score: 0,
+                comment: (q.kind ?? 'score') === 'comment' ? '' : undefined
+            }))
+        })
+    }, [selectedCard])
 
     const handleSelectCard = (value: string) => {
         setCardId(value)
@@ -157,6 +226,15 @@ export default function NewFeedbackPage() {
         } finally {
             setSaving(false)
         }
+    }
+
+    if (isHydrating) {
+        return (
+            <div className="animate-in fade-in duration-300 py-16 text-center">
+                <div className="inline-block h-8 w-8 animate-spin rounded-full border-4 border-solid border-blue-600 border-r-transparent"></div>
+                <p className="mt-4 text-slate-500">Loading feedback form...</p>
+            </div>
+        )
     }
 
     return (
