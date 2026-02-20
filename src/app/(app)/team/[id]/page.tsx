@@ -14,7 +14,7 @@ import { Label } from '@/components/ui/label'
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select'
 import { Input } from '@/components/ui/input'
 import { toast } from '@/components/ui/toast'
-import { ArrowLeft, Pencil } from 'lucide-react'
+import { ArrowLeft, Pencil, Trash2 } from 'lucide-react'
 import Link from 'next/link'
 import { uploadFileToStorage, uploadProfilePicture } from '@/lib/firebase/storage'
 
@@ -41,6 +41,9 @@ export default function EmployeeProfilePage() {
     const [employmentSalary, setEmploymentSalary] = useState('')
     const [employmentType, setEmploymentType] = useState<EmploymentType>(EMPLOYMENT_TYPES[1])
     const [employmentDate, setEmploymentDate] = useState('')
+    const [statusHistoryItems, setStatusHistoryItems] = useState<Array<Record<string, unknown>>>([])
+    const [statusHistoryOriginal, setStatusHistoryOriginal] = useState('[]')
+    const [statusHistorySaving, setStatusHistorySaving] = useState(false)
     const employeeId = params.id as string
 
     useEffect(() => {
@@ -144,6 +147,68 @@ export default function EmployeeProfilePage() {
         }
     }
 
+    const handleDeleteStatusHistoryItem = (indexToDelete: number) => {
+        setStatusHistoryItems((prev) => prev.filter((_, index) => index !== indexToDelete))
+    }
+
+    const handleSaveStatusHistory = async () => {
+        if (!employee) return
+        if (!apiAccessToken) {
+            toast('Not authenticated', 'error')
+            return
+        }
+
+        const statusHistoryPayload = statusHistoryItems.map((entry) => ({
+            date: typeof entry.date === 'string' && entry.date.trim()
+                ? entry.date
+                : (employee.startDate || '').split('T')[0] || '',
+            roleId: typeof entry.roleId === 'string' && entry.roleId.trim()
+                ? entry.roleId
+                : employee.roleId,
+            salary: Number.isFinite(Number(entry.salary))
+                ? Math.round(Number(entry.salary))
+                : Math.round(employee.salary ?? 0),
+            roleName: typeof entry.roleName === 'string' && entry.roleName.trim()
+                ? entry.roleName
+                : (employee.roleName || employee.position || ''),
+            employmentType: typeof entry.employmentType === 'string' && entry.employmentType.trim()
+                ? entry.employmentType
+                : employee.employmentType
+        }))
+
+        setStatusHistorySaving(true)
+        try {
+            const response = await fetch(`${API_URL}/employees/${encodeURIComponent(employee.id)}`, {
+                method: 'PUT',
+                headers: {
+                    'Content-Type': 'application/json',
+                    Authorization: `Bearer ${apiAccessToken}`
+                },
+                body: JSON.stringify({
+                    statusHistory: statusHistoryPayload
+                })
+            })
+
+            if (!response.ok) {
+                const message = await response.text().catch(() => '')
+                throw new Error(message || 'Failed to update status history')
+            }
+
+            await refreshEmployees()
+            setStatusHistoryItems(statusHistoryPayload)
+            setStatusHistoryOriginal(JSON.stringify(statusHistoryPayload))
+            setEmployee((prev) => prev ? {
+                ...prev,
+                status_history: statusHistoryPayload,
+                statusHistory: statusHistoryPayload
+            } : prev)
+            toast('Status history updated', 'success')
+        } catch (error) {
+            toast(error instanceof Error ? error.message : 'Failed to update status history', 'error')
+        } finally {
+            setStatusHistorySaving(false)
+        }
+    }
 
 
     const handleDocUpload = async () => {
@@ -213,15 +278,25 @@ export default function EmployeeProfilePage() {
         }
     }
 
+    const employmentStatusHistory = useMemo(() => {
+        if (!employee) return []
+        return (Array.isArray(employee.status_history) && employee.status_history.length > 0
+            ? employee.status_history
+            : (Array.isArray((employee as EmployeeApi).statusHistory) ? (employee as EmployeeApi).statusHistory : [])) || []
+    }, [employee])
+    const hasStatusHistoryChanges = JSON.stringify(statusHistoryItems) !== statusHistoryOriginal
+
+    useEffect(() => {
+        const normalizedHistory = employmentStatusHistory.map((entry) => ({ ...entry }))
+        setStatusHistoryItems(normalizedHistory)
+        setStatusHistoryOriginal(JSON.stringify(normalizedHistory))
+    }, [employee?.id, employmentStatusHistory])
+
     if (!employee) {
         return (
             <div className="p-8 text-slate-500">Loading profile...</div>
         )
     }
-    const employmentStatusHistory =
-        (Array.isArray(employee.status_history) && employee.status_history.length > 0
-            ? employee.status_history
-            : (Array.isArray((employee as EmployeeApi).statusHistory) ? (employee as EmployeeApi).statusHistory : [])) || []
 
     return (
         <div className="space-y-6">
@@ -418,9 +493,22 @@ export default function EmployeeProfilePage() {
                             </div>
                             {employmentStatusHistory.length > 0 && (
                                 <div className="pt-1 space-y-3">
-                                    <p className="text-xs font-extrabold text-slate-400 uppercase tracking-wide">Status History</p>
+                                    <div className="flex items-center justify-between gap-2">
+                                        <p className="text-xs font-extrabold text-slate-400 uppercase tracking-wide">Status History</p>
+                                        <div className="flex items-center gap-2">
+                                            <Button
+                                                type="button"
+                                                size="sm"
+                                                className="h-8 rounded-lg bg-blue-600 px-3 text-xs text-white"
+                                                onClick={handleSaveStatusHistory}
+                                                disabled={statusHistorySaving || !hasStatusHistoryChanges}
+                                            >
+                                                {statusHistorySaving ? 'Saving...' : 'Save'}
+                                            </Button>
+                                        </div>
+                                    </div>
                                     <div className="space-y-2">
-                                        {employmentStatusHistory.map((entry, index) => {
+                                        {statusHistoryItems.map((entry, index) => {
                                             const employmentType = typeof entry?.employmentType === 'string' && entry.employmentType.trim()
                                                 ? entry.employmentType
                                                 : '—'
@@ -437,7 +525,18 @@ export default function EmployeeProfilePage() {
                                                 <div key={`${roleName}-${date}-${index}`} className="rounded-xl border border-slate-100 bg-slate-50 px-3 py-2">
                                                     <div className="flex items-center justify-between gap-2">
                                                         <span className="text-sm font-semibold text-slate-800">{roleName}</span>
-                                                        <span className="text-xs font-medium text-slate-500">{date}</span>
+                                                        <div className="flex items-center gap-2">
+                                                            <span className="text-xs font-medium text-slate-500">{date}</span>
+                                                            <button
+                                                                type="button"
+                                                                aria-label="Delete history item"
+                                                                className="rounded-md p-1 text-slate-400 hover:bg-red-50 hover:text-red-600 transition-colors"
+                                                                onClick={() => handleDeleteStatusHistoryItem(index)}
+                                                                disabled={statusHistorySaving}
+                                                            >
+                                                                <Trash2 className="w-3.5 h-3.5" />
+                                                            </button>
+                                                        </div>
                                                     </div>
                                                     <div className="mt-1 text-xs text-slate-500">
                                                         {employmentType} • {salary}
