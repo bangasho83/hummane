@@ -45,6 +45,15 @@ export default function EmployeeProfilePage() {
     const [statusHistoryOriginal, setStatusHistoryOriginal] = useState('[]')
     const [statusHistorySaving, setStatusHistorySaving] = useState(false)
     const employeeId = params.id as string
+    const sortStatusHistoryByDateDesc = (items: Array<Record<string, unknown>>) => {
+        return [...items].sort((a, b) => {
+            const aTime = Date.parse(String(a.date ?? ''))
+            const bTime = Date.parse(String(b.date ?? ''))
+            const aSafe = Number.isFinite(aTime) ? aTime : Number.MIN_SAFE_INTEGER
+            const bSafe = Number.isFinite(bTime) ? bTime : Number.MIN_SAFE_INTEGER
+            return bSafe - aSafe
+        })
+    }
 
     useEffect(() => {
         const emp = employees.find(e => e.id === employeeId)
@@ -194,13 +203,14 @@ export default function EmployeeProfilePage() {
                 throw new Error(message || 'Failed to update status history')
             }
 
+            const sortedPayload = sortStatusHistoryByDateDesc(statusHistoryPayload)
             await refreshEmployees()
-            setStatusHistoryItems(statusHistoryPayload)
-            setStatusHistoryOriginal(JSON.stringify(statusHistoryPayload))
+            setStatusHistoryItems(sortedPayload)
+            setStatusHistoryOriginal(JSON.stringify(sortedPayload))
             setEmployee((prev) => prev ? {
                 ...prev,
-                status_history: statusHistoryPayload,
-                statusHistory: statusHistoryPayload
+                status_history: sortedPayload,
+                statusHistory: sortedPayload
             } : prev)
             toast('Status history updated', 'success')
         } catch (error) {
@@ -287,7 +297,9 @@ export default function EmployeeProfilePage() {
     const hasStatusHistoryChanges = JSON.stringify(statusHistoryItems) !== statusHistoryOriginal
 
     useEffect(() => {
-        const normalizedHistory = employmentStatusHistory.map((entry) => ({ ...entry }))
+        const normalizedHistory = sortStatusHistoryByDateDesc(
+            employmentStatusHistory.map((entry) => ({ ...entry }))
+        )
         setStatusHistoryItems(normalizedHistory)
         setStatusHistoryOriginal(JSON.stringify(normalizedHistory))
     }, [employee?.id, employmentStatusHistory])
@@ -538,8 +550,13 @@ export default function EmployeeProfilePage() {
                                                             </button>
                                                         </div>
                                                     </div>
-                                                    <div className="mt-1 text-xs text-slate-500">
-                                                        {employmentType} • {salary}
+                                                    <div className="mt-1 flex items-center justify-between gap-2">
+                                                        <span className="text-xs text-slate-500">{employmentType} • {salary}</span>
+                                                        {index === 0 && (
+                                                            <span className="rounded-full bg-emerald-100 px-2 py-0.5 text-[10px] font-bold uppercase tracking-wide text-emerald-700">
+                                                                Current
+                                                            </span>
+                                                        )}
                                                     </div>
                                                 </div>
                                             )
