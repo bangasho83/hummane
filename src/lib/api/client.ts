@@ -915,6 +915,8 @@ export const createLeaveApi = async (
     endDate: string
     unit?: string
     amount?: number
+    startTime?: string
+    endTime?: string
     companyId: string
     note?: string
     leaveTypeId?: string

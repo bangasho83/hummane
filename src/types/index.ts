@@ -184,6 +184,8 @@ export interface LeaveRecord {
     employeeId: string
     startDate?: string
     endDate?: string
+    startTime?: string
+    endTime?: string
     date: string
     type: string
     leaveTypeId?: string

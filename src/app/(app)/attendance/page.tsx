@@ -113,6 +113,15 @@ export default function AttendancePage() {
         return day === 0 || day === 6
     }
 
+    const toMeridiemTime = (value: string) => {
+        const [hoursRaw, minutes = '00'] = value.split(':')
+        const hoursNum = Number.parseInt(hoursRaw || '0', 10)
+        if (!Number.isFinite(hoursNum)) return value
+        const suffix = hoursNum >= 12 ? 'PM' : 'AM'
+        const normalizedHours = hoursNum % 12 || 12
+        return `${String(normalizedHours).padStart(2, '0')}:${minutes} ${suffix}`
+    }
+
     const fetchLeaves = async () => {
         if (!apiAccessToken || !rangeStart || !rangeEnd) {
             setLeaves([])
@@ -277,6 +286,8 @@ export default function AttendancePage() {
                 date: payloadStartDate,
                 startDate: payloadStartDate,
                 endDate: payloadEndDate,
+                startTime: unit === 'Hour' ? toMeridiemTime(startTime) : undefined,
+                endTime: unit === 'Hour' ? toMeridiemTime(endTime) : undefined,
                 type: leaveType ? leaveType.name : selectedType || 'Personal',
                 leaveTypeId: leaveType?.id,
                 unit,

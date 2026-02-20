@@ -122,6 +122,15 @@ export default function MemberLeavesPage() {
         setAttachment(null)
     }
 
+    const toMeridiemTime = (value: string) => {
+        const [hoursRaw, minutes = '00'] = value.split(':')
+        const hoursNum = Number.parseInt(hoursRaw || '0', 10)
+        if (!Number.isFinite(hoursNum)) return value
+        const suffix = hoursNum >= 12 ? 'PM' : 'AM'
+        const normalizedHours = hoursNum % 12 || 12
+        return `${String(normalizedHours).padStart(2, '0')}:${minutes} ${suffix}`
+    }
+
     const handleApplyLeave = async () => {
         if (!employeeId) {
             toast('No employee profile linked', 'error')
@@ -197,6 +206,8 @@ export default function MemberLeavesPage() {
                 date: payloadStartDate,
                 startDate: payloadStartDate,
                 endDate: payloadEndDate,
+                startTime: unit === 'Hour' ? toMeridiemTime(startTime) : undefined,
+                endTime: unit === 'Hour' ? toMeridiemTime(endTime) : undefined,
                 type: leaveType ? leaveType.name : selectedType || 'Personal',
                 leaveTypeId: leaveType?.id,
                 unit,
