@@ -39,6 +39,7 @@ export default function AttendancePage() {
     const [today, setToday] = useState<Date | null>(null)
     const [dates, setDates] = useState<Date[]>([])
     const [rangeError, setRangeError] = useState('')
+    const [nameFilter, setNameFilter] = useState('')
     // Build the date range on the client to avoid SSR/client drift
     useEffect(() => {
         const current = new Date()
@@ -327,6 +328,11 @@ export default function AttendancePage() {
             return haystack.includes(query)
         })
     }, [employees, employeeQuery])
+    const attendanceEmployees = useMemo(() => {
+        const query = nameFilter.trim().toLowerCase()
+        if (!query) return employees
+        return employees.filter((emp) => emp.name.toLowerCase().includes(query))
+    }, [employees, nameFilter])
 
     const filteredLeaveTypes = leaveTypesForEmployee(selectedEmployee)
 
@@ -546,19 +552,31 @@ export default function AttendancePage() {
                         </div>
                     )}
                 </div>
-                {leavesLoading && (
-                    <div className="text-xs font-bold text-slate-400 uppercase tracking-widest">
-                        Loading leave records...
+                <div className="flex items-end gap-3">
+                    <div className="space-y-1">
+                        <label className="text-xs font-bold text-slate-400 uppercase tracking-widest">Name</label>
+                        <Input
+                            type="text"
+                            placeholder="Filter by employee name"
+                            className="h-10 rounded-xl border-slate-200 min-w-[230px]"
+                            value={nameFilter}
+                            onChange={(e) => setNameFilter(e.target.value)}
+                        />
                     </div>
-                )}
+                    {leavesLoading && (
+                        <div className="text-xs font-bold text-slate-400 uppercase tracking-widest mb-2">
+                            Loading leave records...
+                        </div>
+                    )}
+                </div>
             </div>
 
-                <div className="bg-white rounded-3xl shadow-premium border border-slate-100 overflow-hidden">
-                    <div className="overflow-x-auto">
-                        <Table>
+                <div className="bg-white rounded-3xl shadow-premium border border-slate-100">
+                    <div className="max-h-[70vh] overflow-auto">
+                        <Table containerClassName="overflow-visible">
                             <TableHeader className="bg-slate-50/50">
                                 <TableRow className="hover:bg-transparent border-slate-100">
-                                    <TableHead className="sticky left-0 bg-slate-50 z-20 w-48 pl-8 py-4 font-extrabold uppercase tracking-widest text-[10px] text-slate-400 border-r border-slate-100 shadow-[4px_0_8px_-4px_rgba(0,0,0,0.05)]">
+                                    <TableHead className="sticky left-0 top-0 bg-slate-50 z-40 w-48 pl-8 py-4 font-extrabold uppercase tracking-widest text-[10px] text-slate-400 border-r border-slate-100 shadow-[4px_0_8px_-4px_rgba(0,0,0,0.05)]">
                                         Employee
                                     </TableHead>
                                     {dates.map((date, i) => {
@@ -567,7 +585,7 @@ export default function AttendancePage() {
                                             <TableHead
                                                 key={i}
                                                 className={cn(
-                                                    "w-12 h-12 text-center p-0 font-bold border-l border-slate-50",
+                                                    "sticky top-0 z-30 w-12 h-12 text-center p-0 font-bold border-l border-slate-50 bg-slate-50",
                                                     isToday ? "bg-blue-50 text-blue-600" : "text-slate-400"
                                                 )}
                                             >
@@ -581,7 +599,7 @@ export default function AttendancePage() {
                                 </TableRow>
                             </TableHeader>
                             <TableBody>
-                                {employees.length === 0 ? (
+                                {attendanceEmployees.length === 0 ? (
                                     <TableRow>
                                         <TableCell colSpan={dates.length + 1} className="border-0">
                                             <div className="p-20 flex flex-col items-center justify-center text-center">
@@ -589,16 +607,18 @@ export default function AttendancePage() {
                                                     <CalendarIcon className="w-10 h-10 text-slate-200" />
                                                 </div>
                                                 <h2 className="text-2xl font-bold text-slate-900 mb-2">
-                                                    No Employees Yet
+                                                    {employees.length === 0 ? 'No Employees Yet' : 'No Matching Employees'}
                                                 </h2>
                                                 <p className="text-slate-500 font-medium max-w-sm">
-                                                    Add employees to start tracking attendance and managing leaves.
+                                                    {employees.length === 0
+                                                        ? 'Add employees to start tracking attendance and managing leaves.'
+                                                        : 'Try a different name in the filter.'}
                                                 </p>
                                             </div>
                                         </TableCell>
                                     </TableRow>
                                 ) : (
-                                    employees.map((emp) => (
+                                    attendanceEmployees.map((emp) => (
                                         <TableRow key={emp.id} className="hover:bg-slate-50/30 border-slate-50">
                                             <TableCell className="sticky left-0 bg-white z-10 w-48 pl-8 py-4 border-r border-slate-100 shadow-[4px_0_8px_-4px_rgba(0,0,0,0.05)]">
                                                 <Link href={`/team/${emp.id}/attendance`} className="block group">
@@ -719,7 +739,7 @@ export default function AttendancePage() {
                     </div>
                     <div className="p-8 border-t border-slate-50 bg-slate-50/30">
                         <p className="text-xs font-bold text-slate-400 uppercase tracking-widest">
-                            {employees.length} {employees.length === 1 ? 'Employee' : 'Employees'} Tracked
+                            {attendanceEmployees.length} {attendanceEmployees.length === 1 ? 'Employee' : 'Employees'} Tracked
                         </p>
                     </div>
                 </div>

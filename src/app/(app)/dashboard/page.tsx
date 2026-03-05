@@ -2,9 +2,10 @@
 
 import { useEffect, useMemo } from 'react'
 import { useRouter } from 'next/navigation'
+import Link from 'next/link'
 import { useApp } from '@/lib/context/AppContext'
 import { Button } from '@/components/ui/button'
-import { Plus, CalendarCheck, Briefcase, UserPlus, FileText } from 'lucide-react'
+import { Plus, CalendarCheck, Briefcase, UserPlus, FileText, User } from 'lucide-react'
 import { StatsCards } from '@/features/dashboard'
 import { formatCurrency, formatDate } from '@/lib/utils'
 import { EMPLOYMENT_TYPES } from '@/types'
@@ -35,55 +36,84 @@ export default function DashboardPage() {
             const count = employmentCounts[type] || 0
             const percent = totalEmployees ? Math.round((count / totalEmployees) * 100) : 0
             return { type, count, percent }
-        })
+        }).sort((a, b) => b.count - a.count)
     }, [employmentCounts, totalEmployees])
 
-    const topDepartments = useMemo(() => {
+    const departmentStats = useMemo(() => {
         const counts = employees.reduce<Record<string, number>>((acc, emp) => {
-            if (!emp.department) return acc
-            acc[emp.department] = (acc[emp.department] || 0) + 1
+            const departmentName = (emp.departmentName || emp.department || '').trim()
+            if (!departmentName) return acc
+            acc[departmentName] = (acc[departmentName] || 0) + 1
             return acc
         }, {})
-        return Object.entries(counts)
-            .sort((a, b) => b[1] - a[1])
-            .slice(0, 4)
-    }, [employees])
 
-    const currentMonthKey = todayKey ? todayKey.slice(0, 7) : ''
+        const configuredDepartmentNames = departments
+            .map((dept) => (dept.name || '').trim())
+            .filter(Boolean)
 
-    const onLeaveToday = useMemo(() => {
-        if (!todayKey) return 0
-        const unique = new Set(
-            leaves
-                .filter(leave => leave.date.split('T')[0] === todayKey)
-                .map(leave => leave.employeeId)
+        const allDepartmentNames = Array.from(
+            new Set([...configuredDepartmentNames, ...Object.keys(counts)])
         )
-        return unique.size
-    }, [leaves, todayKey])
 
-    const leaveEntriesThisMonth = useMemo(() => {
-        if (!currentMonthKey) return 0
-        return leaves.filter(leave => leave.date.split('T')[0].startsWith(currentMonthKey)).length
-    }, [leaves, currentMonthKey])
+        return allDepartmentNames
+            .map((name) => [name, counts[name] || 0] as [string, number])
+            .sort((a, b) => {
+                if (b[1] !== a[1]) return b[1] - a[1]
+                return a[0].localeCompare(b[0])
+            })
+    }, [employees, departments])
 
     const leaveTypeNameById = useMemo(() => {
         return new Map(leaveTypes.map(leaveType => [leaveType.id, leaveType.name]))
     }, [leaveTypes])
 
-    const leaveTypeUsage = useMemo(() => {
-        const counts = new Map<string, number>()
-        leaves.forEach(leave => {
-            const name = leave.leaveTypeId
-                ? leaveTypeNameById.get(leave.leaveTypeId) || leave.type
-                : leave.type
-            const key = name || 'Leave'
-            counts.set(key, (counts.get(key) || 0) + 1)
+    const onLeaveTodayEntries = useMemo(() => {
+        if (!todayKey) return []
+        const normalizeDate = (value?: string) => (value ? value.split('T')[0] : '')
+        const isLeaveOnToday = (leave: typeof leaves[number]) => {
+            const singleDate = normalizeDate(leave.date)
+            if (singleDate === todayKey) return true
+            const startDate = normalizeDate(leave.startDate)
+            const endDate = normalizeDate(leave.endDate)
+            if (startDate && endDate) {
+                return todayKey >= startDate && todayKey <= endDate
+            }
+            if (leave.leaveDays?.length) {
+                return leave.leaveDays.some((day) => normalizeDate(day.date) === todayKey)
+            }
+            return false
+        }
+
+        const byEmployee = new Map<string, typeof leaves[number][]>()
+        leaves.filter(isLeaveOnToday).forEach((leave) => {
+            const bucket = byEmployee.get(leave.employeeId) || []
+            bucket.push(leave)
+            byEmployee.set(leave.employeeId, bucket)
         })
-        return Array.from(counts.entries())
-            .sort((a, b) => b[1] - a[1])
-            .slice(0, 3)
-            .map(([name, count]) => ({ name, count }))
-    }, [leaves, leaveTypeNameById])
+
+        return Array.from(byEmployee.entries())
+            .map(([employeeId, employeeLeaves]) => {
+                const employee = employees.find((item) => item.id === employeeId)
+                const employeeName = employee?.name || 'Employee'
+                const sortedLeaves = [...employeeLeaves].sort(
+                    (a, b) => new Date(b.createdAt || b.date || 0).getTime() - new Date(a.createdAt || a.date || 0).getTime()
+                )
+                const primary = sortedLeaves[0]
+                const leaveType = primary?.leaveTypeId
+                    ? leaveTypeNameById.get(primary.leaveTypeId) || primary.type || 'Leave'
+                    : primary?.type || 'Leave'
+                const rawReason = primary?.note?.trim() || 'No reason provided'
+                const reason = rawReason.length > 72 ? `${rawReason.slice(0, 72)}...` : rawReason
+                return {
+                    employeeId,
+                    employeeName,
+                    photoUrl: employee?.photoUrl || employee?.profilePicture || '',
+                    leaveType,
+                    reason
+                }
+            })
+            .sort((a, b) => a.employeeName.localeCompare(b.employeeName))
+    }, [employees, leaves, leaveTypeNameById, todayKey])
 
     const upcomingHolidays = useMemo(() => {
         if (!todayKey) return []
@@ -284,15 +314,23 @@ export default function DashboardPage() {
                             </div>
                         </div>
                         <div>
-                            <h4 className="text-sm font-bold text-slate-700 mb-4">Top Departments</h4>
-                            {topDepartments.length === 0 ? (
+                            <h4 className="text-sm font-bold text-slate-700 mb-4">Departments</h4>
+                            {departmentStats.length === 0 ? (
                                 <p className="text-sm text-slate-500">No department assignments yet.</p>
                             ) : (
                                 <div className="space-y-4">
-                                    {topDepartments.map(([dept, count]) => (
-                                        <div key={dept} className="flex items-center justify-between text-sm">
-                                            <span className="font-semibold text-slate-700">{dept}</span>
-                                            <span className="text-slate-500">{count} members</span>
+                                    {departmentStats.map(([dept, count]) => (
+                                        <div key={dept} className="space-y-2">
+                                            <div className="flex items-center justify-between text-sm">
+                                                <span className="font-semibold text-slate-700">{dept}</span>
+                                                <span className="text-slate-500">{count}</span>
+                                            </div>
+                                            <div className="h-2 rounded-full bg-slate-100 overflow-hidden">
+                                                <div
+                                                    className="h-2 rounded-full bg-blue-500"
+                                                    style={{ width: `${totalEmployees ? Math.round((count / totalEmployees) * 100) : 0}%` }}
+                                                />
+                                            </div>
                                         </div>
                                     ))}
                                 </div>
@@ -306,15 +344,50 @@ export default function DashboardPage() {
                         <h3 className="text-xl font-bold text-slate-900">Attendance & Leave</h3>
                         <p className="text-sm text-slate-500">Daily coverage and policy utilization.</p>
                     </div>
-                    <div className="grid grid-cols-2 gap-4 mb-6">
-                        <div className="rounded-2xl border border-slate-100 p-4">
-                            <p className="text-[11px] uppercase tracking-widest text-slate-400 font-semibold">On Leave Today</p>
-                            <p className="text-xl font-bold text-slate-900 mt-2">{onLeaveToday}</p>
+                    <div className="mb-6">
+                        <div className="flex items-center justify-between mb-4">
+                            <div>
+                                <h4 className="text-lg font-bold text-slate-900">On Leave Today</h4>
+                                <p className="text-sm text-slate-500">Team members away</p>
+                            </div>
+                            <Link href="/attendance" className="text-sm font-semibold text-blue-600 hover:text-blue-700">
+                                View All →
+                            </Link>
                         </div>
-                        <div className="rounded-2xl border border-slate-100 p-4">
-                            <p className="text-[11px] uppercase tracking-widest text-slate-400 font-semibold">Leaves This Month</p>
-                            <p className="text-xl font-bold text-slate-900 mt-2">{leaveEntriesThisMonth}</p>
-                        </div>
+                        {onLeaveTodayEntries.length === 0 ? (
+                            <div className="py-6 text-center">
+                                <div className="w-12 h-12 bg-emerald-50 rounded-2xl flex items-center justify-center mx-auto mb-3">
+                                    <User className="w-6 h-6 text-emerald-500" />
+                                </div>
+                                <p className="text-sm font-medium text-emerald-600">Everyone is in today!</p>
+                            </div>
+                        ) : (
+                            <div className="space-y-3">
+                                {onLeaveTodayEntries.slice(0, 5).map((entry) => (
+                                    <div key={entry.employeeId} className="flex items-start gap-3 p-3 rounded-xl bg-slate-50">
+                                        {entry.photoUrl ? (
+                                            <img
+                                                src={entry.photoUrl}
+                                                alt={entry.employeeName}
+                                                className="w-10 h-10 rounded-full object-cover border border-slate-200"
+                                            />
+                                        ) : (
+                                            <div className="w-10 h-10 rounded-full bg-slate-200 flex items-center justify-center text-slate-500 shrink-0">
+                                                <User className="w-5 h-5" />
+                                            </div>
+                                        )}
+                                        <div className="min-w-0">
+                                            <p className="text-sm font-semibold text-slate-900">{entry.employeeName}</p>
+                                            <p className="text-xs text-slate-500">{entry.leaveType}</p>
+                                            <p className="text-xs text-slate-500 mt-1 truncate">{entry.reason}</p>
+                                        </div>
+                                    </div>
+                                ))}
+                                {onLeaveTodayEntries.length > 5 && (
+                                    <p className="text-xs text-center text-slate-500">+{onLeaveTodayEntries.length - 5} more</p>
+                                )}
+                            </div>
+                        )}
                     </div>
     
                     <div className="space-y-4">
@@ -328,21 +401,6 @@ export default function DashboardPage() {
                                         <div key={holiday.id} className="flex items-center justify-between text-sm">
                                             <span className="font-semibold text-slate-700">{holiday.name}</span>
                                             <span className="text-slate-500">{formatDate(holiday.date)}</span>
-                                        </div>
-                                    ))}
-                                </div>
-                            )}
-                        </div>
-                        <div>
-                            <h4 className="text-sm font-bold text-slate-700 mb-3">Top Leave Types</h4>
-                            {leaveTypeUsage.length === 0 ? (
-                                <p className="text-sm text-slate-500">No leave activity recorded yet.</p>
-                            ) : (
-                                <div className="space-y-3">
-                                    {leaveTypeUsage.map(item => (
-                                        <div key={item.name} className="flex items-center justify-between text-sm">
-                                            <span className="font-semibold text-slate-700">{item.name}</span>
-                                            <span className="text-slate-500">{item.count} entries</span>
                                         </div>
                                     ))}
                                 </div>
