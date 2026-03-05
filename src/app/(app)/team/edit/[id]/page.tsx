@@ -208,6 +208,7 @@ export default function EditEmployeePage() {
                                 submitLabel="Update Employee Info"
                                 loading={loading}
                                 showEmploymentSection={false}
+                                showDepartmentAndManagerSection={true}
                                 showJoiningDateField={true}
                                 onRoleChange={setSelectedRoleId}
                             />

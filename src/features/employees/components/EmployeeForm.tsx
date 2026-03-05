@@ -32,6 +32,7 @@ interface EmployeeFormProps {
     submitLabel?: string
     loading?: boolean
     showEmploymentSection?: boolean
+    showDepartmentAndManagerSection?: boolean
     showJoiningDateField?: boolean
     onRoleChange?: (roleId: string) => void
     onPhotoUploadDebug?: (info: PhotoUploadDebugInfo) => void
@@ -131,6 +132,7 @@ export function EmployeeForm({
     submitLabel = 'Save Employee',
     loading = false,
     showEmploymentSection = true,
+    showDepartmentAndManagerSection = false,
     showJoiningDateField = false,
     onRoleChange,
     onPhotoUploadDebug
@@ -622,6 +624,67 @@ export function EmployeeForm({
                     </div>
                 </div>
             </div>
+
+            {!showEmploymentSection && showDepartmentAndManagerSection && (
+                <div>
+                    <SectionHeader title="Team Assignment" />
+                    <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                        <div className="space-y-2">
+                            <Label htmlFor="department">Department</Label>
+                            {departments.length > 0 ? (
+                                <>
+                                    <Select key={`${formData.departmentId}-${departments.length}`} value={formData.departmentId} onValueChange={(value) => handleChange('departmentId', value)}>
+                                        <SelectTrigger id="department" className={`rounded-xl border-slate-200 ${errors.department ? 'border-red-500' : ''}`}>
+                                            <SelectValue placeholder="Select Department" />
+                                        </SelectTrigger>
+                                        <SelectContent className="max-h-72 overflow-y-auto">
+                                            <div className="p-2 sticky top-0 bg-white z-10 border-b border-slate-100">
+                                                <Input
+                                                    value={departmentQuery}
+                                                    onChange={(e) => setDepartmentQuery(e.target.value)}
+                                                    placeholder="Search departments..."
+                                                    className="h-9 rounded-lg"
+                                                    onKeyDown={(e) => e.stopPropagation()}
+                                                    onClick={(e) => e.stopPropagation()}
+                                                />
+                                            </div>
+                                            {filteredDepartments.map((dept) => <SelectItem key={dept.id} value={dept.id}>{dept.name}</SelectItem>)}
+                                        </SelectContent>
+                                    </Select>
+                                    {errors.department && <p className="text-xs text-red-600 mt-1">{errors.department}</p>}
+                                </>
+                            ) : (
+                                <div className="text-sm p-3 bg-slate-50 border border-dashed border-slate-200 rounded-xl text-slate-500">
+                                    No departments found. <Link href="/departments" className="text-blue-600 font-bold hover:underline">Create one</Link> first.
+                                </div>
+                            )}
+                        </div>
+                        <div className="space-y-2">
+                            <Label htmlFor="reportingManager">Reporting Manager</Label>
+                            <Select value={formData.reportingManager || "self"} onValueChange={(value) => handleChange('reportingManager', value)} key={`${formData.reportingManager}-${employees.length}`}>
+                                <SelectTrigger id="reportingManager" className={`rounded-xl border-slate-200 ${errors.reportingManager ? 'border-red-500' : ''}`}>
+                                    <SelectValue placeholder="Select Manager" />
+                                </SelectTrigger>
+                                <SelectContent className="max-h-72 overflow-y-auto">
+                                    <div className="p-2 sticky top-0 bg-white z-10 border-b border-slate-100">
+                                        <Input
+                                            value={managerQuery}
+                                            onChange={(e) => setManagerQuery(e.target.value)}
+                                            placeholder="Search managers..."
+                                            className="h-9 rounded-lg"
+                                            onKeyDown={(e) => e.stopPropagation()}
+                                            onClick={(e) => e.stopPropagation()}
+                                        />
+                                    </div>
+                                    <SelectItem value="self">Self / This employee leads</SelectItem>
+                                    {showMissingManager && <SelectItem value={reportingManagerId as string}>{missingManagerLabel}</SelectItem>}
+                                    {filteredManagers.map((emp) => <SelectItem key={emp.id} value={emp.id}>{emp.name} [{emp.employeeId}]</SelectItem>)}
+                                </SelectContent>
+                            </Select>
+                        </div>
+                    </div>
+                </div>
+            )}
 
             {/* ═══════════════════════════════════════════════════════════════════════════
                 SECTION: Employment Details
