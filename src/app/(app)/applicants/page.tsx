@@ -1,6 +1,6 @@
 'use client'
 
-import { useEffect, useMemo, useRef, useState } from 'react'
+import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import { useRouter, useSearchParams } from 'next/navigation'
 import { Plus, Trash2, Users, Search, Briefcase, ExternalLink } from 'lucide-react'
 import { useApp } from '@/lib/context/AppContext'
@@ -40,18 +40,24 @@ const createEmptyApplicant = (appliedDate: string): ApplicantFormData => ({
 })
 
 export default function ApplicantsPage() {
+    const API_BASE_URL = process.env.NEXT_PUBLIC_API_BASE_URL || 'https://hummane-api.vercel.app'
+    const PAGE_LIMIT = 100
     const router = useRouter()
     const searchParams = useSearchParams()
     const jobIdParam = searchParams.get('jobId')
-    const { applicants, jobs, roles, createApplicant, deleteApplicant, refreshApplicants, apiAccessToken } = useApp()
+    const { jobs, roles, createApplicant, deleteApplicant, apiAccessToken } = useApp()
     const [isAddOpen, setIsAddOpen] = useState(false)
     const [loading, setLoading] = useState(false)
+    const [loadingApplicants, setLoadingApplicants] = useState(false)
     const [searchTerm, setSearchTerm] = useState('')
     const [todayDate, setTodayDate] = useState('')
     const [newApplicant, setNewApplicant] = useState<ApplicantFormData>(() => createEmptyApplicant(''))
     const [departmentFilter, setDepartmentFilter] = useState('all')
     const [roleFilter, setRoleFilter] = useState('all')
     const [resumeFile, setResumeFile] = useState<File | null>(null)
+    const [applicantRows, setApplicantRows] = useState<Applicant[]>([])
+    const [totalApplicants, setTotalApplicants] = useState(0)
+    const [currentPage, setCurrentPage] = useState(1)
     const resumeInputRef = useRef<HTMLInputElement | null>(null)
 
     useEffect(() => {
@@ -60,15 +66,54 @@ export default function ApplicantsPage() {
         setNewApplicant(prev => ({ ...prev, appliedDate: today }))
     }, [])
 
-    // Fetch applicants when page loads or jobId filter changes
-    useEffect(() => {
-        if (jobIdParam) {
-            void refreshApplicants(jobIdParam)
-        } else {
-            void refreshApplicants()
+    const fetchApplicantsPage = useCallback(async (page: number) => {
+        if (!apiAccessToken) {
+            setApplicantRows([])
+            setTotalApplicants(0)
+            return
         }
-        // eslint-disable-next-line react-hooks/exhaustive-deps
+        setLoadingApplicants(true)
+        try {
+            const params = new URLSearchParams({
+                page: String(page),
+                limit: String(PAGE_LIMIT)
+            })
+            if (jobIdParam) {
+                params.set('jobId', jobIdParam)
+            }
+            const response = await fetch(`${API_BASE_URL}/applicants?${params.toString()}`, {
+                method: 'GET',
+                headers: {
+                    Authorization: `Bearer ${apiAccessToken}`
+                }
+            })
+            if (!response.ok) {
+                const message = await response.text()
+                throw new Error(message || 'Failed to fetch applicants')
+            }
+            const payload = await response.json().catch(() => null)
+            const list = payload?.data || payload?.applicants || payload
+            const rows = Array.isArray(list) ? (list as Applicant[]) : []
+            const total = Number(payload?.total)
+            setApplicantRows(rows)
+            setTotalApplicants(Number.isFinite(total) ? total : rows.length)
+        } catch (error) {
+            const message = error instanceof Error ? error.message : 'Failed to fetch applicants'
+            toast(message, 'error')
+            setApplicantRows([])
+            setTotalApplicants(0)
+        } finally {
+            setLoadingApplicants(false)
+        }
+    }, [API_BASE_URL, PAGE_LIMIT, apiAccessToken, jobIdParam])
+
+    useEffect(() => {
+        setCurrentPage(1)
     }, [jobIdParam])
+
+    useEffect(() => {
+        void fetchApplicantsPage(currentPage)
+    }, [currentPage, fetchApplicantsPage])
 
     const departments = useMemo(() => {
         const unique = [...new Set(jobs.map(job => job.department).filter(Boolean) as string[])]
@@ -118,7 +163,7 @@ export default function ApplicantsPage() {
         return Math.round(value).toLocaleString('en-US', { maximumFractionDigits: 0 })
     }
 
-    const filteredApplicants = applicants.filter(applicant => {
+    const filteredApplicants = applicantRows.filter(applicant => {
         const job = getApplicantJob(applicant)
         const matchesSearch =
             applicant.fullName.toLowerCase().includes(searchTerm.toLowerCase()) ||
@@ -136,6 +181,7 @@ export default function ApplicantsPage() {
     }
 
     const hasActiveFilters = searchTerm || departmentFilter !== 'all' || roleFilter !== 'all'
+    const totalPages = Math.max(1, Math.ceil(totalApplicants / PAGE_LIMIT))
 
     const handleAdd = async (e: React.FormEvent) => {
         e.preventDefault()
@@ -187,6 +233,8 @@ export default function ApplicantsPage() {
             setResumeFile(null)
             setIsAddOpen(false)
             toast('Applicant added successfully', 'success')
+            setCurrentPage(1)
+            await fetchApplicantsPage(1)
         } catch (error) {
             const message = error instanceof Error ? error.message : 'Failed to add applicant'
             toast(message, 'error')
@@ -200,6 +248,11 @@ export default function ApplicantsPage() {
             try {
                 await deleteApplicant(id)
                 toast('Applicant deleted', 'success')
+                const estimatedTotalAfterDelete = Math.max(0, totalApplicants - 1)
+                const nextTotalPages = Math.max(1, Math.ceil(estimatedTotalAfterDelete / PAGE_LIMIT))
+                const nextPage = Math.min(currentPage, nextTotalPages)
+                setCurrentPage(nextPage)
+                await fetchApplicantsPage(nextPage)
             } catch (error) {
                 toast('Failed to delete applicant', 'error')
             }
@@ -587,10 +640,14 @@ export default function ApplicantsPage() {
                             <Users className="w-10 h-10 text-slate-200" />
                         </div>
                         <h2 className="text-2xl font-bold text-slate-900 mb-2">
-                            {searchTerm ? 'No results found' : 'No Applicants Yet'}
+                            {loadingApplicants ? 'Loading applicants...' : searchTerm ? 'No results found' : 'No Applicants Yet'}
                         </h2>
                         <p className="text-slate-500 font-medium max-w-sm">
-                            {searchTerm ? `We couldn't find any applicants matching "${searchTerm}".` : 'Add your first applicant to start tracking candidates.'}
+                            {loadingApplicants
+                                ? 'Fetching applicant records...'
+                                : searchTerm
+                                    ? `We couldn't find any applicants matching "${searchTerm}".`
+                                    : 'Add your first applicant to start tracking candidates.'}
                         </p>
                     </div>
                 ) : (
@@ -700,6 +757,31 @@ export default function ApplicantsPage() {
                             </TableBody>
                         </Table>
                     )}
+                <div className="p-6 border-t border-slate-100 bg-slate-50/40 flex items-center justify-between">
+                    <p className="text-sm text-slate-500">
+                        Page {currentPage} of {totalPages} • {totalApplicants} total applicants
+                    </p>
+                    <div className="flex items-center gap-2">
+                        <Button
+                            variant="outline"
+                            size="sm"
+                            className="rounded-xl"
+                            disabled={currentPage <= 1 || loadingApplicants}
+                            onClick={() => setCurrentPage((prev) => Math.max(1, prev - 1))}
+                        >
+                            Previous
+                        </Button>
+                        <Button
+                            variant="outline"
+                            size="sm"
+                            className="rounded-xl"
+                            disabled={currentPage >= totalPages || loadingApplicants}
+                            onClick={() => setCurrentPage((prev) => Math.min(totalPages, prev + 1))}
+                        >
+                            Next
+                        </Button>
+                    </div>
+                </div>
                 </div>
         </div>
     )
