@@ -11,7 +11,6 @@ import { Input } from '@/components/ui/input'
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select'
 import { toast } from '@/components/ui/toast'
 import { useApp } from '@/lib/context/AppContext'
-import type { FeedbackCard } from '@/types'
 
 type DraftAnswer = {
     questionId: string
@@ -24,6 +23,7 @@ export default function NewFeedbackPage() {
     const pathname = usePathname()
     const searchParams = useSearchParams()
     const { feedbackCards, employees, applicants, createFeedbackEntry, isHydrating } = useApp()
+    const requestedSubjectName = searchParams.get('subjectName')?.trim() || ''
     const parseTypeParam = (value: string | null): 'Team Member' | 'Applicant' => {
         if (!value) return 'Team Member'
         const normalized = value.trim().toLowerCase()
@@ -57,6 +57,22 @@ export default function NewFeedbackPage() {
             : employees.map(e => ({ id: e.id, label: e.name }))
     }, [type, applicants, employees])
 
+    const selectedSubject = useMemo(
+        () => subjects.find(subject => subject.id === subjectId) || null,
+        [subjects, subjectId]
+    )
+
+    const subjectsWithSelection = useMemo(() => {
+        if (!subjectId || selectedSubject) return subjects
+        return [
+            {
+                id: subjectId,
+                label: requestedSubjectName || (type === 'Applicant' ? 'Selected applicant' : 'Selected team member')
+            },
+            ...subjects
+        ]
+    }, [requestedSubjectName, selectedSubject, subjectId, subjects, type])
+
     const authors = useMemo(
         () => employees.map(e => ({ id: e.id, label: e.name })),
         [employees]
@@ -70,9 +86,13 @@ export default function NewFeedbackPage() {
 
     const filteredSubjects = useMemo(() => {
         const query = subjectQuery.trim().toLowerCase()
-        if (!query) return subjects
-        return subjects.filter(subject => subject.label.toLowerCase().includes(query))
-    }, [subjects, subjectQuery])
+        if (!query) return subjectsWithSelection
+        const filtered = subjectsWithSelection.filter(subject => subject.label.toLowerCase().includes(query))
+        if (!subjectId) return filtered
+        const selected = subjectsWithSelection.find(subject => subject.id === subjectId)
+        if (!selected || filtered.some(subject => subject.id === selected.id)) return filtered
+        return [selected, ...filtered]
+    }, [subjectId, subjectQuery, subjectsWithSelection])
 
     useEffect(() => {
         const params = new URLSearchParams(searchParams.toString())
@@ -81,14 +101,21 @@ export default function NewFeedbackPage() {
         else params.delete('cardId')
         if (authorId) params.set('fromId', authorId)
         else params.delete('fromId')
-        if (subjectId) params.set('subjectId', subjectId)
-        else params.delete('subjectId')
+        if (subjectId) {
+            params.set('subjectId', subjectId)
+            const subjectName = selectedSubject?.label || requestedSubjectName
+            if (subjectName) params.set('subjectName', subjectName)
+            else params.delete('subjectName')
+        } else {
+            params.delete('subjectId')
+            params.delete('subjectName')
+        }
         const nextQuery = params.toString()
         const currentQuery = searchParams.toString()
         if (nextQuery === currentQuery) return
         const nextUrl = nextQuery ? `${pathname}?${nextQuery}` : pathname
         router.replace(nextUrl, { scroll: false })
-    }, [type, cardId, authorId, subjectId, pathname, router, searchParams])
+    }, [type, cardId, authorId, subjectId, pathname, requestedSubjectName, router, searchParams, selectedSubject])
 
     useEffect(() => {
         if (!cardId) return
@@ -106,14 +133,6 @@ export default function NewFeedbackPage() {
             setAuthorId('')
         }
     }, [authorId, authors])
-
-    useEffect(() => {
-        if (!subjectId) return
-        if (subjects.length === 0) return
-        if (!subjects.some(subject => subject.id === subjectId)) {
-            setSubjectId('')
-        }
-    }, [subjectId, subjects])
 
     useEffect(() => {
         if (!selectedCard) {
@@ -174,7 +193,7 @@ export default function NewFeedbackPage() {
             return
         }
         setSaving(true)
-        const subject = subjects.find(s => s.id === subjectId)
+        const subject = selectedSubject || subjectsWithSelection.find(s => s.id === subjectId)
         const apiPayload = {
             cardId,
             subjectType: type === 'Applicant' ? 'Applicant' : 'Employee',
@@ -205,7 +224,7 @@ export default function NewFeedbackPage() {
                 subjectType: type === 'Applicant' ? 'Applicant' : 'Employee',
                 cardId,
                 subjectId,
-                subjectName: subject?.label,
+                subjectName: subject?.label || requestedSubjectName,
                 authorId,
                 answers: answers.map(a => {
                     const question = selectedCard.questions.find(q => q.id === a.questionId)
@@ -221,7 +240,7 @@ export default function NewFeedbackPage() {
             })
             toast('Feedback submitted', 'success')
             router.push('/performance/feedback')
-        } catch (error) {
+        } catch {
             toast('Failed to submit feedback', 'error')
         } finally {
             setSaving(false)
@@ -356,7 +375,7 @@ export default function NewFeedbackPage() {
                     {selectedCard && subjectId && (
                         <div className="space-y-4">
                             <div className="space-y-3">
-                                {selectedCard.questions.map((q, index) => {
+                                {selectedCard.questions.map((q) => {
                                     const kind = q.kind ?? 'score'
                                     if (kind === 'content') {
                                         return (

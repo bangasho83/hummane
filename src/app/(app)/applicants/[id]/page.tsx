@@ -518,7 +518,7 @@ export default function ApplicantDetailPage() {
                                         type="button"
                                         size="sm"
                                         className="rounded-xl bg-blue-600 text-white font-bold shadow-blue-500/20"
-                                        onClick={() => router.push(`/performance/feedback/new?type=applicant&subjectId=${encodeURIComponent(applicant.id)}`)}
+                                        onClick={() => router.push(`/performance/feedback/new?type=applicant&subjectId=${encodeURIComponent(applicant.id)}&subjectName=${encodeURIComponent(applicant.fullName)}`)}
                                     >
                                         Add Feedback
                                     </Button>
