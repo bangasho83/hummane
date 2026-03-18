@@ -425,6 +425,11 @@ export function AppProvider({ children }: { children: ReactNode }) {
         }
     }
 
+    // Generate a deterministic question ID based on card ID and index
+    const generateQuestionId = (cardId: string, index: number): string => {
+        return `${cardId}_q${index}`
+    }
+
     const normalizeFeedbackCard = (
         card: Partial<FeedbackCard>,
         companyId: string,
@@ -453,12 +458,11 @@ export function AppProvider({ children }: { children: ReactNode }) {
             const weight = kind === 'score'
                 ? question.weight ?? fallbackQuestion?.weight ?? 1
                 : undefined
+            // Use deterministic ID: cardId_qIndex (consistent across reloads)
             const questionId =
                 question.id ||
                 fallbackQuestion?.id ||
-                (typeof crypto !== 'undefined' && 'randomUUID' in crypto
-                    ? crypto.randomUUID()
-                    : `fq_${Date.now()}_${index}`)
+                generateQuestionId(id, index)
 
             return {
                 id: questionId,

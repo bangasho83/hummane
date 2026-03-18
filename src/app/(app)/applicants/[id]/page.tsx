@@ -5,13 +5,14 @@ import 'quill/dist/quill.snow.css'
 import { useEffect, useMemo, useState, useCallback, useRef } from 'react'
 import { useRouter, useParams } from 'next/navigation'
 import Link from 'next/link'
-import { ArrowLeft, FileText, ExternalLink, Linkedin } from 'lucide-react'
+import { ArrowLeft, FileText, ExternalLink, Linkedin, Copy, ChevronDown, ChevronUp } from 'lucide-react'
 import { useApp } from '@/lib/context/AppContext'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select'
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog'
 import { toast } from '@/components/ui/toast'
+import { Card, CardContent } from '@/components/ui/card'
 import { APPLICANT_STATUSES, type Applicant, type ApplicantStatus, type FeedbackCard, type FeedbackEntry } from '@/types'
 import { Progress } from '@/components/ui/progress'
 import { fetchApplicantApi, fetchFeedbackEntriesApi } from '@/lib/api/client'
@@ -59,17 +60,42 @@ export default function ApplicantDetailPage() {
     const [activeTab, setActiveTab] = useState<'details' | 'feedback'>('details')
     const lastFetchedApplicantId = useRef<string | null>(null)
 
+    // Debug panel state
+    const [debugExpanded, setDebugExpanded] = useState(false)
+    const [apiResponse, setApiResponse] = useState<string>('')
+    const [curlCommand, setCurlCommand] = useState<string>('')
+
     const fetchApplicantFromApi = useCallback(async () => {
         if (!apiAccessToken || !params.id) return null
 
+        const applicantUrl = `${API_BASE_URL}/applicants/${params.id}`
+        const curl = `curl -X GET '${applicantUrl}' \\
+  -H 'Authorization: Bearer ${apiAccessToken}'`
+        setCurlCommand(curl)
+
         try {
-            const apiApplicant = await fetchApplicantApi(params.id as string, apiAccessToken)
+            const response = await fetch(applicantUrl, {
+                method: 'GET',
+                headers: {
+                    Authorization: `Bearer ${apiAccessToken}`,
+                },
+            })
+            const data = await response.json().catch(() => null)
+            setApiResponse(JSON.stringify(data, null, 2))
+
+            const apiApplicant = data?.data || data
             return apiApplicant
         } catch (error) {
             console.error('Error fetching applicant from API:', error)
+            setApiResponse(JSON.stringify({ error: String(error) }, null, 2))
             return null
         }
     }, [apiAccessToken, params.id])
+
+    const copyToClipboard = (text: string) => {
+        navigator.clipboard.writeText(text)
+        toast('Copied to clipboard', 'success')
+    }
 
     useEffect(() => {
         const loadApplicant = async () => {
@@ -673,11 +699,17 @@ export default function ApplicantDetailPage() {
                             const card = cardsById.get(entry.cardId) as FeedbackCard | undefined
                             const questions = detail?.card?.questions || []
                             const answerByQuestionId = new Map(entry.answers.map(answer => [answer.questionId, answer]))
+                            // Use deterministic ID: cardId_qIndex (consistent with normalizeFeedbackCard)
+                            const getQuestionId = (question: { id?: string; answer?: { questionId?: string } }, index: number) => {
+                                if (question.id) return question.id
+                                if (question.answer?.questionId) return question.answer.questionId
+                                return `${entry.cardId}_q${index}`
+                            }
                             const scoreQuestions = questions
                                 .map((question, index) => ({
                                     question,
                                     index,
-                                    questionId: question.id || question.answer?.questionId || `q-${index}`
+                                    questionId: getQuestionId(question, index)
                                 }))
                                 .filter(item => item.question.kind === 'score')
 
@@ -750,7 +782,7 @@ export default function ApplicantDetailPage() {
                                                 <p className="text-sm text-slate-500">No question details available for this feedback entry.</p>
                                             ) : (
                                                 questions.map((question, index) => {
-                                                    const questionId = question.id || question.answer?.questionId || `q-${index}`
+                                                    const questionId = getQuestionId(question, index)
                                                     const answer = answerByQuestionId.get(questionId) || (
                                                         question.answer?.questionId
                                                             ? answerByQuestionId.get(question.answer.questionId)
@@ -810,6 +842,47 @@ export default function ApplicantDetailPage() {
                     )}
                 </div>
             )}
+
+            {/* API Debug Panel */}
+            <Card className="mt-6 border border-slate-200 shadow-sm rounded-2xl bg-slate-50">
+                <CardContent className="p-4">
+                    <button
+                        type="button"
+                        onClick={() => setDebugExpanded(!debugExpanded)}
+                        className="flex items-center justify-between w-full text-left"
+                    >
+                        <span className="text-sm font-bold text-slate-600">API Debug Panel</span>
+                        {debugExpanded ? <ChevronUp className="w-4 h-4 text-slate-400" /> : <ChevronDown className="w-4 h-4 text-slate-400" />}
+                    </button>
+
+                    {debugExpanded && (
+                        <div className="mt-4 space-y-4">
+                            <div className="space-y-2">
+                                <div className="flex items-center justify-between">
+                                    <p className="text-xs font-bold text-slate-500 uppercase tracking-widest">GET /applicants/{params.id}</p>
+                                    <Button
+                                        variant="ghost"
+                                        size="sm"
+                                        onClick={() => copyToClipboard(curlCommand)}
+                                        className="h-7 px-2 text-xs"
+                                    >
+                                        <Copy className="w-3 h-3 mr-1" /> Copy cURL
+                                    </Button>
+                                </div>
+                                <pre className="text-xs bg-slate-900 text-green-400 p-3 rounded-lg overflow-x-auto whitespace-pre-wrap">
+                                    {curlCommand || 'Loading...'}
+                                </pre>
+                                <details className="text-xs">
+                                    <summary className="cursor-pointer text-slate-500 font-medium">Response</summary>
+                                    <pre className="mt-2 bg-white border border-slate-200 p-3 rounded-lg overflow-x-auto max-h-96 text-slate-700">
+                                        {apiResponse || 'Loading...'}
+                                    </pre>
+                                </details>
+                            </div>
+                        </div>
+                    )}
+                </CardContent>
+            </Card>
             </div>
 
             <Dialog open={isAssignmentDialogOpen} onOpenChange={setIsAssignmentDialogOpen}>

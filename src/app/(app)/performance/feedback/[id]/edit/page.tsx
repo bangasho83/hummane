@@ -162,10 +162,17 @@ export default function EditFeedbackPage() {
         setSaving(true)
         try {
             // Build answers array - only score and comment questions
+            // Use deterministic ID: cardId_qIndex (consistent with normalizeFeedbackCard)
+            const getQuestionId = (q: CardQuestion, index: number): string => {
+                if (q.answer?.questionId) return q.answer.questionId
+                if (q.questionId) return q.questionId
+                if (q.id) return q.id
+                return `${apiEntry.cardId}_q${index}`
+            }
             const apiAnswers = questions
                 .map((q, index) => {
                     const answer = answers.find(a => a.index === index)
-                    const questionId = q.answer?.questionId || q.questionId || q.id || `q_${index}`
+                    const questionId = getQuestionId(q, index)
                     if (q.kind === 'content') return null
                     const kind: 'score' | 'comment' = q.kind === 'comment' ? 'comment' : 'score'
                     if (kind === 'comment') {

@@ -11,6 +11,7 @@ import { Button } from '@/components/ui/button'
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select'
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog'
 import { toast } from '@/components/ui/toast'
+import { Card, CardContent } from '@/components/ui/card'
 import { APPLICANT_STATUSES, type Applicant, type ApplicantStatus, type FeedbackCard, type FeedbackEntry } from '@/types'
 import { Progress } from '@/components/ui/progress'
 import { fetchApplicantApi, fetchFeedbackEntriesApi } from '@/lib/api/client'
@@ -64,8 +65,18 @@ export default function ApplicantDetailPage() {
     const fetchApplicantFromApi = useCallback(async () => {
         if (!apiAccessToken || !params.id) return null
 
+        const applicantUrl = `${API_BASE_URL}/applicants/${params.id}`
+
         try {
-            const apiApplicant = await fetchApplicantApi(params.id as string, apiAccessToken)
+            const response = await fetch(applicantUrl, {
+                method: 'GET',
+                headers: {
+                    Authorization: `Bearer ${apiAccessToken}`,
+                },
+            })
+            const data = await response.json().catch(() => null)
+
+            const apiApplicant = data?.data || data
             return apiApplicant
         } catch (error) {
             console.error('Error fetching applicant from API:', error)
@@ -111,9 +122,20 @@ export default function ApplicantDetailPage() {
 
     useEffect(() => {
         const loadFeedbackEntries = async () => {
-            if (!apiAccessToken) return
+            if (!apiAccessToken || !params.id) return
+
+            const feedbackUrl = `${API_BASE_URL}/feedback-entries?subjectId=${params.id}`
+
             try {
-                const entries = await fetchFeedbackEntriesApi(apiAccessToken)
+                const response = await fetch(feedbackUrl, {
+                    method: 'GET',
+                    headers: {
+                        Authorization: `Bearer ${apiAccessToken}`,
+                    },
+                })
+                const data = await response.json().catch(() => null)
+
+                const entries = data?.records || data || []
                 setPageFeedbackEntries(entries)
             } catch (error) {
                 console.error('Error fetching feedback entries from API:', error)
@@ -121,7 +143,7 @@ export default function ApplicantDetailPage() {
             }
         }
         void loadFeedbackEntries()
-    }, [apiAccessToken])
+    }, [apiAccessToken, params.id])
 
     const feedbackSource = pageFeedbackEntries ?? feedbackEntries
     const applicantId = applicant?.id
@@ -777,15 +799,17 @@ export default function ApplicantDetailPage() {
                             const card = cardsById.get(entry.cardId) as FeedbackCard | undefined
                             const questions = detail?.card?.questions || []
                             const answerByQuestionId = new Map(entry.answers.map(answer => [answer.questionId, answer]))
+                            // Use deterministic ID: cardId_qIndex (consistent with normalizeFeedbackCard)
                             const getQuestionId = (question: CardQuestion, index: number) => {
+                                // First check if question has its own ID
+                                if (question.id) return question.id
+                                if (question.questionId) return question.questionId
+                                if (question.answer?.questionId) return question.answer.questionId
+                                // Check card's question at same index
                                 const byIndex = card?.questions[index]?.id
-                                return (
-                                    question.id ||
-                                    question.questionId ||
-                                    question.answer?.questionId ||
-                                    byIndex ||
-                                    `idx-${index}`
-                                )
+                                if (byIndex) return byIndex
+                                // Fallback to deterministic ID pattern
+                                return `${entry.cardId}_q${index}`
                             }
                             const scoreQuestions = questions
                                 .map((question, index) => ({
