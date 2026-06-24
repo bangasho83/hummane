@@ -329,23 +329,43 @@ export default function MemberLeavesPage() {
                                             <div className="grid grid-cols-2 gap-4">
                                                 <div className="space-y-2">
                                                     <label className="text-sm font-bold text-slate-700 px-1">From Time</label>
-                                                    <Input
-                                                        type="time"
-                                                        className="h-12 rounded-xl border-slate-200"
+                                                    <select
+                                                        className="flex h-12 w-full rounded-xl border border-slate-200 bg-white px-3 py-2 text-sm ring-offset-white focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-slate-950 focus-visible:ring-offset-2"
                                                         value={startTime}
                                                         onChange={(e) => setStartTime(e.target.value)}
                                                         required
-                                                    />
+                                                    >
+                                                        <option value="">Select time</option>
+                                                        {Array.from({ length: 24 * 4 }, (_, i) => {
+                                                            const hour = Math.floor(i / 4)
+                                                            const minute = (i % 4) * 15
+                                                            const time24 = `${hour.toString().padStart(2, '0')}:${minute.toString().padStart(2, '0')}`
+                                                            const hour12 = hour === 0 ? 12 : hour > 12 ? hour - 12 : hour
+                                                            const ampm = hour < 12 ? 'AM' : 'PM'
+                                                            const display = `${hour12.toString().padStart(2, '0')}:${minute.toString().padStart(2, '0')} ${ampm}`
+                                                            return <option key={time24} value={time24}>{display}</option>
+                                                        })}
+                                                    </select>
                                                 </div>
                                                 <div className="space-y-2">
                                                     <label className="text-sm font-bold text-slate-700 px-1">To Time</label>
-                                                    <Input
-                                                        type="time"
-                                                        className="h-12 rounded-xl border-slate-200"
+                                                    <select
+                                                        className="flex h-12 w-full rounded-xl border border-slate-200 bg-white px-3 py-2 text-sm ring-offset-white focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-slate-950 focus-visible:ring-offset-2"
                                                         value={endTime}
                                                         onChange={(e) => setEndTime(e.target.value)}
                                                         required
-                                                    />
+                                                    >
+                                                        <option value="">Select time</option>
+                                                        {Array.from({ length: 24 * 4 }, (_, i) => {
+                                                            const hour = Math.floor(i / 4)
+                                                            const minute = (i % 4) * 15
+                                                            const time24 = `${hour.toString().padStart(2, '0')}:${minute.toString().padStart(2, '0')}`
+                                                            const hour12 = hour === 0 ? 12 : hour > 12 ? hour - 12 : hour
+                                                            const ampm = hour < 12 ? 'AM' : 'PM'
+                                                            const display = `${hour12.toString().padStart(2, '0')}:${minute.toString().padStart(2, '0')} ${ampm}`
+                                                            return <option key={time24} value={time24}>{display}</option>
+                                                        })}
+                                                    </select>
                                                 </div>
                                             </div>
                                         </div>
