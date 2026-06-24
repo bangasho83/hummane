@@ -124,14 +124,16 @@ export default function AttendancePage() {
     }
 
     const fetchLeaves = async () => {
-        if (!apiAccessToken || !rangeStart || !rangeEnd) {
+        if (!apiAccessToken) {
             setLeaves([])
             return
         }
         setLeavesLoading(true)
         try {
+            // Fetch ALL leaves without date filtering - the API's date filter may not work correctly
+            // We'll filter client-side based on leaveDays, startDate/endDate, or date fields
             const response = await fetch(
-                `${process.env.NEXT_PUBLIC_API_BASE_URL || 'https://api.hummane.com'}/leaves?startDate=${encodeURIComponent(rangeStart)}&endDate=${encodeURIComponent(rangeEnd)}`,
+                `${process.env.NEXT_PUBLIC_API_BASE_URL || 'https://api.hummane.com'}/leaves`,
                 {
                     method: 'GET',
                     headers: { Authorization: `Bearer ${apiAccessToken}` }
@@ -153,6 +155,14 @@ export default function AttendancePage() {
         }
     }
 
+    // Fetch leaves once when apiAccessToken is available
+    useEffect(() => {
+        if (apiAccessToken) {
+            void fetchLeaves()
+        }
+    }, [apiAccessToken])
+
+    // Update date range separately
     useEffect(() => {
         if (!rangeStart || !rangeEnd) return
         const range = buildDateRange(rangeStart, rangeEnd)
@@ -162,8 +172,7 @@ export default function AttendancePage() {
             return
         }
         setRangeError('')
-        void fetchLeaves()
-    }, [rangeStart, rangeEnd, apiAccessToken])
+    }, [rangeStart, rangeEnd])
 
     // Find all leaves for a specific employee on a specific date
     const getLeavesForDate = (employeeId: string, date: Date): LeaveRecord[] => {
