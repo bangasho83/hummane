@@ -12,7 +12,7 @@ import { EMPLOYMENT_TYPES } from '@/types'
 
 export default function DashboardPage() {
     const router = useRouter()
-    const { currentUser, currentCompany, employees, departments, roles, leaveTypes, leaves, jobs, applicants, holidays } = useApp()
+    const { currentUser, currentCompany, employees, departments, roles, leaveTypes, leaves, jobs, applicants, holidays, isHydrating } = useApp()
     const todayKey = useMemo(() => new Date().toISOString().split('T')[0], [])
 
     const totalEmployees = employees.length
@@ -204,6 +204,7 @@ export default function DashboardPage() {
     }, [employeeById, latestApplicant, latestEmployee, latestLeave, leaveTypeNameById])
 
     useEffect(() => {
+        if (isHydrating) return
         if (!currentUser) {
             router.push('/login')
             return
@@ -211,9 +212,9 @@ export default function DashboardPage() {
         if (!currentCompany) {
             router.push('/company-setup')
         }
-    }, [currentCompany, currentUser, router])
+    }, [currentCompany, currentUser, router, isHydrating])
 
-    if (!currentUser || !currentCompany) {
+    if (isHydrating || !currentUser || !currentCompany) {
         return null
     }
 

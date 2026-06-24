@@ -109,7 +109,7 @@ function OrgTree({
 
 export default function EmployeesPage() {
     const router = useRouter()
-    const { currentUser, currentCompany, apiAccessToken } = useApp()
+    const { currentUser, currentCompany, apiAccessToken, isHydrating } = useApp()
     const [rawApiResponse, setRawApiResponse] = useState<Employee[] | null>(null)
     const [isLoading, setIsLoading] = useState(true)
     const [activeTab, setActiveTab] = useState('team')
@@ -144,14 +144,15 @@ export default function EmployeesPage() {
         void fetchEmployees()
     }, [fetchEmployees])
 
-    // Redirect if not logged in or no company
+    // Redirect if not logged in or no company (only after hydration is complete)
     useEffect(() => {
+        if (isHydrating) return
         if (!currentUser) {
             router.push('/login')
         } else if (!currentCompany) {
             router.push('/company-setup')
         }
-    }, [currentUser, currentCompany, router])
+    }, [currentUser, currentCompany, router, isHydrating])
 
     // Fullscreen handling
     useEffect(() => {
@@ -251,8 +252,8 @@ export default function EmployeesPage() {
     const isHighlighted = (id: string) => hoveredEmployeeId !== null && highlightedIds.has(id)
     const isDimmed = (id: string) => hoveredEmployeeId !== null && !highlightedIds.has(id)
 
-    // Don't render until we have user and company
-    if (!currentUser || !currentCompany) {
+    // Don't render until hydration is complete and we have user and company
+    if (isHydrating || !currentUser || !currentCompany) {
         return null
     }
 

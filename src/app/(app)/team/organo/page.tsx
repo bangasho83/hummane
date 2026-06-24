@@ -93,7 +93,7 @@ function OrgTree({
 
 export default function TeamOrganoPage() {
   const router = useRouter()
-  const { apiAccessToken, currentUser, currentCompany } = useApp()
+  const { apiAccessToken, currentUser, currentCompany, isHydrating } = useApp()
   const [employees, setEmployees] = useState<Employee[]>([])
   const [loading, setLoading] = useState(true)
   const [isFullscreen, setIsFullscreen] = useState(false)
@@ -123,10 +123,12 @@ export default function TeamOrganoPage() {
     void fetchEmployees()
   }, [apiAccessToken])
 
+  // Only redirect after hydration is complete to avoid redirecting during auth restoration
   useEffect(() => {
+    if (isHydrating) return
     if (!currentUser) router.push('/login')
     else if (!currentCompany) router.push('/company-setup')
-  }, [currentUser, currentCompany, router])
+  }, [currentUser, currentCompany, router, isHydrating])
 
   useEffect(() => {
     const handleFullscreenChange = () => {
@@ -217,7 +219,8 @@ export default function TeamOrganoPage() {
   const isHighlighted = (id: string) => hoveredEmployeeId !== null && highlightedIds.has(id)
   const isDimmed = (id: string) => hoveredEmployeeId !== null && !highlightedIds.has(id)
 
-  if (!currentUser || !currentCompany) return null
+  // Don't render until hydration is complete
+  if (isHydrating || !currentUser || !currentCompany) return null
 
   return (
     <div className="animate-in fade-in duration-500 slide-in-from-bottom-4">
