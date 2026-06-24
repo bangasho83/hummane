@@ -630,6 +630,19 @@ export function EmployeeForm({
                     <SectionHeader title="Team Assignment" />
                     <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                         <div className="space-y-2">
+                            <Label htmlFor="email">Official Email</Label>
+                            <Input
+                                id="email"
+                                type="email"
+                                placeholder="jane@company.com"
+                                value={formData.email}
+                                onChange={(e) => handleChange('email', e.target.value)}
+                                required
+                                className={errors.email ? 'border-red-500' : ''}
+                            />
+                            {errors.email && <p className="text-xs text-red-600 mt-1">{errors.email}</p>}
+                        </div>
+                        <div className="space-y-2">
                             <Label htmlFor="department">Department</Label>
                             {departments.length > 0 ? (
                                 <>
