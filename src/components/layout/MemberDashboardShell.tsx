@@ -1,9 +1,8 @@
 'use client'
 
 import { MemberSidebar } from './MemberSidebar'
-import { Bell, Search, ChevronDown } from 'lucide-react'
+import { Bell, ChevronDown } from 'lucide-react'
 import { useApp } from '@/lib/context/AppContext'
-import { Input } from '@/components/ui/input'
 
 interface MemberDashboardShellProps {
     children: React.ReactNode
@@ -18,15 +17,7 @@ export function MemberDashboardShell({ children }: MemberDashboardShellProps) {
 
             <div className="flex-1 flex flex-col min-w-0">
                 {/* Topbar */}
-                <header className="h-16 bg-white/80 backdrop-blur-md border-b border-slate-200 sticky top-0 z-30 flex items-center justify-between px-8">
-                    <div className="w-96 relative">
-                        <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-slate-400" />
-                        <Input
-                            placeholder="Search..."
-                            className="pl-10 bg-slate-50 border-none h-10 rounded-full focus-visible:ring-1 focus-visible:ring-blue-500"
-                        />
-                    </div>
-
+                <header className="h-16 bg-white/80 backdrop-blur-md border-b border-slate-200 sticky top-0 z-30 flex items-center justify-end px-8">
                     <div className="flex items-center gap-4">
                         <button className="p-2 text-slate-400 hover:text-slate-600 hover:bg-slate-50 rounded-full transition-all relative">
                             <Bell className="w-5 h-5" />
