@@ -203,8 +203,8 @@ export default function EmployeeAttendancePage() {
                                 <TableHead className="pl-6 py-4 text-[10px] font-extrabold uppercase tracking-widest text-slate-400">Date</TableHead>
                                 <TableHead className="py-4 text-[10px] font-extrabold uppercase tracking-widest text-slate-400">Type</TableHead>
                                 <TableHead className="py-4 text-[10px] font-extrabold uppercase tracking-widest text-slate-400">Code</TableHead>
-                                <TableHead className="py-4 text-[10px] font-extrabold uppercase tracking-widest text-slate-400">Unit</TableHead>
-                                <TableHead className="py-4 text-[10px] font-extrabold uppercase tracking-widest text-slate-400">Amount</TableHead>
+                                <TableHead className="py-4 text-[10px] font-extrabold uppercase tracking-widest text-slate-400">Duration</TableHead>
+                                <TableHead className="py-4 text-[10px] font-extrabold uppercase tracking-widest text-slate-400">Period</TableHead>
                                 <TableHead className="py-4 text-[10px] font-extrabold uppercase tracking-widest text-slate-400">Note</TableHead>
                                 <TableHead className="py-4 text-[10px] font-extrabold uppercase tracking-widest text-slate-400">Document</TableHead>
                                 <TableHead className="text-right pr-6 py-4 text-[10px] font-extrabold uppercase tracking-widest text-slate-400">Actions</TableHead>
@@ -232,13 +232,52 @@ export default function EmployeeAttendancePage() {
                                     const files = leave.documents?.files || []
                                     const firstFile = files[0]
                                     const displayDate = leave.startDate || leave.date
+                                    const unit = leave.unit || lt?.unit || 'Day'
+                                    const amount = leave.amount ?? 1
+
+                                    // Format unit with proper grammar
+                                    const formatUnit = () => {
+                                        if (unit === 'Hour') {
+                                            return amount === 1 ? '1 Hour' : `${amount} Hours`
+                                        } else {
+                                            return amount === 1 ? '1 Day' : `${amount} Days`
+                                        }
+                                    }
+
+                                    // Format readable date/time range
+                                    const formatRange = () => {
+                                        if (unit === 'Hour' && leave.startTime && leave.endTime) {
+                                            // Format time to 12-hour
+                                            const formatTime = (time: string) => {
+                                                const [h, m] = time.split(':').map(Number)
+                                                const hour12 = h === 0 ? 12 : h > 12 ? h - 12 : h
+                                                const ampm = h < 12 ? 'AM' : 'PM'
+                                                return `${hour12}:${m.toString().padStart(2, '0')} ${ampm}`
+                                            }
+                                            const date = leave.startDate || leave.date
+                                            const dateStr = date ? new Date(date).toLocaleDateString('en-US', { month: 'short', day: 'numeric' }) : ''
+                                            return `${dateStr} ${formatTime(leave.startTime)} – ${formatTime(leave.endTime)}`
+                                        } else if (leave.startDate && leave.endDate && leave.startDate !== leave.endDate) {
+                                            // Multi-day range
+                                            const start = new Date(leave.startDate)
+                                            const end = new Date(leave.endDate)
+                                            const startStr = start.toLocaleDateString('en-US', { month: 'short', day: 'numeric' })
+                                            const endStr = end.toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' })
+                                            return `${startStr} – ${endStr}`
+                                        } else {
+                                            // Single day
+                                            const date = leave.startDate || leave.date
+                                            return date ? new Date(date).toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' }) : '—'
+                                        }
+                                    }
+
                                     return (
                                         <TableRow key={leave.id} className="border-slate-50">
                                             <TableCell className="pl-6 py-4 text-sm font-medium text-slate-700">{displayDate ? formatDate(displayDate) : '—'}</TableCell>
                                             <TableCell className="text-sm font-medium text-slate-700">{leave.leaveTypeName || lt?.name || '—'}</TableCell>
                                             <TableCell className="text-sm text-slate-500">{leave.leaveTypeCode || lt?.code || '—'}</TableCell>
-                                            <TableCell className="text-sm text-slate-500">{leave.unit || lt?.unit || 'Day'}</TableCell>
-                                            <TableCell className="text-sm text-slate-500">{leave.amount ?? 1}</TableCell>
+                                            <TableCell className="text-sm text-slate-500">{formatUnit()}</TableCell>
+                                            <TableCell className="text-sm text-slate-500">{formatRange()}</TableCell>
                                             <TableCell className="text-sm text-slate-500">{leave.note || '—'}</TableCell>
                                             <TableCell className="text-sm text-slate-500">
                                                 {firstFile ? (
