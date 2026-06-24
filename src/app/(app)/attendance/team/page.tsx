@@ -9,13 +9,21 @@ import { Card, CardContent } from '@/components/ui/card'
 import { cn } from '@/lib/utils'
 import { Input } from '@/components/ui/input'
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select'
-import { Calendar as CalendarIcon } from 'lucide-react'
+import { Calendar as CalendarIcon, ArrowUpDown, ArrowUp, ArrowDown } from 'lucide-react'
+
+type SortField = 'name' | 'total' | string
+type SortDirection = 'asc' | 'desc'
 
 export default function AttendanceTeamPage() {
     const { employees, leaveTypes, leaves } = useApp()
     const [searchTerm, setSearchTerm] = useState('')
     const [departmentFilter, setDepartmentFilter] = useState<string>('all')
     const [positionFilter, setPositionFilter] = useState<string>('all')
+    const [leaveTypeFilter, setLeaveTypeFilter] = useState<string>('all')
+
+    // Sorting state
+    const [sortField, setSortField] = useState<SortField>('name')
+    const [sortDirection, setSortDirection] = useState<SortDirection>('asc')
 
     // Date range state - default to start of year to today
     const today = new Date()
@@ -78,6 +86,23 @@ export default function AttendanceTeamPage() {
         setSearchTerm('')
         setDepartmentFilter('all')
         setPositionFilter('all')
+        setLeaveTypeFilter('all')
+    }
+
+    const handleSort = (field: SortField) => {
+        if (sortField === field) {
+            setSortDirection(sortDirection === 'asc' ? 'desc' : 'asc')
+        } else {
+            setSortField(field)
+            setSortDirection('asc')
+        }
+    }
+
+    const SortIcon = ({ field }: { field: SortField }) => {
+        if (sortField !== field) return <ArrowUpDown className="w-3 h-3 ml-1 opacity-40" />
+        return sortDirection === 'asc'
+            ? <ArrowUp className="w-3 h-3 ml-1" />
+            : <ArrowDown className="w-3 h-3 ml-1" />
     }
 
     const normalizeCount = (value: number) => {
@@ -212,7 +237,19 @@ export default function AttendanceTeamPage() {
                                     </SelectContent>
                                 </Select>
 
-                                {(searchTerm || departmentFilter !== 'all' || positionFilter !== 'all') && (
+                                <Select value={leaveTypeFilter} onValueChange={setLeaveTypeFilter}>
+                                    <SelectTrigger className="w-44 bg-slate-50 border-slate-200 h-11 rounded-xl">
+                                        <SelectValue placeholder="Leave Type" />
+                                    </SelectTrigger>
+                                    <SelectContent>
+                                        <SelectItem value="all">All Leave Types</SelectItem>
+                                        {leaveTypesOrdered.map(lt => (
+                                            <SelectItem key={lt.id} value={lt.id}>{lt.name}</SelectItem>
+                                        ))}
+                                    </SelectContent>
+                                </Select>
+
+                                {(searchTerm || departmentFilter !== 'all' || positionFilter !== 'all' || leaveTypeFilter !== 'all') && (
                                     <button
                                         type="button"
                                         onClick={clearFilters}
@@ -227,22 +264,41 @@ export default function AttendanceTeamPage() {
 
                     <div className="overflow-x-auto">
                         <Table>
-                            <TableHeader className="bg-slate-50/50">
+                            <TableHeader className="bg-slate-50">
                                 <TableRow className="hover:bg-transparent border-slate-100">
-                                    <TableHead className="sticky left-0 bg-slate-50/95 z-20 w-56 pl-8 py-4 text-[10px] font-extrabold uppercase tracking-widest text-slate-400 border-r border-slate-100">
-                                        Employee
+                                    <TableHead
+                                        className="sticky left-0 bg-slate-50 z-20 w-48 min-w-48 pl-8 py-4 text-[10px] font-extrabold uppercase tracking-widest text-slate-400 cursor-pointer hover:text-slate-600"
+                                        onClick={() => handleSort('name')}
+                                    >
+                                        <div className="flex items-center">
+                                            Employee
+                                            <SortIcon field="name" />
+                                        </div>
                                     </TableHead>
-                                    <TableHead className="sticky left-56 bg-slate-50/95 z-20 w-20 py-4 text-[10px] font-extrabold uppercase tracking-widest text-slate-400 text-center border-r border-slate-200 shadow-[2px_0_4px_-2px_rgba(0,0,0,0.1)]">
-                                        Total
+                                    <TableHead
+                                        className="sticky left-48 bg-slate-50 z-20 w-16 min-w-16 py-4 text-[10px] font-extrabold uppercase tracking-widest text-slate-400 text-center cursor-pointer hover:text-slate-600 shadow-[2px_0_4px_-2px_rgba(0,0,0,0.1)]"
+                                        onClick={() => handleSort('total')}
+                                    >
+                                        <div className="flex items-center justify-center">
+                                            Total
+                                            <SortIcon field="total" />
+                                        </div>
                                     </TableHead>
-                                    {leaveTypesOrdered.map((lt) => (
-                                        <TableHead key={lt.id} className="py-4 text-[10px] font-extrabold uppercase tracking-widest text-slate-400 text-center">
-                                                <div className="flex flex-col items-center gap-1">
+                                    {(leaveTypeFilter === 'all' ? leaveTypesOrdered : leaveTypesOrdered.filter(lt => lt.id === leaveTypeFilter)).map((lt) => (
+                                        <TableHead
+                                            key={lt.id}
+                                            className="py-4 text-[10px] font-extrabold uppercase tracking-widest text-slate-400 text-center cursor-pointer hover:text-slate-600"
+                                            onClick={() => handleSort(lt.id)}
+                                        >
+                                            <div className="flex flex-col items-center gap-1">
+                                                <div className="flex items-center">
                                                     <span>{lt.code}</span>
-                                                    <span className="text-[9px] font-semibold tracking-normal text-slate-300">
-                                                        Quota {lt.quota ?? 0}
-                                                    </span>
+                                                    <SortIcon field={lt.id} />
                                                 </div>
+                                                <span className="text-[9px] font-semibold tracking-normal text-slate-300">
+                                                    Quota {lt.quota ?? 0}
+                                                </span>
+                                            </div>
                                         </TableHead>
                                     ))}
                                 </TableRow>
@@ -250,54 +306,77 @@ export default function AttendanceTeamPage() {
                             <TableBody>
                                 {filteredEmployees.length === 0 ? (
                                     <TableRow>
-                                        <TableCell colSpan={leaveTypesOrdered.length + 2} className="p-12 text-center text-slate-500">
+                                        <TableCell colSpan={(leaveTypeFilter === 'all' ? leaveTypesOrdered.length : 1) + 2} className="p-12 text-center text-slate-500">
                                             {employees.length === 0 ? 'No employees yet.' : 'No matches for the selected filters.'}
                                         </TableCell>
                                     </TableRow>
                                 ) : (
-                                    filteredEmployees.map((emp) => {
-                                        const total = leaveTypesOrdered.reduce((sum, lt) => {
-                                            if (lt.employmentType !== emp.employmentType) return sum
-                                            const count = getCount(emp.id, emp.employeeId, lt.id, lt.name)
-                                            if (count <= 0) return sum
-                                            return sum + count
-                                        }, 0)
-                                        return (
-                                            <TableRow key={emp.id} className="hover:bg-slate-50/50 border-slate-50">
-                                                <TableCell className="sticky left-0 bg-white z-10 w-56 pl-8 py-4 border-r border-slate-100">
-                                                    <Link href={`/team/${emp.id}/attendance`} className="block group">
-                                                        <div className="font-bold text-slate-900 group-hover:text-blue-600 transition-colors truncate max-w-44">{emp.name}</div>
-                                                        <div className="text-[11px] text-slate-500 font-medium truncate max-w-44">
-                                                            {emp.department}
-                                                        </div>
-                                                    </Link>
-                                                </TableCell>
-                                                <TableCell className="sticky left-56 bg-white z-10 w-20 text-center border-r border-slate-200 shadow-[2px_0_4px_-2px_rgba(0,0,0,0.1)]">
-                                                    <span className={cn("text-sm font-bold", total > 0 ? "text-slate-900" : "text-slate-400")}>
-                                                        {formatCount(total)}
-                                                    </span>
-                                                </TableCell>
-                                                {leaveTypesOrdered.map((lt) => {
-                                                    const count = getCount(emp.id, emp.employeeId, lt.id, lt.name)
-                                                    const matchesEmployment = lt.employmentType === emp.employmentType
-                                                    const quotaLimit = lt.quota ?? 0
-                                                    const isOverQuota = matchesEmployment && count > quotaLimit
-                                                    return (
-                                                        <TableCell
-                                                            key={lt.id}
-                                                            className={cn(
-                                                                "text-center text-sm font-semibold",
-                                                                matchesEmployment ? "text-slate-600" : "text-slate-400",
-                                                                isOverQuota ? "text-red-600" : ""
-                                                            )}
-                                                        >
-                                                            {matchesEmployment ? formatCount(count || 0) : '—'}
-                                                        </TableCell>
-                                                    )
-                                                })}
-                                            </TableRow>
-                                        )
-                                    })
+                                    [...filteredEmployees]
+                                        .map((emp) => {
+                                            const total = leaveTypesOrdered.reduce((sum, lt) => {
+                                                if (lt.employmentType !== emp.employmentType) return sum
+                                                const count = getCount(emp.id, emp.employeeId, lt.id, lt.name)
+                                                if (count <= 0) return sum
+                                                return sum + count
+                                            }, 0)
+                                            const leaveCountsMap: Record<string, number> = {}
+                                            leaveTypesOrdered.forEach(lt => {
+                                                leaveCountsMap[lt.id] = getCount(emp.id, emp.employeeId, lt.id, lt.name)
+                                            })
+                                            return { emp, total, leaveCountsMap }
+                                        })
+                                        .sort((a, b) => {
+                                            let comparison = 0
+                                            if (sortField === 'name') {
+                                                comparison = a.emp.name.localeCompare(b.emp.name)
+                                            } else if (sortField === 'total') {
+                                                comparison = a.total - b.total
+                                            } else {
+                                                // Sort by specific leave type
+                                                comparison = (a.leaveCountsMap[sortField] || 0) - (b.leaveCountsMap[sortField] || 0)
+                                            }
+                                            return sortDirection === 'asc' ? comparison : -comparison
+                                        })
+                                        .map(({ emp, total, leaveCountsMap }) => {
+                                            const displayLeaveTypes = leaveTypeFilter === 'all'
+                                                ? leaveTypesOrdered
+                                                : leaveTypesOrdered.filter(lt => lt.id === leaveTypeFilter)
+                                            return (
+                                                <TableRow key={emp.id} className="hover:bg-slate-50/50 border-slate-50">
+                                                    <TableCell className="sticky left-0 bg-white z-10 w-48 min-w-48 pl-8 py-4">
+                                                        <Link href={`/team/${emp.id}/attendance`} className="block group">
+                                                            <div className="font-bold text-slate-900 group-hover:text-blue-600 transition-colors truncate max-w-40">{emp.name}</div>
+                                                            <div className="text-[11px] text-slate-500 font-medium truncate max-w-40">
+                                                                {emp.department}
+                                                            </div>
+                                                        </Link>
+                                                    </TableCell>
+                                                    <TableCell className="sticky left-48 bg-white z-10 w-16 min-w-16 text-center shadow-[2px_0_4px_-2px_rgba(0,0,0,0.1)]">
+                                                        <span className={cn("text-sm font-bold", total > 0 ? "text-slate-900" : "text-slate-400")}>
+                                                            {formatCount(total)}
+                                                        </span>
+                                                    </TableCell>
+                                                    {displayLeaveTypes.map((lt) => {
+                                                        const count = leaveCountsMap[lt.id] || 0
+                                                        const matchesEmployment = lt.employmentType === emp.employmentType
+                                                        const quotaLimit = lt.quota ?? 0
+                                                        const isOverQuota = matchesEmployment && count > quotaLimit
+                                                        return (
+                                                            <TableCell
+                                                                key={lt.id}
+                                                                className={cn(
+                                                                    "text-center text-sm font-semibold",
+                                                                    matchesEmployment ? "text-slate-600" : "text-slate-400",
+                                                                    isOverQuota ? "text-red-600" : ""
+                                                                )}
+                                                            >
+                                                                {matchesEmployment ? formatCount(count) : '—'}
+                                                            </TableCell>
+                                                        )
+                                                    })}
+                                                </TableRow>
+                                            )
+                                        })
                                 )}
                             </TableBody>
                         </Table>
