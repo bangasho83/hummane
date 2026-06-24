@@ -104,8 +104,13 @@ export default function AttendancePage() {
         if (!value) return ''
         // If it's already in YYYY-MM-DD format, return as is
         if (/^\d{4}-\d{2}-\d{2}$/.test(value)) return value
-        // Parse the date and format it in local timezone
+        // For ISO strings like "2026-05-19T00:00:00.000Z", extract just the date part
+        // to avoid timezone conversion issues
+        const isoMatch = value.match(/^(\d{4}-\d{2}-\d{2})T/)
+        if (isoMatch) return isoMatch[1]
+        // Parse the date and format it in local timezone as fallback
         const date = new Date(value)
+        if (isNaN(date.getTime())) return ''
         return formatDate(date)
     }
 
@@ -123,28 +128,30 @@ export default function AttendancePage() {
         return `${String(normalizedHours).padStart(2, '0')}:${minutes} ${suffix}`
     }
 
-    const fetchLeaves = async () => {
+    const fetchLeaves = async (startDateFilter?: string, endDateFilter?: string) => {
         if (!apiAccessToken) {
             setLeaves([])
             return
         }
         setLeavesLoading(true)
         try {
-            // Fetch ALL leaves without date filtering - the API's date filter may not work correctly
-            // We'll filter client-side based on leaveDays, startDate/endDate, or date fields
-            const response = await fetch(
-                `${process.env.NEXT_PUBLIC_API_BASE_URL || 'https://api.hummane.com'}/leaves`,
-                {
-                    method: 'GET',
-                    headers: { Authorization: `Bearer ${apiAccessToken}` }
-                }
-            )
+            // Build URL with date filter if provided
+            let url = `${process.env.NEXT_PUBLIC_API_BASE_URL || 'https://api.hummane.com'}/leaves`
+            if (startDateFilter && endDateFilter) {
+                url += `?startDate=${encodeURIComponent(startDateFilter)}&endDate=${encodeURIComponent(endDateFilter)}`
+            }
+
+            const response = await fetch(url, {
+                method: 'GET',
+                headers: { Authorization: `Bearer ${apiAccessToken}` }
+            })
             if (!response.ok) {
                 const message = await response.text()
                 throw new Error(message || 'Failed to fetch leave records')
             }
             const data = await response.json()
             const list = data?.records || data?.data || data?.leaves || data
+            console.log('Fetched leaves:', list?.length || 0, 'records', { startDateFilter, endDateFilter })
             setLeaves(Array.isArray(list) ? list : [])
         } catch (error) {
             const message = error instanceof Error ? error.message : 'Failed to fetch leave records'
@@ -155,14 +162,7 @@ export default function AttendancePage() {
         }
     }
 
-    // Fetch leaves once when apiAccessToken is available
-    useEffect(() => {
-        if (apiAccessToken) {
-            void fetchLeaves()
-        }
-    }, [apiAccessToken])
-
-    // Update date range separately
+    // Fetch leaves when date range changes
     useEffect(() => {
         if (!rangeStart || !rangeEnd) return
         const range = buildDateRange(rangeStart, rangeEnd)
@@ -172,25 +172,50 @@ export default function AttendancePage() {
             return
         }
         setRangeError('')
-    }, [rangeStart, rangeEnd])
+
+        // Fetch leaves with extended date range (1 month before and after)
+        // to ensure we capture all leaves that might span the visible range
+        if (apiAccessToken) {
+            const extendedStart = new Date(rangeStart)
+            extendedStart.setMonth(extendedStart.getMonth() - 1)
+            const extendedEnd = new Date(rangeEnd)
+            extendedEnd.setMonth(extendedEnd.getMonth() + 1)
+            void fetchLeaves(formatDate(extendedStart), formatDate(extendedEnd))
+        }
+    }, [rangeStart, rangeEnd, apiAccessToken])
 
     // Find all leaves for a specific employee on a specific date
     const getLeavesForDate = (employeeId: string, date: Date): LeaveRecord[] => {
         const dateStr = formatDate(date)
         return leaves.filter((l) => {
             if (l.employeeId !== employeeId) return false
-            // Check leaveDays array first
-            if (l.leaveDays && l.leaveDays.length > 0) {
-                return l.leaveDays.some(day => normalizeDate(day.date) === dateStr)
+
+            // Check leaveDays array first (API may return individual leave days)
+            if (l.leaveDays && Array.isArray(l.leaveDays) && l.leaveDays.length > 0) {
+                const match = l.leaveDays.some(day => normalizeDate(day.date) === dateStr)
+                if (match) return true
             }
+
             // Check date range if startDate and endDate exist
             if (l.startDate && l.endDate) {
                 const start = normalizeDate(l.startDate)
                 const end = normalizeDate(l.endDate)
-                return dateStr >= start && dateStr <= end
+                if (dateStr >= start && dateStr <= end) return true
             }
-            // Fall back to single date
-            return normalizeDate(l.date) === dateStr
+
+            // Check single date field
+            if (l.date) {
+                const leaveDate = normalizeDate(l.date)
+                if (leaveDate === dateStr) return true
+            }
+
+            // Also check startDate alone (for single-day leaves where startDate = endDate)
+            if (l.startDate && !l.endDate) {
+                const start = normalizeDate(l.startDate)
+                if (start === dateStr) return true
+            }
+
+            return false
         })
     }
 
