@@ -22,6 +22,7 @@ export default function UsersPage() {
     const [inviteRole, setInviteRole] = useState<'owner' | 'member'>('member')
     const [inviteEmployeeId, setInviteEmployeeId] = useState<string>('')
     const [isInviting, setIsInviting] = useState(false)
+    const [employeeQuery, setEmployeeQuery] = useState('')
     const employeeById = useMemo(
         () => new Map(employees.map((employee) => [employee.id, employee])),
         [employees]
@@ -38,6 +39,14 @@ export default function UsersPage() {
         ),
         [employees]
     )
+    const filteredEmployees = useMemo(() => {
+        const query = employeeQuery.trim().toLowerCase()
+        if (!query) return employees
+        return employees.filter((emp) => {
+            const haystack = `${emp.name} ${emp.employeeId} ${emp.email || ''}`.toLowerCase()
+            return haystack.includes(query)
+        })
+    }, [employees, employeeQuery])
 
     const fetchUsers = async () => {
         if (!apiAccessToken) {
@@ -155,11 +164,21 @@ export default function UsersPage() {
                                         <SelectTrigger className="rounded-xl border-slate-200 h-12">
                                             <SelectValue placeholder="Select employee" />
                                         </SelectTrigger>
-                                        <SelectContent>
-                                            {employees.length === 0 ? (
-                                                <SelectItem value="" disabled>No employees available</SelectItem>
+                                        <SelectContent className="max-h-72 overflow-y-auto">
+                                            <div className="p-2 sticky top-0 bg-white z-10 border-b border-slate-100">
+                                                <Input
+                                                    value={employeeQuery}
+                                                    onChange={(e) => setEmployeeQuery(e.target.value)}
+                                                    placeholder="Search employees..."
+                                                    className="h-9 rounded-lg"
+                                                    onKeyDown={(e) => e.stopPropagation()}
+                                                    onClick={(e) => e.stopPropagation()}
+                                                />
+                                            </div>
+                                            {filteredEmployees.length === 0 ? (
+                                                <div className="p-3 text-center text-slate-500 text-sm">No employees found</div>
                                             ) : (
-                                                employees.map((employee) => (
+                                                filteredEmployees.map((employee) => (
                                                     <SelectItem key={employee.id} value={employee.id}>
                                                         {employee.name} {employee.email ? `(${employee.email})` : ''}
                                                     </SelectItem>
