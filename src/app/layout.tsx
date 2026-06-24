@@ -11,6 +11,10 @@ const inter = Inter({
 export const metadata: Metadata = {
   title: "hummane - Empowering Humans",
   description: "Modern HR management system for managing your company and employees",
+  icons: {
+    icon: "/favicon.png",
+    apple: "/favicon.png",
+  },
 };
 
 export default function RootLayout({
