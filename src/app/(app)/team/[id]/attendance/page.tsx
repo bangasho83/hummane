@@ -11,7 +11,7 @@ import { formatDate } from '@/lib/utils'
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table'
 import { Button } from '@/components/ui/button'
 import { toast } from '@/components/ui/toast'
-import { ArrowLeft, FileText, Trash2 } from 'lucide-react'
+import { ArrowLeft, FileText, Trash2, ChevronDown, ChevronUp, Copy } from 'lucide-react'
 
 const API_BASE_URL = 'https://api.hummane.com'
 
@@ -26,15 +26,34 @@ export default function EmployeeAttendancePage() {
     const [deletingId, setDeletingId] = useState<string | null>(null)
     const employeeId = params.id as string
 
+    // Debug panel state
+    const [debugExpanded, setDebugExpanded] = useState(false)
+    const [apiEndpoint, setApiEndpoint] = useState('')
+    const [curlCommand, setCurlCommand] = useState('')
+    const [apiResponse, setApiResponse] = useState('')
+
+    const copyToClipboard = (text: string) => {
+        navigator.clipboard.writeText(text)
+        toast('Copied to clipboard', 'success')
+    }
+
     const fetchLeaves = useCallback(async () => {
         if (!apiAccessToken || !employeeId) return
 
         setLoading(true)
         try {
-            const response = await fetch(`${API_BASE_URL}/leaves?employeeId=${encodeURIComponent(employeeId)}`, {
+            const url = `${API_BASE_URL}/leaves?employeeId=${encodeURIComponent(employeeId)}`
+
+            // Set debug info
+            setApiEndpoint(url)
+            setCurlCommand(`curl -X GET '${url}' \\\n  -H 'Authorization: Bearer ${apiAccessToken}'`)
+
+            const response = await fetch(url, {
                 headers: { Authorization: `Bearer ${apiAccessToken}` }
             })
             const data = await response.json()
+            setApiResponse(JSON.stringify(data, null, 2))
+
             const list = data?.records || data?.data || data?.leaves || data
             setEmployeeLeaves(Array.isArray(list) ? list : [])
             // Extract summary data
@@ -45,6 +64,7 @@ export default function EmployeeAttendancePage() {
             }
         } catch (error) {
             console.error('Error fetching leaves:', error)
+            setApiResponse(JSON.stringify({ error: String(error) }, null, 2))
             setEmployeeLeaves([])
             setLeaveSummary([])
         } finally {
@@ -65,11 +85,6 @@ export default function EmployeeAttendancePage() {
     useEffect(() => {
         fetchLeaves()
     }, [fetchLeaves])
-
-    const copyToClipboard = (text: string) => {
-        navigator.clipboard.writeText(text)
-        toast('Copied to clipboard', 'success')
-    }
 
     const handleDeleteLeave = async (leaveId: string) => {
         if (!apiAccessToken) {
@@ -311,6 +326,69 @@ export default function EmployeeAttendancePage() {
                                 )}
                             </TableBody>
                         </Table>
+                    </CardContent>
+                </Card>
+
+                {/* API Debug Panel */}
+                <Card className="mt-6 border border-slate-200 shadow-sm rounded-2xl bg-slate-50">
+                    <CardContent className="p-4">
+                        <button
+                            type="button"
+                            onClick={() => setDebugExpanded(!debugExpanded)}
+                            className="flex items-center justify-between w-full text-left"
+                        >
+                            <span className="text-sm font-bold text-slate-600">
+                                API Debug Panel ({employeeLeaves.length} leaves loaded)
+                            </span>
+                            {debugExpanded ? <ChevronUp className="w-4 h-4 text-slate-400" /> : <ChevronDown className="w-4 h-4 text-slate-400" />}
+                        </button>
+
+                        {debugExpanded && (
+                            <div className="mt-4 space-y-4">
+                                <div className="space-y-2">
+                                    <p className="text-xs font-bold text-slate-500 uppercase tracking-widest">Endpoint</p>
+                                    <pre className="text-xs bg-white border border-slate-200 p-3 rounded-lg overflow-x-auto whitespace-pre-wrap text-slate-700">
+                                        {apiEndpoint || 'Not yet fetched'}
+                                    </pre>
+                                </div>
+
+                                <div className="space-y-2">
+                                    <div className="flex items-center justify-between">
+                                        <p className="text-xs font-bold text-slate-500 uppercase tracking-widest">cURL Command</p>
+                                        <Button
+                                            variant="ghost"
+                                            size="sm"
+                                            onClick={() => copyToClipboard(curlCommand)}
+                                            className="h-7 px-2 text-xs"
+                                        >
+                                            <Copy className="w-3 h-3 mr-1" /> Copy
+                                        </Button>
+                                    </div>
+                                    <pre className="text-xs bg-slate-900 text-green-400 p-3 rounded-lg overflow-x-auto whitespace-pre-wrap">
+                                        {curlCommand || 'Loading...'}
+                                    </pre>
+                                </div>
+
+                                <div className="space-y-2">
+                                    <div className="flex items-center justify-between">
+                                        <p className="text-xs font-bold text-slate-500 uppercase tracking-widest">
+                                            API Response
+                                        </p>
+                                        <Button
+                                            variant="ghost"
+                                            size="sm"
+                                            onClick={() => copyToClipboard(apiResponse)}
+                                            className="h-7 px-2 text-xs"
+                                        >
+                                            <Copy className="w-3 h-3 mr-1" /> Copy
+                                        </Button>
+                                    </div>
+                                    <pre className="text-xs bg-white border border-slate-200 p-3 rounded-lg overflow-x-auto max-h-96 text-slate-700">
+                                        {apiResponse || 'Loading...'}
+                                    </pre>
+                                </div>
+                            </div>
+                        )}
                     </CardContent>
                 </Card>
             </div>
