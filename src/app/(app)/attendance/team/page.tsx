@@ -1,6 +1,6 @@
 'use client'
 
-import { useMemo, useState } from 'react'
+import { useMemo, useState, useEffect, useRef } from 'react'
 import Link from 'next/link'
 import { AttendanceTabs } from '@/features/attendance'
 import { useApp } from '@/lib/context/AppContext'
@@ -9,7 +9,8 @@ import { Card, CardContent } from '@/components/ui/card'
 import { cn } from '@/lib/utils'
 import { Input } from '@/components/ui/input'
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select'
-import { Calendar as CalendarIcon, ArrowUpDown, ArrowUp, ArrowDown } from 'lucide-react'
+import { Calendar as CalendarIcon, ArrowUpDown, ArrowUp, ArrowDown, Check, ChevronDown } from 'lucide-react'
+import { Button } from '@/components/ui/button'
 
 type SortField = 'name' | 'total' | string
 type SortDirection = 'asc' | 'desc'
@@ -19,17 +20,39 @@ export default function AttendanceTeamPage() {
     const [searchTerm, setSearchTerm] = useState('')
     const [departmentFilter, setDepartmentFilter] = useState<string>('all')
     const [positionFilter, setPositionFilter] = useState<string>('all')
-    const [leaveTypeFilter, setLeaveTypeFilter] = useState<string>('all')
+
+    // Multi-select leave types - initially all selected
+    const [selectedLeaveTypes, setSelectedLeaveTypes] = useState<Set<string>>(new Set())
+    const [leaveTypeDropdownOpen, setLeaveTypeDropdownOpen] = useState(false)
+    const dropdownRef = useRef<HTMLDivElement>(null)
 
     // Sorting state
-    const [sortField, setSortField] = useState<SortField>('name')
-    const [sortDirection, setSortDirection] = useState<SortDirection>('asc')
+    const [sortField, setSortField] = useState<SortField>('total')
+    const [sortDirection, setSortDirection] = useState<SortDirection>('desc')
 
     // Date range state - default to start of year to today
     const today = new Date()
     const startOfYear = new Date(today.getFullYear(), 0, 1)
     const [startDate, setStartDate] = useState(startOfYear.toISOString().split('T')[0])
     const [endDate, setEndDate] = useState(today.toISOString().split('T')[0])
+
+    // Initialize selected leave types when leaveTypes load
+    useEffect(() => {
+        if (leaveTypes.length > 0 && selectedLeaveTypes.size === 0) {
+            setSelectedLeaveTypes(new Set(leaveTypes.map(lt => lt.id)))
+        }
+    }, [leaveTypes, selectedLeaveTypes.size])
+
+    // Close dropdown when clicking outside
+    useEffect(() => {
+        const handleClickOutside = (event: MouseEvent) => {
+            if (dropdownRef.current && !dropdownRef.current.contains(event.target as Node)) {
+                setLeaveTypeDropdownOpen(false)
+            }
+        }
+        document.addEventListener('mousedown', handleClickOutside)
+        return () => document.removeEventListener('mousedown', handleClickOutside)
+    }, [])
 
     // Filter leaves by date range
     const filteredLeaves = useMemo(() => {
@@ -86,8 +109,33 @@ export default function AttendanceTeamPage() {
         setSearchTerm('')
         setDepartmentFilter('all')
         setPositionFilter('all')
-        setLeaveTypeFilter('all')
+        setSelectedLeaveTypes(new Set(leaveTypes.map(lt => lt.id)))
     }
+
+    const toggleLeaveType = (leaveTypeId: string) => {
+        setSelectedLeaveTypes(prev => {
+            const newSet = new Set(prev)
+            if (newSet.has(leaveTypeId)) {
+                newSet.delete(leaveTypeId)
+            } else {
+                newSet.add(leaveTypeId)
+            }
+            return newSet
+        })
+    }
+
+    const toggleAllLeaveTypes = () => {
+        if (selectedLeaveTypes.size === leaveTypes.length) {
+            setSelectedLeaveTypes(new Set())
+        } else {
+            setSelectedLeaveTypes(new Set(leaveTypes.map(lt => lt.id)))
+        }
+    }
+
+    // Filter leave types to only show selected ones
+    const visibleLeaveTypes = useMemo(() => {
+        return leaveTypesOrdered.filter(lt => selectedLeaveTypes.has(lt.id))
+    }, [leaveTypesOrdered, selectedLeaveTypes])
 
     const handleSort = (field: SortField) => {
         if (sortField === field) {
@@ -237,19 +285,72 @@ export default function AttendanceTeamPage() {
                                     </SelectContent>
                                 </Select>
 
-                                <Select value={leaveTypeFilter} onValueChange={setLeaveTypeFilter}>
-                                    <SelectTrigger className="w-44 bg-slate-50 border-slate-200 h-11 rounded-xl">
-                                        <SelectValue placeholder="Leave Type" />
-                                    </SelectTrigger>
-                                    <SelectContent>
-                                        <SelectItem value="all">All Leave Types</SelectItem>
-                                        {leaveTypesOrdered.map(lt => (
-                                            <SelectItem key={lt.id} value={lt.id}>{lt.name}</SelectItem>
-                                        ))}
-                                    </SelectContent>
-                                </Select>
+                                {/* Multi-select Leave Types Dropdown */}
+                                <div className="relative" ref={dropdownRef}>
+                                    <Button
+                                        variant="outline"
+                                        onClick={() => setLeaveTypeDropdownOpen(!leaveTypeDropdownOpen)}
+                                        className="w-44 h-11 rounded-xl bg-slate-50 border-slate-200 justify-between font-normal"
+                                    >
+                                        <span className="truncate text-sm">
+                                            {selectedLeaveTypes.size === leaveTypes.length
+                                                ? 'All Leave Types'
+                                                : selectedLeaveTypes.size === 0
+                                                    ? 'No Types'
+                                                    : `${selectedLeaveTypes.size} Types`}
+                                        </span>
+                                        <ChevronDown className={cn("w-4 h-4 ml-2 transition-transform", leaveTypeDropdownOpen && "rotate-180")} />
+                                    </Button>
 
-                                {(searchTerm || departmentFilter !== 'all' || positionFilter !== 'all' || leaveTypeFilter !== 'all') && (
+                                    {leaveTypeDropdownOpen && (
+                                        <div className="absolute top-full left-0 mt-1 w-56 bg-white border border-slate-200 rounded-xl shadow-lg z-50 max-h-80 overflow-y-auto">
+                                            <div className="p-2 border-b border-slate-100">
+                                                <button
+                                                    type="button"
+                                                    onClick={toggleAllLeaveTypes}
+                                                    className="w-full flex items-center gap-2 px-3 py-2 text-sm font-semibold text-slate-700 hover:bg-slate-50 rounded-lg"
+                                                >
+                                                    <div className={cn(
+                                                        "w-4 h-4 border rounded flex items-center justify-center",
+                                                        selectedLeaveTypes.size === leaveTypes.length
+                                                            ? "bg-blue-600 border-blue-600"
+                                                            : "border-slate-300"
+                                                    )}>
+                                                        {selectedLeaveTypes.size === leaveTypes.length && (
+                                                            <Check className="w-3 h-3 text-white" />
+                                                        )}
+                                                    </div>
+                                                    Select All
+                                                </button>
+                                            </div>
+                                            <div className="p-2">
+                                                {leaveTypesOrdered.map(lt => (
+                                                    <button
+                                                        key={lt.id}
+                                                        type="button"
+                                                        onClick={() => toggleLeaveType(lt.id)}
+                                                        className="w-full flex items-center gap-2 px-3 py-2 text-sm text-slate-700 hover:bg-slate-50 rounded-lg"
+                                                    >
+                                                        <div className={cn(
+                                                            "w-4 h-4 border rounded flex items-center justify-center",
+                                                            selectedLeaveTypes.has(lt.id)
+                                                                ? "bg-blue-600 border-blue-600"
+                                                                : "border-slate-300"
+                                                        )}>
+                                                            {selectedLeaveTypes.has(lt.id) && (
+                                                                <Check className="w-3 h-3 text-white" />
+                                                            )}
+                                                        </div>
+                                                        <span className="truncate">{lt.name}</span>
+                                                        <span className="ml-auto text-xs text-slate-400">{lt.code}</span>
+                                                    </button>
+                                                ))}
+                                            </div>
+                                        </div>
+                                    )}
+                                </div>
+
+                                {(searchTerm || departmentFilter !== 'all' || positionFilter !== 'all' || selectedLeaveTypes.size < leaveTypes.length) && (
                                     <button
                                         type="button"
                                         onClick={clearFilters}
@@ -284,7 +385,7 @@ export default function AttendanceTeamPage() {
                                             <SortIcon field="total" />
                                         </div>
                                     </TableHead>
-                                    {(leaveTypeFilter === 'all' ? leaveTypesOrdered : leaveTypesOrdered.filter(lt => lt.id === leaveTypeFilter)).map((lt) => (
+                                    {visibleLeaveTypes.map((lt) => (
                                         <TableHead
                                             key={lt.id}
                                             className="py-4 text-[10px] font-extrabold uppercase tracking-widest text-slate-400 text-center cursor-pointer hover:text-slate-600"
@@ -306,21 +407,22 @@ export default function AttendanceTeamPage() {
                             <TableBody>
                                 {filteredEmployees.length === 0 ? (
                                     <TableRow>
-                                        <TableCell colSpan={(leaveTypeFilter === 'all' ? leaveTypesOrdered.length : 1) + 2} className="p-12 text-center text-slate-500">
+                                        <TableCell colSpan={visibleLeaveTypes.length + 2} className="p-12 text-center text-slate-500">
                                             {employees.length === 0 ? 'No employees yet.' : 'No matches for the selected filters.'}
                                         </TableCell>
                                     </TableRow>
                                 ) : (
                                     [...filteredEmployees]
                                         .map((emp) => {
-                                            const total = leaveTypesOrdered.reduce((sum, lt) => {
+                                            // Total is calculated from visible leave types only
+                                            const total = visibleLeaveTypes.reduce((sum, lt) => {
                                                 if (lt.employmentType !== emp.employmentType) return sum
                                                 const count = getCount(emp.id, emp.employeeId, lt.id, lt.name)
                                                 if (count <= 0) return sum
                                                 return sum + count
                                             }, 0)
                                             const leaveCountsMap: Record<string, number> = {}
-                                            leaveTypesOrdered.forEach(lt => {
+                                            visibleLeaveTypes.forEach(lt => {
                                                 leaveCountsMap[lt.id] = getCount(emp.id, emp.employeeId, lt.id, lt.name)
                                             })
                                             return { emp, total, leaveCountsMap }
@@ -337,11 +439,7 @@ export default function AttendanceTeamPage() {
                                             }
                                             return sortDirection === 'asc' ? comparison : -comparison
                                         })
-                                        .map(({ emp, total, leaveCountsMap }) => {
-                                            const displayLeaveTypes = leaveTypeFilter === 'all'
-                                                ? leaveTypesOrdered
-                                                : leaveTypesOrdered.filter(lt => lt.id === leaveTypeFilter)
-                                            return (
+                                        .map(({ emp, total, leaveCountsMap }) => (
                                                 <TableRow key={emp.id} className="hover:bg-slate-50/50 border-slate-50">
                                                     <TableCell className="sticky left-0 bg-white z-10 w-48 min-w-48 pl-8 py-4">
                                                         <Link href={`/team/${emp.id}/attendance`} className="block group">
@@ -356,7 +454,7 @@ export default function AttendanceTeamPage() {
                                                             {formatCount(total)}
                                                         </span>
                                                     </TableCell>
-                                                    {displayLeaveTypes.map((lt) => {
+                                                    {visibleLeaveTypes.map((lt) => {
                                                         const count = leaveCountsMap[lt.id] || 0
                                                         const matchesEmployment = lt.employmentType === emp.employmentType
                                                         const quotaLimit = lt.quota ?? 0
@@ -376,7 +474,7 @@ export default function AttendanceTeamPage() {
                                                     })}
                                                 </TableRow>
                                             )
-                                        })
+                                        )
                                 )}
                             </TableBody>
                         </Table>
