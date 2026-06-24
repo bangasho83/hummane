@@ -1,6 +1,6 @@
 'use client'
 
-import { useMemo, useState, useEffect } from 'react'
+import { useMemo, useState } from 'react'
 import Link from 'next/link'
 import { AttendanceTabs } from '@/features/attendance'
 import { useApp } from '@/lib/context/AppContext'
@@ -9,63 +9,33 @@ import { Card, CardContent } from '@/components/ui/card'
 import { cn } from '@/lib/utils'
 import { Input } from '@/components/ui/input'
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select'
-import { Button } from '@/components/ui/button'
-import { Copy, ChevronDown, ChevronUp } from 'lucide-react'
-
-const API_BASE_URL = process.env.NEXT_PUBLIC_API_BASE_URL || 'https://api.hummane.com'
+import { Calendar as CalendarIcon } from 'lucide-react'
 
 export default function AttendanceTeamPage() {
-    const { employees, leaveTypes, leaves, apiAccessToken } = useApp()
+    const { employees, leaveTypes, leaves } = useApp()
     const [searchTerm, setSearchTerm] = useState('')
     const [departmentFilter, setDepartmentFilter] = useState<string>('all')
     const [positionFilter, setPositionFilter] = useState<string>('all')
 
-    // Debug panel state
-    const [debugExpanded, setDebugExpanded] = useState(false)
-    const [leavesResponse, setLeavesResponse] = useState<string>('')
-    const [leaveTypesResponse, setLeaveTypesResponse] = useState<string>('')
-    const [employeesResponse, setEmployeesResponse] = useState<string>('')
+    // Date range state - default to start of year to today
+    const today = new Date()
+    const startOfYear = new Date(today.getFullYear(), 0, 1)
+    const [startDate, setStartDate] = useState(startOfYear.toISOString().split('T')[0])
+    const [endDate, setEndDate] = useState(today.toISOString().split('T')[0])
 
-    const leavesCurl = `curl -X GET "${API_BASE_URL}/leaves" \\
-  -H "Authorization: Bearer <token>"`
+    // Filter leaves by date range
+    const filteredLeaves = useMemo(() => {
+        if (!startDate || !endDate) return leaves
+        const start = new Date(startDate)
+        start.setHours(0, 0, 0, 0)
+        const end = new Date(endDate)
+        end.setHours(23, 59, 59, 999)
 
-    const leaveTypesCurl = `curl -X GET "${API_BASE_URL}/leave-types" \\
-  -H "Authorization: Bearer <token>"`
-
-    const employeesCurl = `curl -X GET "${API_BASE_URL}/employees" \\
-  -H "Authorization: Bearer <token>"`
-
-    useEffect(() => {
-        if (!apiAccessToken) return
-
-        // Fetch leaves
-        fetch(`${API_BASE_URL}/leaves`, {
-            headers: { Authorization: `Bearer ${apiAccessToken}` }
+        return leaves.filter(leave => {
+            const leaveDate = new Date(leave.startDate || leave.date)
+            return leaveDate >= start && leaveDate <= end
         })
-            .then(res => res.json())
-            .then(data => setLeavesResponse(JSON.stringify(data, null, 2)))
-            .catch(err => setLeavesResponse(`Error: ${err.message}`))
-
-        // Fetch leave types
-        fetch(`${API_BASE_URL}/leave-types`, {
-            headers: { Authorization: `Bearer ${apiAccessToken}` }
-        })
-            .then(res => res.json())
-            .then(data => setLeaveTypesResponse(JSON.stringify(data, null, 2)))
-            .catch(err => setLeaveTypesResponse(`Error: ${err.message}`))
-
-        // Fetch employees
-        fetch(`${API_BASE_URL}/employees`, {
-            headers: { Authorization: `Bearer ${apiAccessToken}` }
-        })
-            .then(res => res.json())
-            .then(data => setEmployeesResponse(JSON.stringify(data, null, 2)))
-            .catch(err => setEmployeesResponse(`Error: ${err.message}`))
-    }, [apiAccessToken])
-
-    const copyToClipboard = (text: string) => {
-        navigator.clipboard.writeText(text)
-    }
+    }, [leaves, startDate, endDate])
 
     const leaveTypesOrdered = useMemo(
         () => [...leaveTypes].sort((a, b) => a.name.localeCompare(b.name)),
@@ -159,7 +129,7 @@ export default function AttendanceTeamPage() {
         const employeeKey = normalizeId(employeeId)
         const employeeCodeKey = normalizeId(employeeCode)
         const leaveTypeKey = normalizeId(leaveTypeId)
-        return leaves
+        return filteredLeaves
             .filter(l => {
                 const leaveEmployeeId = normalizeId(l.employeeId)
                 if (leaveEmployeeId !== employeeKey && leaveEmployeeId !== employeeCodeKey) return false
@@ -191,19 +161,35 @@ export default function AttendanceTeamPage() {
                 <CardContent className="p-0">
                     <div className="p-8 border-b border-slate-100">
                         <div className="flex items-center gap-4 flex-wrap">
-                            <div className="flex-1 min-w-[280px]">
-                                <div className="relative">
-                                    <Input
-                                        placeholder="Search team..."
-                                        value={searchTerm}
-                                        onChange={(e) => setSearchTerm(e.target.value)}
-                                        className="pl-4 h-11 rounded-xl bg-slate-50 border-slate-200"
-                                    />
-                                </div>
+                            {/* Date Range Picker */}
+                            <div className="flex items-center gap-2">
+                                <CalendarIcon className="w-4 h-4 text-slate-400" />
+                                <Input
+                                    type="date"
+                                    value={startDate}
+                                    onChange={(e) => setStartDate(e.target.value)}
+                                    className="h-11 rounded-xl bg-slate-50 border-slate-200 w-40"
+                                />
+                                <span className="text-slate-400">to</span>
+                                <Input
+                                    type="date"
+                                    value={endDate}
+                                    onChange={(e) => setEndDate(e.target.value)}
+                                    className="h-11 rounded-xl bg-slate-50 border-slate-200 w-40"
+                                />
+                            </div>
+
+                            <div className="flex-1 min-w-[200px]">
+                                <Input
+                                    placeholder="Search team..."
+                                    value={searchTerm}
+                                    onChange={(e) => setSearchTerm(e.target.value)}
+                                    className="pl-4 h-11 rounded-xl bg-slate-50 border-slate-200"
+                                />
                             </div>
                             <div className="flex items-center gap-3 flex-wrap">
                                 <Select value={departmentFilter} onValueChange={setDepartmentFilter}>
-                                    <SelectTrigger className="w-[180px] bg-slate-50 border-slate-200 h-11 rounded-xl">
+                                    <SelectTrigger className="w-44 bg-slate-50 border-slate-200 h-11 rounded-xl">
                                         <SelectValue placeholder="Department" />
                                     </SelectTrigger>
                                     <SelectContent>
@@ -215,7 +201,7 @@ export default function AttendanceTeamPage() {
                                 </Select>
 
                                 <Select value={positionFilter} onValueChange={setPositionFilter}>
-                                    <SelectTrigger className="w-[180px] bg-slate-50 border-slate-200 h-11 rounded-xl">
+                                    <SelectTrigger className="w-44 bg-slate-50 border-slate-200 h-11 rounded-xl">
                                         <SelectValue placeholder="Position" />
                                     </SelectTrigger>
                                     <SelectContent>
@@ -243,8 +229,11 @@ export default function AttendanceTeamPage() {
                         <Table>
                             <TableHeader className="bg-slate-50/50">
                                 <TableRow className="hover:bg-transparent border-slate-100">
-                                    <TableHead className="w-64 pl-8 py-4 text-[10px] font-extrabold uppercase tracking-widest text-slate-400">
+                                    <TableHead className="sticky left-0 bg-slate-50/95 z-20 w-56 pl-8 py-4 text-[10px] font-extrabold uppercase tracking-widest text-slate-400 border-r border-slate-100">
                                         Employee
+                                    </TableHead>
+                                    <TableHead className="sticky left-56 bg-slate-50/95 z-20 w-20 py-4 text-[10px] font-extrabold uppercase tracking-widest text-slate-400 text-center border-r border-slate-200 shadow-[2px_0_4px_-2px_rgba(0,0,0,0.1)]">
+                                        Total
                                     </TableHead>
                                     {leaveTypesOrdered.map((lt) => (
                                         <TableHead key={lt.id} className="py-4 text-[10px] font-extrabold uppercase tracking-widest text-slate-400 text-center">
@@ -256,9 +245,6 @@ export default function AttendanceTeamPage() {
                                                 </div>
                                         </TableHead>
                                     ))}
-                                    <TableHead className="py-4 text-[10px] font-extrabold uppercase tracking-widest text-slate-400 text-center pr-8">
-                                        Total
-                                    </TableHead>
                                 </TableRow>
                             </TableHeader>
                             <TableBody>
@@ -276,22 +262,27 @@ export default function AttendanceTeamPage() {
                                             if (count <= 0) return sum
                                             return sum + count
                                         }, 0)
-                                                return (
+                                        return (
                                             <TableRow key={emp.id} className="hover:bg-slate-50/50 border-slate-50">
-                                                <TableCell className="pl-8 py-4">
+                                                <TableCell className="sticky left-0 bg-white z-10 w-56 pl-8 py-4 border-r border-slate-100">
                                                     <Link href={`/team/${emp.id}/attendance`} className="block group">
-                                                        <div className="font-bold text-slate-900 group-hover:text-blue-600 transition-colors">{emp.name}</div>
-                                                        <div className="text-[11px] text-slate-500 font-medium">
+                                                        <div className="font-bold text-slate-900 group-hover:text-blue-600 transition-colors truncate max-w-44">{emp.name}</div>
+                                                        <div className="text-[11px] text-slate-500 font-medium truncate max-w-44">
                                                             {emp.department}
                                                         </div>
                                                     </Link>
+                                                </TableCell>
+                                                <TableCell className="sticky left-56 bg-white z-10 w-20 text-center border-r border-slate-200 shadow-[2px_0_4px_-2px_rgba(0,0,0,0.1)]">
+                                                    <span className={cn("text-sm font-bold", total > 0 ? "text-slate-900" : "text-slate-400")}>
+                                                        {formatCount(total)}
+                                                    </span>
                                                 </TableCell>
                                                 {leaveTypesOrdered.map((lt) => {
                                                     const count = getCount(emp.id, emp.employeeId, lt.id, lt.name)
                                                     const matchesEmployment = lt.employmentType === emp.employmentType
                                                     const quotaLimit = lt.quota ?? 0
                                                     const isOverQuota = matchesEmployment && count > quotaLimit
-                                                            return (
+                                                    return (
                                                         <TableCell
                                                             key={lt.id}
                                                             className={cn(
@@ -302,113 +293,17 @@ export default function AttendanceTeamPage() {
                                                         >
                                                             {matchesEmployment ? formatCount(count || 0) : '—'}
                                                         </TableCell>
-    )
-                                                    })}
-                                                    <TableCell className="text-center pr-8">
-                                                        <span className={cn("text-sm font-bold", total > 0 ? "text-slate-900" : "text-slate-400")}>
-                                                            {formatCount(total)}
-                                                        </span>
-                                                    </TableCell>
-                                                </TableRow>
-                                            )
-                                        })
-                                    )}
-                                </TableBody>
-                            </Table>
+                                                    )
+                                                })}
+                                            </TableRow>
+                                        )
+                                    })
+                                )}
+                            </TableBody>
+                        </Table>
                     </div>
                 </CardContent>
             </Card>
-
-            {/* API Debug Panel */}
-            <Card className="mt-6 border border-slate-200 shadow-sm rounded-2xl bg-slate-50">
-                <CardContent className="p-4">
-                    <button
-                        type="button"
-                        onClick={() => setDebugExpanded(!debugExpanded)}
-                        className="flex items-center justify-between w-full text-left"
-                    >
-                        <span className="text-sm font-bold text-slate-600">API Debug Panel</span>
-                        {debugExpanded ? <ChevronUp className="w-4 h-4 text-slate-400" /> : <ChevronDown className="w-4 h-4 text-slate-400" />}
-                    </button>
-
-                    {debugExpanded && (
-                        <div className="mt-4 space-y-6">
-                            {/* Leaves API */}
-                            <div className="space-y-2">
-                                <div className="flex items-center justify-between">
-                                    <p className="text-xs font-bold text-slate-500 uppercase tracking-widest">GET /leaves</p>
-                                    <Button
-                                        variant="ghost"
-                                        size="sm"
-                                        onClick={() => copyToClipboard(leavesCurl)}
-                                        className="h-7 px-2 text-xs"
-                                    >
-                                        <Copy className="w-3 h-3 mr-1" /> Copy cURL
-                                    </Button>
-                                </div>
-                                <pre className="text-xs bg-slate-900 text-green-400 p-3 rounded-lg overflow-x-auto whitespace-pre-wrap">
-                                    {leavesCurl}
-                                </pre>
-                                <details className="text-xs">
-                                    <summary className="cursor-pointer text-slate-500 font-medium">Response ({leaves.length} records)</summary>
-                                    <pre className="mt-2 bg-white border border-slate-200 p-3 rounded-lg overflow-x-auto max-h-64 text-slate-700">
-                                        {leavesResponse || 'Loading...'}
-                                    </pre>
-                                </details>
-                            </div>
-
-                            {/* Leave Types API */}
-                            <div className="space-y-2">
-                                <div className="flex items-center justify-between">
-                                    <p className="text-xs font-bold text-slate-500 uppercase tracking-widest">GET /leave-types</p>
-                                    <Button
-                                        variant="ghost"
-                                        size="sm"
-                                        onClick={() => copyToClipboard(leaveTypesCurl)}
-                                        className="h-7 px-2 text-xs"
-                                    >
-                                        <Copy className="w-3 h-3 mr-1" /> Copy cURL
-                                    </Button>
-                                </div>
-                                <pre className="text-xs bg-slate-900 text-green-400 p-3 rounded-lg overflow-x-auto whitespace-pre-wrap">
-                                    {leaveTypesCurl}
-                                </pre>
-                                <details className="text-xs">
-                                    <summary className="cursor-pointer text-slate-500 font-medium">Response ({leaveTypes.length} records)</summary>
-                                    <pre className="mt-2 bg-white border border-slate-200 p-3 rounded-lg overflow-x-auto max-h-64 text-slate-700">
-                                        {leaveTypesResponse || 'Loading...'}
-                                    </pre>
-                                </details>
-                            </div>
-
-                            {/* Employees API */}
-                            <div className="space-y-2">
-                                <div className="flex items-center justify-between">
-                                    <p className="text-xs font-bold text-slate-500 uppercase tracking-widest">GET /employees</p>
-                                    <Button
-                                        variant="ghost"
-                                        size="sm"
-                                        onClick={() => copyToClipboard(employeesCurl)}
-                                        className="h-7 px-2 text-xs"
-                                    >
-                                        <Copy className="w-3 h-3 mr-1" /> Copy cURL
-                                    </Button>
-                                </div>
-                                <pre className="text-xs bg-slate-900 text-green-400 p-3 rounded-lg overflow-x-auto whitespace-pre-wrap">
-                                    {employeesCurl}
-                                </pre>
-                                <details className="text-xs">
-                                    <summary className="cursor-pointer text-slate-500 font-medium">Response ({employees.length} records)</summary>
-                                    <pre className="mt-2 bg-white border border-slate-200 p-3 rounded-lg overflow-x-auto max-h-64 text-slate-700">
-                                        {employeesResponse || 'Loading...'}
-                                    </pre>
-                                </details>
-                            </div>
-                        </div>
-                    )}
-                </CardContent>
-            </Card>
-
         </div>
     )
 }
