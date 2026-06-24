@@ -262,16 +262,8 @@ export default function EmployeeAttendancePage() {
                                     // Format readable date/time range
                                     const formatRange = () => {
                                         if (unit === 'Hour' && leave.startTime && leave.endTime) {
-                                            // Format time to 12-hour
-                                            const formatTime = (time: string) => {
-                                                const [h, m] = time.split(':').map(Number)
-                                                const hour12 = h === 0 ? 12 : h > 12 ? h - 12 : h
-                                                const ampm = h < 12 ? 'AM' : 'PM'
-                                                return `${hour12}:${m.toString().padStart(2, '0')} ${ampm}`
-                                            }
-                                            const date = leave.startDate || leave.date
-                                            const dateStr = date ? new Date(date).toLocaleDateString('en-US', { month: 'short', day: 'numeric' }) : ''
-                                            return `${dateStr} ${formatTime(leave.startTime)} – ${formatTime(leave.endTime)}`
+                                            // API returns time already formatted as "09:00 AM", use directly
+                                            return `${leave.startTime} – ${leave.endTime}`
                                         } else if (leave.startDate && leave.endDate && leave.startDate !== leave.endDate) {
                                             // Multi-day range
                                             const start = new Date(leave.startDate)
