@@ -29,11 +29,12 @@ function OrgNodeCard({
   onHoverStart: (id: string) => void
   onHoverEnd: () => void
 }) {
+  const photoUrl = node.photoUrl || node.profilePicture
   return (
     <div
       onMouseEnter={() => onHoverStart(node.id)}
       onMouseLeave={onHoverEnd}
-      className={`min-w-[180px] max-w-[200px] rounded-2xl border px-4 py-3 shadow-sm transition-all duration-150 ${
+      className={`min-w-[180px] max-w-[200px] rounded-2xl border px-4 py-4 shadow-sm transition-all duration-150 ${
         isHighlighted
           ? 'border-blue-300 bg-blue-50/70 shadow-blue-100'
           : 'border-slate-200 bg-white'
@@ -41,6 +42,19 @@ function OrgNodeCard({
         isDimmed ? 'opacity-45' : 'opacity-100'
       }`}
     >
+      <div className="flex justify-center mb-2">
+        {photoUrl ? (
+          <img
+            src={photoUrl}
+            alt={node.name}
+            className="w-12 h-12 rounded-full object-cover border-2 border-white shadow-sm"
+          />
+        ) : (
+          <div className="w-12 h-12 rounded-full bg-gradient-to-br from-blue-500 to-indigo-600 flex items-center justify-center text-white font-bold text-lg shadow-sm">
+            {node.name.charAt(0).toUpperCase()}
+          </div>
+        )}
+      </div>
       <p className="text-sm font-extrabold text-slate-900 text-center leading-tight break-words">{node.name}</p>
       <p className="text-xs text-slate-500 text-center mt-1 break-words">
         {node.roleName || node.position || 'Role Unassigned'}
