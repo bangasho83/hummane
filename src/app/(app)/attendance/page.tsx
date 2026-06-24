@@ -1,7 +1,7 @@
 'use client'
 
 import { useEffect, useMemo, useState } from 'react'
-import { Calendar as CalendarIcon, Plus, Check, ChevronDown, ChevronUp, Copy } from 'lucide-react'
+import { Calendar as CalendarIcon, Plus, Check } from 'lucide-react'
 import Link from 'next/link'
 import { useApp } from '@/lib/context/AppContext'
 import type { LeaveRecord } from '@/types'
@@ -40,12 +40,6 @@ export default function AttendancePage() {
     const [dates, setDates] = useState<Date[]>([])
     const [rangeError, setRangeError] = useState('')
     const [nameFilter, setNameFilter] = useState('')
-
-    // Debug panel state
-    const [debugExpanded, setDebugExpanded] = useState(false)
-    const [apiEndpoint, setApiEndpoint] = useState('')
-    const [curlCommand, setCurlCommand] = useState('')
-    const [apiResponse, setApiResponse] = useState('')
     // Build the date range on the client to avoid SSR/client drift
     useEffect(() => {
         const current = new Date()
@@ -134,11 +128,6 @@ export default function AttendancePage() {
         return `${String(normalizedHours).padStart(2, '0')}:${minutes} ${suffix}`
     }
 
-    const copyToClipboard = (text: string) => {
-        navigator.clipboard.writeText(text)
-        toast('Copied to clipboard', 'success')
-    }
-
     const fetchLeaves = async (startDateFilter?: string, endDateFilter?: string) => {
         if (!apiAccessToken) {
             setLeaves([])
@@ -153,24 +142,16 @@ export default function AttendancePage() {
                 url += `?startDate=${encodeURIComponent(startDateFilter)}&endDate=${encodeURIComponent(endDateFilter)}`
             }
 
-            // Set debug info
-            setApiEndpoint(url)
-            setCurlCommand(`curl -X GET '${url}' \\\n  -H 'Authorization: Bearer ${apiAccessToken}'`)
-
             const response = await fetch(url, {
                 method: 'GET',
                 headers: { Authorization: `Bearer ${apiAccessToken}` }
             })
             if (!response.ok) {
                 const message = await response.text()
-                setApiResponse(JSON.stringify({ error: message }, null, 2))
                 throw new Error(message || 'Failed to fetch leave records')
             }
             const data = await response.json()
-            setApiResponse(JSON.stringify(data, null, 2))
-
             const list = data?.records || data?.data || data?.leaves || data
-            console.log('Fetched leaves:', list?.length || 0, 'records', { startDateFilter, endDateFilter, data })
             setLeaves(Array.isArray(list) ? list : [])
         } catch (error) {
             const message = error instanceof Error ? error.message : 'Failed to fetch leave records'
@@ -797,81 +778,6 @@ export default function AttendancePage() {
                         </p>
                     </div>
                 </div>
-
-                {/* API Debug Panel */}
-                <Card className="mt-6 border border-slate-200 shadow-sm rounded-2xl bg-slate-50">
-                    <CardContent className="p-4">
-                        <button
-                            type="button"
-                            onClick={() => setDebugExpanded(!debugExpanded)}
-                            className="flex items-center justify-between w-full text-left"
-                        >
-                            <span className="text-sm font-bold text-slate-600">
-                                API Debug Panel ({leaves.length} leaves loaded)
-                            </span>
-                            {debugExpanded ? <ChevronUp className="w-4 h-4 text-slate-400" /> : <ChevronDown className="w-4 h-4 text-slate-400" />}
-                        </button>
-
-                        {debugExpanded && (
-                            <div className="mt-4 space-y-4">
-                                <div className="space-y-2">
-                                    <div className="flex items-center justify-between">
-                                        <p className="text-xs font-bold text-slate-500 uppercase tracking-widest">Endpoint</p>
-                                    </div>
-                                    <pre className="text-xs bg-white border border-slate-200 p-3 rounded-lg overflow-x-auto whitespace-pre-wrap text-slate-700">
-                                        {apiEndpoint || 'Not yet fetched'}
-                                    </pre>
-                                </div>
-
-                                <div className="space-y-2">
-                                    <div className="flex items-center justify-between">
-                                        <p className="text-xs font-bold text-slate-500 uppercase tracking-widest">cURL Command</p>
-                                        <Button
-                                            variant="ghost"
-                                            size="sm"
-                                            onClick={() => copyToClipboard(curlCommand)}
-                                            className="h-7 px-2 text-xs"
-                                        >
-                                            <Copy className="w-3 h-3 mr-1" /> Copy
-                                        </Button>
-                                    </div>
-                                    <pre className="text-xs bg-slate-900 text-green-400 p-3 rounded-lg overflow-x-auto whitespace-pre-wrap">
-                                        {curlCommand || 'Loading...'}
-                                    </pre>
-                                </div>
-
-                                <div className="space-y-2">
-                                    <div className="flex items-center justify-between">
-                                        <p className="text-xs font-bold text-slate-500 uppercase tracking-widest">
-                                            API Response ({leaves.length} records extracted)
-                                        </p>
-                                        <Button
-                                            variant="ghost"
-                                            size="sm"
-                                            onClick={() => copyToClipboard(apiResponse)}
-                                            className="h-7 px-2 text-xs"
-                                        >
-                                            <Copy className="w-3 h-3 mr-1" /> Copy
-                                        </Button>
-                                    </div>
-                                    <pre className="text-xs bg-white border border-slate-200 p-3 rounded-lg overflow-x-auto max-h-96 text-slate-700">
-                                        {apiResponse || 'Loading...'}
-                                    </pre>
-                                </div>
-
-                                <div className="space-y-2">
-                                    <p className="text-xs font-bold text-slate-500 uppercase tracking-widest">
-                                        Leaves Array (parsed)
-                                    </p>
-                                    <pre className="text-xs bg-white border border-slate-200 p-3 rounded-lg overflow-x-auto max-h-96 text-slate-700">
-                                        {JSON.stringify(leaves.slice(0, 10), null, 2)}
-                                        {leaves.length > 10 && `\n\n... and ${leaves.length - 10} more records`}
-                                    </pre>
-                                </div>
-                            </div>
-                        )}
-                    </CardContent>
-                </Card>
 
             </div>
 )
