@@ -286,15 +286,15 @@ export function EmployeeTable({ employees, onRefresh }: EmployeeTableProps) {
                                         <span className="text-xs font-bold text-slate-500 uppercase tracking-wide">{employee.employeeId}</span>
                                     </TableCell>
                                     <TableCell>
-                                        {employee.photoUrl ? (
+                                        {(employee.photoUrl || employee.profilePicture) ? (
                                             <img
-                                                src={employee.photoUrl}
+                                                src={employee.photoUrl || employee.profilePicture}
                                                 alt={employee.name}
-                                                className="w-10 h-10 rounded-full object-cover"
+                                                className="w-10 h-10 rounded-full object-cover border-2 border-white shadow-sm"
                                             />
                                         ) : (
-                                            <div className="w-10 h-10 rounded-full bg-slate-100 flex items-center justify-center">
-                                                <User className="w-5 h-5 text-slate-400" />
+                                            <div className="w-10 h-10 rounded-full bg-gradient-to-br from-blue-500 to-indigo-600 flex items-center justify-center text-white font-bold text-sm shadow-sm">
+                                                {employee.name.charAt(0).toUpperCase()}
                                             </div>
                                         )}
                                     </TableCell>
