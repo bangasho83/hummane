@@ -1,5 +1,5 @@
 import { getApp, getApps, initializeApp, type FirebaseApp } from 'firebase/app'
-import { GoogleAuthProvider, getAuth, type Auth } from 'firebase/auth'
+import { GoogleAuthProvider, getAuth, browserLocalPersistence, setPersistence, type Auth } from 'firebase/auth'
 import { getStorage, type FirebaseStorage } from 'firebase/storage'
 
 const firebaseConfig = {
@@ -17,6 +17,13 @@ const app: FirebaseApp | null = isBrowser
   ? (getApps().length ? getApp() : initializeApp(firebaseConfig))
   : null
 
-export const firebaseAuth = app ? getAuth(app) : (null as unknown as Auth)
+const auth = app ? getAuth(app) : (null as unknown as Auth)
+
+// Ensure Firebase auth persistence is set to local storage
+if (auth && isBrowser) {
+  setPersistence(auth, browserLocalPersistence).catch(console.error)
+}
+
+export const firebaseAuth = auth
 export const googleAuthProvider = app ? new GoogleAuthProvider() : (null as unknown as GoogleAuthProvider)
 export const firebaseStorage = app ? getStorage(app) : (null as unknown as FirebaseStorage)

@@ -676,7 +676,14 @@ export function AppProvider({ children }: { children: ReactNode }) {
             setUserSession(user)
         }
         const unsubscribe = onAuthStateChanged(firebaseAuth, async (firebaseUser) => {
-            if (!firebaseUser || !firebaseUser.email) return
+            if (!firebaseUser || !firebaseUser.email) {
+                // Firebase has no authenticated user - this is expected on logout
+                // or when the session has truly expired.
+                // Don't clear anything here - let the stored cookies/localStorage
+                // handle the auth state until explicitly logged out.
+                setIsHydrating(false)
+                return
+            }
             const localUser = await ensureLocalUser({
                 email: firebaseUser.email,
                 name: firebaseUser.displayName || firebaseUser.email.split('@')[0]
@@ -695,6 +702,8 @@ export function AppProvider({ children }: { children: ReactNode }) {
                 }
             } catch (error) {
                 console.error('Failed to sync API session on auth state change:', error)
+            } finally {
+                setIsHydrating(false)
             }
         })
         return () => unsubscribe()
