@@ -174,7 +174,8 @@ export default function MemberLeavesPage() {
                 return
             }
             const diffHours = (end.getTime() - start.getTime()) / (1000 * 60 * 60)
-            requestedUnits = diffHours
+            // Round to 2 decimal places to satisfy API validation
+            requestedUnits = Math.round(diffHours * 100) / 100
             payloadStartDate = startDate
             payloadEndDate = startDate
         }
