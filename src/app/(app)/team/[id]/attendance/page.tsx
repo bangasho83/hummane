@@ -110,7 +110,7 @@ export default function EmployeeAttendancePage() {
                     <Button
                         variant="ghost"
                         size="icon"
-                        onClick={() => router.push('/team')}
+                        onClick={() => router.back()}
                         className="rounded-xl hover:bg-white hover:shadow-sm border border-transparent hover:border-slate-100"
                     >
                         <ArrowLeft className="w-5 h-5" />
