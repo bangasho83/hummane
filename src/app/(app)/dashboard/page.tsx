@@ -345,17 +345,10 @@ export default function DashboardPage() {
             {/* Upcoming Birthdays & Anniversaries */}
             {upcomingEvents.length > 0 && (
                 <section className="mt-8">
-                    <div className="bg-white p-6 rounded-3xl shadow-premium border border-slate-100">
-                        <div className="flex items-center justify-between mb-4">
-                            <div className="flex items-center gap-3">
-                                <div className="w-10 h-10 rounded-2xl bg-gradient-to-br from-pink-500 to-orange-400 flex items-center justify-center">
-                                    <PartyPopper className="w-5 h-5 text-white" />
-                                </div>
-                                <div>
-                                    <h3 className="text-lg font-bold text-slate-900">Upcoming Celebrations</h3>
-                                    <p className="text-xs text-slate-500">Birthdays & work anniversaries in the next 30 days</p>
-                                </div>
-                            </div>
+                    <div className="bg-white p-8 rounded-3xl shadow-premium border border-slate-100">
+                        <div className="mb-6">
+                            <h3 className="text-xl font-bold text-slate-900">Upcoming Celebrations</h3>
+                            <p className="text-sm text-slate-500">Birthdays & work anniversaries in the next 30 days.</p>
                         </div>
                         <div className="flex gap-4 overflow-x-auto pb-2">
                             {upcomingEvents.map((event, idx) => (
