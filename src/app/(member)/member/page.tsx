@@ -15,7 +15,9 @@ import {
     Clock,
     Loader2,
     CalendarPlus,
-    Users
+    Users,
+    Cake,
+    PartyPopper
 } from 'lucide-react'
 import { formatDate } from '@/lib/utils'
 import type { LeaveRecord, FeedbackEntry, Employee } from '@/types'
@@ -178,6 +180,82 @@ export default function MemberDashboardPage() {
             .slice(0, 3)
     }, [holidays, todayKey])
 
+    // Upcoming birthdays and work anniversaries (next 30 days)
+    const upcomingEvents = useMemo(() => {
+        const today = new Date()
+        const thirtyDaysLater = new Date(today)
+        thirtyDaysLater.setDate(today.getDate() + 30)
+
+        const events: Array<{
+            type: 'birthday' | 'anniversary'
+            employeeId: string
+            employeeName: string
+            photoUrl: string
+            date: Date
+            displayDate: string
+            years?: number
+        }> = []
+
+        employees.forEach(emp => {
+            // Check birthday (dob or dateOfBirth)
+            const dobStr = emp.dob || emp.dateOfBirth
+            if (dobStr) {
+                const dob = new Date(dobStr)
+                if (!isNaN(dob.getTime())) {
+                    // Create this year's birthday
+                    const thisYearBirthday = new Date(today.getFullYear(), dob.getMonth(), dob.getDate())
+                    // If already passed this year, check next year
+                    if (thisYearBirthday < today) {
+                        thisYearBirthday.setFullYear(today.getFullYear() + 1)
+                    }
+                    // Check if within next 30 days
+                    if (thisYearBirthday <= thirtyDaysLater) {
+                        events.push({
+                            type: 'birthday',
+                            employeeId: emp.id,
+                            employeeName: emp.name,
+                            photoUrl: emp.photoUrl || emp.profilePicture || '',
+                            date: thisYearBirthday,
+                            displayDate: thisYearBirthday.toLocaleDateString('en-US', { month: 'short', day: 'numeric' })
+                        })
+                    }
+                }
+            }
+
+            // Check work anniversary (startDate)
+            if (emp.startDate) {
+                const startDate = new Date(emp.startDate)
+                if (!isNaN(startDate.getTime())) {
+                    const yearsWorked = today.getFullYear() - startDate.getFullYear()
+                    if (yearsWorked >= 1) {
+                        // Create this year's anniversary
+                        const thisYearAnniversary = new Date(today.getFullYear(), startDate.getMonth(), startDate.getDate())
+                        // If already passed this year, check next year
+                        if (thisYearAnniversary < today) {
+                            thisYearAnniversary.setFullYear(today.getFullYear() + 1)
+                        }
+                        const anniversaryYears = thisYearAnniversary.getFullYear() - startDate.getFullYear()
+                        // Check if within next 30 days
+                        if (thisYearAnniversary <= thirtyDaysLater && anniversaryYears >= 1) {
+                            events.push({
+                                type: 'anniversary',
+                                employeeId: emp.id,
+                                employeeName: emp.name,
+                                photoUrl: emp.photoUrl || emp.profilePicture || '',
+                                date: thisYearAnniversary,
+                                displayDate: thisYearAnniversary.toLocaleDateString('en-US', { month: 'short', day: 'numeric' }),
+                                years: anniversaryYears
+                            })
+                        }
+                    }
+                }
+            }
+        })
+
+        // Sort by date
+        return events.sort((a, b) => a.date.getTime() - b.date.getTime())
+    }, [employees])
+
     // Recent feedback
     const recentFeedback = useMemo(() => {
         return [...myFeedback]
@@ -288,6 +366,52 @@ export default function MemberDashboardPage() {
                     </CardContent>
                 </Card>
             </div>
+
+            {/* Upcoming Birthdays & Anniversaries */}
+            {upcomingEvents.length > 0 && (
+                <div className="bg-white p-8 rounded-3xl shadow-premium border border-slate-100">
+                    <div className="mb-6">
+                        <h3 className="text-xl font-bold text-slate-900">Upcoming Celebrations</h3>
+                        <p className="text-sm text-slate-500">Birthdays & work anniversaries in the next 30 days.</p>
+                    </div>
+                    <div className="flex gap-4 overflow-x-auto pb-2">
+                        {upcomingEvents.map((event, idx) => (
+                            <div
+                                key={`${event.type}-${event.employeeId}-${idx}`}
+                                className="flex-shrink-0 flex items-center gap-3 px-4 py-3 rounded-2xl border border-slate-100 bg-slate-50/50 hover:bg-slate-50 transition-colors min-w-[220px]"
+                            >
+                                {event.photoUrl ? (
+                                    <img
+                                        src={event.photoUrl}
+                                        alt={event.employeeName}
+                                        className="w-10 h-10 rounded-full object-cover border-2 border-white shadow-sm"
+                                    />
+                                ) : (
+                                    <div className="w-10 h-10 rounded-full bg-gradient-to-br from-blue-500 to-indigo-600 flex items-center justify-center text-white font-bold text-sm shadow-sm">
+                                        {event.employeeName.charAt(0).toUpperCase()}
+                                    </div>
+                                )}
+                                <div className="flex-1 min-w-0">
+                                    <p className="font-semibold text-slate-900 text-sm truncate">{event.employeeName}</p>
+                                    <div className="flex items-center gap-1.5">
+                                        {event.type === 'birthday' ? (
+                                            <Cake className="w-3 h-3 text-pink-500" />
+                                        ) : (
+                                            <PartyPopper className="w-3 h-3 text-orange-500" />
+                                        )}
+                                        <span className="text-xs text-slate-500">
+                                            {event.type === 'birthday' ? 'Birthday' : `${event.years} Year${event.years !== 1 ? 's' : ''}`}
+                                        </span>
+                                    </div>
+                                </div>
+                                <div className="text-right">
+                                    <p className="text-xs font-bold text-slate-700">{event.displayDate}</p>
+                                </div>
+                            </div>
+                        ))}
+                    </div>
+                </div>
+            )}
 
             {/* Main Content Grid */}
             <div className="grid grid-cols-1 xl:grid-cols-3 gap-6">
