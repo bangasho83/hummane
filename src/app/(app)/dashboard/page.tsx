@@ -7,13 +7,13 @@ import { useApp } from '@/lib/context/AppContext'
 import { Button } from '@/components/ui/button'
 import { Plus, CalendarCheck, Briefcase, UserPlus, FileText, User, Cake, PartyPopper, Calendar, Users } from 'lucide-react'
 import { StatsCards } from '@/features/dashboard'
-import { formatCurrency, formatDate } from '@/lib/utils'
+import { formatCurrency, formatDate, parseLocalDate, getLocalTodayKey } from '@/lib/utils'
 import { EMPLOYMENT_TYPES } from '@/types'
 
 export default function DashboardPage() {
     const router = useRouter()
     const { currentUser, currentCompany, employees, departments, roles, leaveTypes, leaves, jobs, applicants, holidays, isHydrating } = useApp()
-    const todayKey = useMemo(() => new Date().toISOString().split('T')[0], [])
+    const todayKey = useMemo(() => getLocalTodayKey(), [])
 
     const totalEmployees = employees.length
     const currency = currentCompany?.currency
@@ -143,7 +143,7 @@ export default function DashboardPage() {
             // Check birthday (dob or dateOfBirth)
             const dobStr = emp.dob || emp.dateOfBirth
             if (dobStr) {
-                const dob = new Date(dobStr)
+                const dob = parseLocalDate(dobStr)
                 if (!isNaN(dob.getTime())) {
                     // Create this year's birthday
                     const thisYearBirthday = new Date(today.getFullYear(), dob.getMonth(), dob.getDate())
@@ -167,7 +167,7 @@ export default function DashboardPage() {
 
             // Check work anniversary (startDate)
             if (emp.startDate) {
-                const startDate = new Date(emp.startDate)
+                const startDate = parseLocalDate(emp.startDate)
                 if (!isNaN(startDate.getTime())) {
                     const yearsWorked = today.getFullYear() - startDate.getFullYear()
                     if (yearsWorked >= 1) {
@@ -532,8 +532,10 @@ export default function DashboardPage() {
                         ) : (
                             <div className="space-y-3">
                                 {upcomingHolidays.map(holiday => {
-                                    const holidayDate = new Date(holiday.date)
-                                    const daysUntil = Math.ceil((holidayDate.getTime() - new Date().getTime()) / (1000 * 60 * 60 * 24))
+                                    const holidayDate = parseLocalDate(holiday.date)
+                                    const today = new Date()
+                                    today.setHours(0, 0, 0, 0)
+                                    const daysUntil = Math.ceil((holidayDate.getTime() - today.getTime()) / (1000 * 60 * 60 * 24))
                                     return (
                                         <div key={holiday.id} className="flex items-center gap-3 p-3 rounded-xl bg-slate-50">
                                             <div className="w-12 h-12 rounded-xl bg-blue-100 flex flex-col items-center justify-center">

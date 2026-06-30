@@ -19,7 +19,7 @@ import {
     Cake,
     PartyPopper
 } from 'lucide-react'
-import { formatDate } from '@/lib/utils'
+import { formatDate, parseLocalDate, getLocalTodayKey } from '@/lib/utils'
 import type { LeaveRecord, FeedbackEntry, Employee } from '@/types'
 
 const API_BASE_URL = 'https://api.hummane.com'
@@ -45,7 +45,7 @@ export default function MemberDashboardPage() {
 
     const isDataLoading = isHydrating || !meProfile
 
-    const todayKey = useMemo(() => new Date().toISOString().split('T')[0], [])
+    const todayKey = useMemo(() => getLocalTodayKey(), [])
 
     // Fetch all data on mount
     useEffect(() => {
@@ -229,7 +229,7 @@ export default function MemberDashboardPage() {
             // Check birthday (dob or dateOfBirth)
             const dobStr = emp.dob || emp.dateOfBirth
             if (dobStr) {
-                const dob = new Date(dobStr)
+                const dob = parseLocalDate(dobStr)
                 if (!isNaN(dob.getTime())) {
                     // Create this year's birthday
                     const thisYearBirthday = new Date(today.getFullYear(), dob.getMonth(), dob.getDate())
@@ -253,7 +253,7 @@ export default function MemberDashboardPage() {
 
             // Check work anniversary (startDate)
             if (emp.startDate) {
-                const startDate = new Date(emp.startDate)
+                const startDate = parseLocalDate(emp.startDate)
                 if (!isNaN(startDate.getTime())) {
                     const yearsWorked = today.getFullYear() - startDate.getFullYear()
                     if (yearsWorked >= 1) {
@@ -626,8 +626,10 @@ export default function MemberDashboardPage() {
                             ) : (
                                 <div className="space-y-3">
                                     {upcomingHolidays.map(holiday => {
-                                        const holidayDate = new Date(holiday.date)
-                                        const daysUntil = Math.ceil((holidayDate.getTime() - new Date().getTime()) / (1000 * 60 * 60 * 24))
+                                        const holidayDate = parseLocalDate(holiday.date)
+                                        const today = new Date()
+                                        today.setHours(0, 0, 0, 0)
+                                        const daysUntil = Math.ceil((holidayDate.getTime() - today.getTime()) / (1000 * 60 * 60 * 24))
                                         return (
                                             <div key={holiday.id} className="flex items-center justify-between p-3 rounded-xl bg-slate-50">
                                                 <div className="flex items-center gap-3">
