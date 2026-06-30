@@ -155,6 +155,11 @@ export default function MemberDashboardPage() {
         return Math.round((totalScore / totalMax) * 100)
     }, [myFeedback])
 
+    // Leave type lookup map
+    const leaveTypeById = useMemo(() => {
+        return new Map(leaveTypes.map(lt => [lt.id, lt]))
+    }, [leaveTypes])
+
     // Team on leave today - with leave details
     const onLeaveToday = useMemo(() => {
         const results: Array<{
@@ -179,10 +184,14 @@ export default function MemberDashboardPage() {
             })
 
             if (empLeave) {
+                // Look up leave type name from leaveTypes
+                const leaveTypeRecord = empLeave.leaveTypeId ? leaveTypeById.get(empLeave.leaveTypeId) : null
+                const leaveTypeName = leaveTypeRecord?.name || empLeave.leaveTypeName || empLeave.type || 'Leave'
+
                 results.push({
                     employee: emp,
-                    leaveType: empLeave.leaveTypeName || empLeave.type || 'Leave',
-                    unit: empLeave.unit || 'Day',
+                    leaveType: leaveTypeName,
+                    unit: leaveTypeRecord?.unit || empLeave.unit || 'Day',
                     startTime: empLeave.startTime,
                     endTime: empLeave.endTime
                 })
@@ -190,7 +199,7 @@ export default function MemberDashboardPage() {
         })
 
         return results
-    }, [employees, leaves, todayKey])
+    }, [employees, leaves, todayKey, leaveTypeById])
 
     // Upcoming holidays
     const upcomingHolidays = useMemo(() => {
