@@ -155,10 +155,18 @@ export default function MemberDashboardPage() {
         return Math.round((totalScore / totalMax) * 100)
     }, [myFeedback])
 
-    // Team on leave today
+    // Team on leave today - with leave details
     const onLeaveToday = useMemo(() => {
-        return employees.filter(emp => {
-            return leaves.some(l => {
+        const results: Array<{
+            employee: Employee
+            leaveType: string
+            unit: string
+            startTime?: string
+            endTime?: string
+        }> = []
+
+        employees.forEach(emp => {
+            const empLeave = leaves.find(l => {
                 if (l.employeeId !== emp.id) return false
                 // Check various date formats
                 if (l.leaveDays?.some(d => d.date?.split('T')[0] === todayKey)) return true
@@ -169,7 +177,19 @@ export default function MemberDashboardPage() {
                 }
                 return l.date?.split('T')[0] === todayKey
             })
+
+            if (empLeave) {
+                results.push({
+                    employee: emp,
+                    leaveType: empLeave.leaveTypeName || empLeave.type || 'Leave',
+                    unit: empLeave.unit || 'Day',
+                    startTime: empLeave.startTime,
+                    endTime: empLeave.endTime
+                })
+            }
         })
+
+        return results
     }, [employees, leaves, todayKey])
 
     // Upcoming holidays
@@ -548,7 +568,7 @@ export default function MemberDashboardPage() {
                                 </div>
                             ) : (
                                 <div className="space-y-3">
-                                    {onLeaveToday.slice(0, 5).map(emp => (
+                                    {onLeaveToday.slice(0, 5).map(({ employee: emp, leaveType, unit, startTime, endTime }) => (
                                         <div key={emp.id} className="flex items-center gap-3 p-3 rounded-xl bg-slate-50">
                                             {emp.profilePicture || emp.photoUrl ? (
                                                 <img
@@ -561,9 +581,14 @@ export default function MemberDashboardPage() {
                                                     <User className="w-5 h-5" />
                                                 </div>
                                             )}
-                                            <div>
+                                            <div className="flex-1 min-w-0">
                                                 <p className="text-sm font-semibold text-slate-900">{emp.name}</p>
-                                                <p className="text-xs text-slate-500">{emp.departmentName || emp.department || 'No department'}</p>
+                                                <p className="text-xs text-slate-500">
+                                                    {leaveType}
+                                                    {unit === 'Hour' && startTime && endTime && (
+                                                        <span className="ml-1">• {startTime} - {endTime}</span>
+                                                    )}
+                                                </p>
                                             </div>
                                         </div>
                                     ))}
