@@ -242,11 +242,15 @@ export default function MemberAttendancePage() {
                                                                                         📅 {leave.date ? new Date(leave.date).toLocaleDateString() : ''}
                                                                                     </div>
                                                                                 )}
-                                                                                {leave.unit && leave.amount && (
+                                                                                {leave.unit === 'Hour' && leave.startTime && leave.endTime ? (
+                                                                                    <div className="text-slate-500 text-xs mt-0.5 pl-4">
+                                                                                        🕐 {leave.startTime} - {leave.endTime}
+                                                                                    </div>
+                                                                                ) : leave.unit && leave.amount ? (
                                                                                     <div className="text-slate-500 text-xs mt-0.5 pl-4">
                                                                                         ⏱️ {leave.amount} {leave.unit}{leave.amount > 1 ? 's' : ''}
                                                                                     </div>
-                                                                                )}
+                                                                                ) : null}
                                                                                 {leave.note && (
                                                                                     <div className="text-slate-400 text-xs mt-1 pl-4 truncate">
                                                                                         💬 {leave.note}
