@@ -123,6 +123,24 @@ export default function DashboardPage() {
             .slice(0, 3)
     }, [holidays, todayKey])
 
+    // Check if today is a closed day (holiday or non-working day)
+    const isTodayClosed = useMemo(() => {
+        // Check if today is a holiday
+        const isHoliday = holidays.some(h => h.date === todayKey)
+        if (isHoliday) return true
+
+        // Check working hours configuration
+        if (currentCompany?.workingHours) {
+            const dayNames = ['sunday', 'monday', 'tuesday', 'wednesday', 'thursday', 'friday', 'saturday'] as const
+            const today = new Date()
+            const dayName = dayNames[today.getDay()]
+            const dayConfig = currentCompany.workingHours[dayName]
+            if (dayConfig && !dayConfig.open) return true
+        }
+
+        return false
+    }, [holidays, todayKey, currentCompany?.workingHours])
+
     // Upcoming birthdays and work anniversaries (next 30 days)
     const upcomingEvents = useMemo(() => {
         const today = new Date()
@@ -478,12 +496,14 @@ export default function DashboardPage() {
                             </Link>
                         </div>
                         {onLeaveTodayEntries.length === 0 ? (
-                            <div className="py-6 text-center">
-                                <div className="w-12 h-12 bg-emerald-50 rounded-2xl flex items-center justify-center mx-auto mb-3">
-                                    <Users className="w-6 h-6 text-emerald-500" />
+                            !isTodayClosed && (
+                                <div className="py-6 text-center">
+                                    <div className="w-12 h-12 bg-emerald-50 rounded-2xl flex items-center justify-center mx-auto mb-3">
+                                        <Users className="w-6 h-6 text-emerald-500" />
+                                    </div>
+                                    <p className="text-sm font-medium text-emerald-600">Everyone is in today!</p>
                                 </div>
-                                <p className="text-sm font-medium text-emerald-600">Everyone is in today!</p>
-                            </div>
+                            )
                         ) : (
                             <div className="space-y-3">
                                 {onLeaveTodayEntries.slice(0, 5).map((entry) => (
