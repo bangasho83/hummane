@@ -618,7 +618,7 @@ export default function DashboardPage() {
                                     { key: 'initiate documentation', label: 'Initiate Documentation', tone: 'bg-emerald-100 text-emerald-700' },
                                     { key: 'hired', label: 'Hired', tone: 'bg-slate-100 text-slate-700' },
                                     { key: 'rejected', label: 'Rejected', tone: 'bg-red-100 text-red-700' }
-                                ].map(stage => (
+                                ].filter(stage => applicantCounts[stage.key as keyof typeof applicantCounts] > 0).map(stage => (
                                     <div key={stage.key} className="flex items-center justify-between text-sm">
                                         <span className={`px-3 py-1 rounded-full text-xs font-semibold ${stage.tone}`}>
                                             {stage.label}
