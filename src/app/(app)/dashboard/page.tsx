@@ -63,8 +63,8 @@ export default function DashboardPage() {
             })
     }, [employees, departments])
 
-    const leaveTypeNameById = useMemo(() => {
-        return new Map(leaveTypes.map(leaveType => [leaveType.id, leaveType.name]))
+    const leaveTypeById = useMemo(() => {
+        return new Map(leaveTypes.map(leaveType => [leaveType.id, leaveType]))
     }, [leaveTypes])
 
     const onLeaveTodayEntries = useMemo(() => {
@@ -99,21 +99,21 @@ export default function DashboardPage() {
                     (a, b) => new Date(b.createdAt || b.date || 0).getTime() - new Date(a.createdAt || a.date || 0).getTime()
                 )
                 const primary = sortedLeaves[0]
-                const leaveType = primary?.leaveTypeId
-                    ? leaveTypeNameById.get(primary.leaveTypeId) || primary.type || 'Leave'
-                    : primary?.type || 'Leave'
-                const rawReason = primary?.note?.trim() || 'No reason provided'
-                const reason = rawReason.length > 72 ? `${rawReason.slice(0, 72)}...` : rawReason
+                const leaveTypeRecord = primary?.leaveTypeId ? leaveTypeById.get(primary.leaveTypeId) : null
+                const leaveType = leaveTypeRecord?.name || primary?.leaveTypeName || primary?.type || 'Leave'
+                const unit = leaveTypeRecord?.unit || primary?.unit || 'Day'
                 return {
                     employeeId,
                     employeeName,
                     photoUrl: employee?.photoUrl || employee?.profilePicture || '',
                     leaveType,
-                    reason
+                    unit,
+                    startTime: primary?.startTime,
+                    endTime: primary?.endTime
                 }
             })
             .sort((a, b) => a.employeeName.localeCompare(b.employeeName))
-    }, [employees, leaves, leaveTypeNameById, todayKey])
+    }, [employees, leaves, leaveTypeById, todayKey])
 
     const upcomingHolidays = useMemo(() => {
         if (!todayKey) return []
@@ -258,12 +258,11 @@ export default function DashboardPage() {
         }
         if (latestLeave) {
             const employee = employeeById.get(latestLeave.employeeId)
-            const leaveName = latestLeave.leaveTypeId
-                ? leaveTypeNameById.get(latestLeave.leaveTypeId) || latestLeave.type
-                : latestLeave.type
+            const leaveTypeRecord = latestLeave.leaveTypeId ? leaveTypeById.get(latestLeave.leaveTypeId) : null
+            const leaveName = leaveTypeRecord?.name || latestLeave.leaveTypeName || latestLeave.type || 'Leave'
             items.push({
                 title: 'Leave registered',
-                detail: `${employee?.name || 'Employee'} • ${leaveName || 'Leave'}`,
+                detail: `${employee?.name || 'Employee'} • ${leaveName}`,
                 tone: 'bg-amber-100 text-amber-600',
                 icon: CalendarCheck
             })
@@ -277,7 +276,7 @@ export default function DashboardPage() {
             })
         }
         return items
-    }, [employeeById, latestApplicant, latestEmployee, latestLeave, leaveTypeNameById])
+    }, [employeeById, latestApplicant, latestEmployee, latestLeave, leaveTypeById])
 
     useEffect(() => {
         if (isHydrating) return
@@ -489,7 +488,7 @@ export default function DashboardPage() {
                         ) : (
                             <div className="space-y-3">
                                 {onLeaveTodayEntries.slice(0, 5).map((entry) => (
-                                    <div key={entry.employeeId} className="flex items-start gap-3 p-3 rounded-xl bg-slate-50">
+                                    <div key={entry.employeeId} className="flex items-center gap-3 p-3 rounded-xl bg-slate-50">
                                         {entry.photoUrl ? (
                                             <img
                                                 src={entry.photoUrl}
@@ -501,10 +500,14 @@ export default function DashboardPage() {
                                                 <User className="w-5 h-5" />
                                             </div>
                                         )}
-                                        <div className="min-w-0">
+                                        <div className="flex-1 min-w-0">
                                             <p className="text-sm font-semibold text-slate-900">{entry.employeeName}</p>
-                                            <p className="text-xs text-slate-500">{entry.leaveType}</p>
-                                            <p className="text-xs text-slate-500 mt-1 truncate">{entry.reason}</p>
+                                            <p className="text-xs text-slate-500">
+                                                {entry.leaveType}
+                                                {entry.unit === 'Hour' && entry.startTime && entry.endTime && (
+                                                    <span className="ml-1">• {entry.startTime} - {entry.endTime}</span>
+                                                )}
+                                            </p>
                                         </div>
                                     </div>
                                 ))}
