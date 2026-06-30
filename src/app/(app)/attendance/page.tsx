@@ -228,9 +228,11 @@ export default function AttendancePage() {
             // Find the leave type to get its color
             const leaveType = leaveTypes.find(lt => lt.id === firstLeave.leaveTypeId)
             const leaveColor = leaveType?.color || DEFAULT_LEAVE_COLOR
+            // Use first letter of leave type code, fallback to 'L'
+            const leaveLabel = leaveType?.code?.charAt(0)?.toUpperCase() || 'L'
             return {
                 type: 'leave',
-                label: 'L',
+                label: leaveLabel,
                 color: '',
                 leaveColor,
                 hasDocument,
@@ -709,7 +711,7 @@ export default function AttendancePage() {
                                                                             </>
                                                                         )}
                                                                         <div className="flex flex-col items-center leading-none relative z-10">
-                                                                            <span>{status.leaveCount > 1 ? 'L+' : 'L'}</span>
+                                                                            <span>{status.leaveCount > 1 ? `${status.label}+` : status.label}</span>
                                                                         </div>
                                                                     </div>
                                                                 </HoverCardTrigger>
