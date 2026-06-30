@@ -5,7 +5,7 @@ import { useRouter } from 'next/navigation'
 import Link from 'next/link'
 import { useApp } from '@/lib/context/AppContext'
 import { Button } from '@/components/ui/button'
-import { Plus, CalendarCheck, Briefcase, UserPlus, FileText, User, Cake, PartyPopper } from 'lucide-react'
+import { Plus, CalendarCheck, Briefcase, UserPlus, FileText, User, Cake, PartyPopper, Calendar, Users } from 'lucide-react'
 import { StatsCards } from '@/features/dashboard'
 import { formatCurrency, formatDate } from '@/lib/utils'
 import { EMPLOYMENT_TYPES } from '@/types'
@@ -463,78 +463,94 @@ export default function DashboardPage() {
                     </div>
                 </div>
     
-                <div className="bg-white p-8 rounded-3xl shadow-premium border border-slate-100">
-                    <div className="mb-6">
-                        <h3 className="text-xl font-bold text-slate-900">Attendance & Leave</h3>
-                        <p className="text-sm text-slate-500">Daily coverage and policy utilization.</p>
-                    </div>
-                    <div className="mb-6">
-                        <div className="flex items-center justify-between mb-4">
-                            <div>
-                                <h4 className="text-lg font-bold text-slate-900">On Leave Today</h4>
-                                <p className="text-sm text-slate-500">Team members away</p>
-                            </div>
-                            <Link href="/attendance" className="text-sm font-semibold text-blue-600 hover:text-blue-700">
-                                View All →
-                            </Link>
+                {/* On Leave Today */}
+                <div className="bg-white p-6 rounded-3xl shadow-premium border border-slate-100">
+                    <div className="flex items-center justify-between mb-4">
+                        <div>
+                            <h3 className="text-lg font-bold text-slate-900">On Leave Today</h3>
+                            <p className="text-sm text-slate-500">Team members away</p>
                         </div>
-                        {onLeaveTodayEntries.length === 0 ? (
-                            <div className="py-6 text-center">
-                                <div className="w-12 h-12 bg-emerald-50 rounded-2xl flex items-center justify-center mx-auto mb-3">
-                                    <User className="w-6 h-6 text-emerald-500" />
-                                </div>
-                                <p className="text-sm font-medium text-emerald-600">Everyone is in today!</p>
+                        <Link href="/attendance" className="text-sm font-semibold text-blue-600 hover:text-blue-700">
+                            View All →
+                        </Link>
+                    </div>
+                    {onLeaveTodayEntries.length === 0 ? (
+                        <div className="py-6 text-center">
+                            <div className="w-12 h-12 bg-emerald-50 rounded-2xl flex items-center justify-center mx-auto mb-3">
+                                <Users className="w-6 h-6 text-emerald-500" />
                             </div>
-                        ) : (
-                            <div className="space-y-3">
-                                {onLeaveTodayEntries.slice(0, 5).map((entry) => (
-                                    <div key={entry.employeeId} className="flex items-center gap-3 p-3 rounded-xl bg-slate-50">
-                                        {entry.photoUrl ? (
-                                            <img
-                                                src={entry.photoUrl}
-                                                alt={entry.employeeName}
-                                                className="w-10 h-10 rounded-full object-cover border border-slate-200"
-                                            />
-                                        ) : (
-                                            <div className="w-10 h-10 rounded-full bg-slate-200 flex items-center justify-center text-slate-500 shrink-0">
-                                                <User className="w-5 h-5" />
-                                            </div>
-                                        )}
-                                        <div className="flex-1 min-w-0">
-                                            <p className="text-sm font-semibold text-slate-900">{entry.employeeName}</p>
+                            <p className="text-sm font-medium text-emerald-600">Everyone is in today!</p>
+                        </div>
+                    ) : (
+                        <div className="space-y-3">
+                            {onLeaveTodayEntries.slice(0, 5).map((entry) => (
+                                <div key={entry.employeeId} className="flex items-center gap-3 p-3 rounded-xl bg-slate-50">
+                                    {entry.photoUrl ? (
+                                        <img
+                                            src={entry.photoUrl}
+                                            alt={entry.employeeName}
+                                            className="w-10 h-10 rounded-full object-cover border border-slate-200"
+                                        />
+                                    ) : (
+                                        <div className="w-10 h-10 rounded-full bg-slate-200 flex items-center justify-center text-slate-500 shrink-0">
+                                            <User className="w-5 h-5" />
+                                        </div>
+                                    )}
+                                    <div className="flex-1 min-w-0">
+                                        <p className="text-sm font-semibold text-slate-900">{entry.employeeName}</p>
+                                        <p className="text-xs text-slate-500">
+                                            {entry.leaveType}
+                                            {entry.unit === 'Hour' && entry.startTime && entry.endTime && (
+                                                <span className="ml-1">• {entry.startTime} - {entry.endTime}</span>
+                                            )}
+                                        </p>
+                                    </div>
+                                </div>
+                            ))}
+                            {onLeaveTodayEntries.length > 5 && (
+                                <p className="text-xs text-center text-slate-500">+{onLeaveTodayEntries.length - 5} more</p>
+                            )}
+                        </div>
+                    )}
+                </div>
+
+                {/* Upcoming Holidays */}
+                <div className="bg-white p-6 rounded-3xl shadow-premium border border-slate-100">
+                    <div className="mb-4">
+                        <h3 className="text-lg font-bold text-slate-900">Upcoming Holidays</h3>
+                        <p className="text-sm text-slate-500">Company holidays ahead</p>
+                    </div>
+                    {upcomingHolidays.length === 0 ? (
+                        <div className="py-6 text-center">
+                            <div className="w-12 h-12 bg-slate-50 rounded-2xl flex items-center justify-center mx-auto mb-3">
+                                <Calendar className="w-6 h-6 text-slate-300" />
+                            </div>
+                            <p className="text-sm text-slate-500">No upcoming holidays</p>
+                        </div>
+                    ) : (
+                        <div className="space-y-3">
+                            {upcomingHolidays.map(holiday => {
+                                const holidayDate = new Date(holiday.date)
+                                const daysUntil = Math.ceil((holidayDate.getTime() - new Date().getTime()) / (1000 * 60 * 60 * 24))
+                                return (
+                                    <div key={holiday.id} className="flex items-center gap-3 p-3 rounded-xl bg-slate-50">
+                                        <div className="w-12 h-12 rounded-xl bg-blue-100 flex flex-col items-center justify-center">
+                                            <span className="text-xs font-bold text-blue-600 uppercase">
+                                                {holidayDate.toLocaleDateString('en-US', { month: 'short' })}
+                                            </span>
+                                            <span className="text-lg font-bold text-blue-700">{holidayDate.getDate()}</span>
+                                        </div>
+                                        <div>
+                                            <p className="text-sm font-semibold text-slate-900">{holiday.name}</p>
                                             <p className="text-xs text-slate-500">
-                                                {entry.leaveType}
-                                                {entry.unit === 'Hour' && entry.startTime && entry.endTime && (
-                                                    <span className="ml-1">• {entry.startTime} - {entry.endTime}</span>
-                                                )}
+                                                {daysUntil === 0 ? 'Today!' : daysUntil === 1 ? 'Tomorrow' : `In ${daysUntil} days`}
                                             </p>
                                         </div>
                                     </div>
-                                ))}
-                                {onLeaveTodayEntries.length > 5 && (
-                                    <p className="text-xs text-center text-slate-500">+{onLeaveTodayEntries.length - 5} more</p>
-                                )}
-                            </div>
-                        )}
-                    </div>
-    
-                    <div className="space-y-4">
-                        <div>
-                            <h4 className="text-sm font-bold text-slate-700 mb-3">Upcoming Holidays</h4>
-                            {upcomingHolidays.length === 0 ? (
-                                <p className="text-sm text-slate-500">No upcoming holidays scheduled.</p>
-                            ) : (
-                                <div className="space-y-3">
-                                    {upcomingHolidays.map(holiday => (
-                                        <div key={holiday.id} className="flex items-center justify-between text-sm">
-                                            <span className="font-semibold text-slate-700">{holiday.name}</span>
-                                            <span className="text-slate-500">{formatDate(holiday.date)}</span>
-                                        </div>
-                                    ))}
-                                </div>
-                            )}
+                                )
+                            })}
                         </div>
-                    </div>
+                    )}
                 </div>
             </section>
 
