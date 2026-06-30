@@ -351,9 +351,10 @@ export default function DashboardPage() {
                         </div>
                         <div className="flex gap-4 overflow-x-auto pb-2">
                             {upcomingEvents.map((event, idx) => (
-                                <div
+                                <Link
                                     key={`${event.type}-${event.employeeId}-${idx}`}
-                                    className="flex-shrink-0 flex items-center gap-3 px-4 py-3 rounded-2xl border border-slate-100 bg-slate-50/50 hover:bg-slate-50 transition-colors min-w-[220px]"
+                                    href={`/team/${event.employeeId}`}
+                                    className="flex-shrink-0 flex items-center gap-3 px-4 py-3 rounded-2xl border border-slate-100 bg-slate-50/50 hover:bg-slate-100 hover:border-slate-200 transition-colors min-w-[220px] cursor-pointer"
                                 >
                                     {event.photoUrl ? (
                                         <img
@@ -382,7 +383,7 @@ export default function DashboardPage() {
                                     <div className="text-right">
                                         <p className="text-xs font-bold text-slate-700">{event.displayDate}</p>
                                     </div>
-                                </div>
+                                </Link>
                             ))}
                         </div>
                     </div>
