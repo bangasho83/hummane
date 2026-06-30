@@ -507,7 +507,11 @@ export default function DashboardPage() {
                         ) : (
                             <div className="space-y-3">
                                 {onLeaveTodayEntries.slice(0, 5).map((entry) => (
-                                    <div key={entry.employeeId} className="flex items-center gap-3 p-3 rounded-xl bg-slate-50">
+                                    <Link
+                                        key={entry.employeeId}
+                                        href={`/team/${entry.employeeId}`}
+                                        className="flex items-center gap-3 p-3 rounded-xl bg-slate-50 hover:bg-slate-100 transition-colors cursor-pointer"
+                                    >
                                         {entry.photoUrl ? (
                                             <img
                                                 src={entry.photoUrl}
@@ -528,7 +532,7 @@ export default function DashboardPage() {
                                                 )}
                                             </p>
                                         </div>
-                                    </div>
+                                    </Link>
                                 ))}
                                 {onLeaveTodayEntries.length > 5 && (
                                     <p className="text-xs text-center text-slate-500">+{onLeaveTodayEntries.length - 5} more</p>
