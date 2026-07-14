@@ -72,13 +72,13 @@ export default function ResourcesPage() {
                         <Table>
                             <TableHeader className="bg-slate-50/50">
                                 <TableRow className="hover:bg-transparent border-slate-100">
-                                    <TableHead className="pl-8 py-4">Request</TableHead>
-                                    <TableHead className="py-4">Requested by</TableHead>
-                                    <TableHead className="py-4">Category</TableHead>
-                                    <TableHead className="py-4">Priority</TableHead>
-                                    <TableHead className="py-4">Est. Cost</TableHead>
-                                    <TableHead className="py-4">Status</TableHead>
-                                    <TableHead className="py-4 pr-8">Date</TableHead>
+                                    <TableHead className="pl-8 py-4 text-[10px] font-extrabold uppercase tracking-widest text-slate-400">Request</TableHead>
+                                    <TableHead className="py-4 text-[10px] font-extrabold uppercase tracking-widest text-slate-400">Requested by</TableHead>
+                                    <TableHead className="py-4 text-[10px] font-extrabold uppercase tracking-widest text-slate-400">Category</TableHead>
+                                    <TableHead className="py-4 text-[10px] font-extrabold uppercase tracking-widest text-slate-400">Priority</TableHead>
+                                    <TableHead className="py-4 text-[10px] font-extrabold uppercase tracking-widest text-slate-400">Est. Cost</TableHead>
+                                    <TableHead className="py-4 text-[10px] font-extrabold uppercase tracking-widest text-slate-400">Status</TableHead>
+                                    <TableHead className="py-4 pr-8 text-[10px] font-extrabold uppercase tracking-widest text-slate-400">Date</TableHead>
                                 </TableRow>
                             </TableHeader>
                             <TableBody>
@@ -94,7 +94,7 @@ export default function ResourcesPage() {
                                         <TableCell className="pl-8 py-5">
                                             <Link
                                                 href={`/resources/${request.id}`}
-                                                className="font-semibold text-blue-600 hover:text-blue-700"
+                                                className="font-bold text-slate-900 hover:text-slate-700 transition-colors"
                                             >
                                                 {request.title}
                                             </Link>

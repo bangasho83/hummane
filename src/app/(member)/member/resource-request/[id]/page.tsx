@@ -83,7 +83,7 @@ export default function MemberResourceRequestDetailPage() {
                     </Button>
                     <div>
                         <p className="text-xs font-bold text-slate-400 uppercase tracking-widest">Resource Request</p>
-                        <h1 className="text-2xl font-extrabold text-slate-900 tracking-tight">{request.title}</h1>
+                        <h1 className="text-3xl font-extrabold text-slate-900 tracking-tight">{request.title}</h1>
                     </div>
                 </div>
                 <ResourceRequestStatusBadge status={request.status} />

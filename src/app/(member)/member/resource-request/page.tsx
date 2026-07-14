@@ -63,8 +63,8 @@ export default function MemberResourceRequestPage() {
         return (
             <div className="animate-in fade-in duration-500 slide-in-from-bottom-4 space-y-6">
                 <div>
-                    <h1 className="text-2xl font-bold text-slate-900">Resource Request</h1>
-                    <p className="text-slate-500">Request the resources you need to do your best work</p>
+                    <h1 className="text-3xl font-extrabold text-slate-900 tracking-tight">Resource Request</h1>
+                    <p className="text-slate-500 font-medium">Request the resources you need to do your best work</p>
                 </div>
                 <Card className="border-dashed">
                     <CardHeader className="text-center pb-4">
@@ -89,8 +89,8 @@ export default function MemberResourceRequestPage() {
         <div className="animate-in fade-in duration-500 slide-in-from-bottom-4 space-y-6">
             <div className="flex items-end justify-between gap-4">
                 <div>
-                    <h1 className="text-2xl font-bold text-slate-900">Resource Request</h1>
-                    <p className="text-slate-500">Request the resources you need to do your best work</p>
+                    <h1 className="text-3xl font-extrabold text-slate-900 tracking-tight">Resource Request</h1>
+                    <p className="text-slate-500 font-medium">Request the resources you need to do your best work</p>
                 </div>
                 <Button
                     asChild
@@ -143,7 +143,7 @@ export default function MemberResourceRequestPage() {
                                             <TableCell className="pl-8 py-5">
                                                 <Link
                                                     href={`/member/resource-request/${request.id}`}
-                                                    className="text-sm font-semibold text-blue-600 hover:text-blue-700"
+                                                    className="font-bold text-slate-900 hover:text-slate-700 transition-colors"
                                                 >
                                                     {request.title}
                                                 </Link>

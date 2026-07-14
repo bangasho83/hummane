@@ -104,7 +104,7 @@ export default function MemberNewResourceRequestPage() {
                 </Button>
                 <div>
                     <p className="text-xs font-bold text-slate-400 uppercase tracking-widest">New Request</p>
-                    <h1 className="text-2xl font-extrabold text-slate-900 tracking-tight">Resource Request</h1>
+                    <h1 className="text-3xl font-extrabold text-slate-900 tracking-tight">Resource Request</h1>
                 </div>
             </div>
 
