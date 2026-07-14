@@ -84,7 +84,7 @@ export function ResourceRequestForm({
                 <div>
                     <Label htmlFor="category">Category</Label>
                     <Select
-                        value={values.categoryId}
+                        value={values.categoryId || undefined}
                         onValueChange={(v) => setField('categoryId', v)}
                         disabled={submitting || categoriesLoading}
                     >
@@ -107,7 +107,7 @@ export function ResourceRequestForm({
                 <div>
                     <Label htmlFor="priority">Priority</Label>
                     <Select
-                        value={values.priority}
+                        value={values.priority || undefined}
                         onValueChange={(v) => setField('priority', v)}
                         disabled={submitting}
                     >
