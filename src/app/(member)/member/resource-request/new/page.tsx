@@ -43,9 +43,19 @@ export default function MemberNewResourceRequestPage() {
         loadCategories()
     }, [loadCategories])
 
+    const employeeId = meProfile?.employeeId
+
     const handleSubmit = async (values: ResourceRequestFormValues) => {
         if (!apiAccessToken) {
             toast('You must be signed in to submit a request.', 'error')
+            return
+        }
+        if (!employeeId) {
+            toast('Your account is not linked to an employee profile.', 'error')
+            return
+        }
+        if (!companyId) {
+            toast('No company is selected for your account.', 'error')
             return
         }
         setSubmitting(true)
@@ -59,7 +69,7 @@ export default function MemberNewResourceRequestPage() {
                     priority: values.priority,
                     estimatedCost: Number(values.estimatedCost),
                     productUrl: values.productUrl.trim() || undefined,
-                    employeeId: meProfile?.employeeId,
+                    employeeId,
                     companyId,
                 },
                 apiAccessToken

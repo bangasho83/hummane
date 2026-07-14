@@ -76,8 +76,18 @@ export default function MemberResourceRequestDetailPage() {
         }
     }, [request])
 
+    const employeeId = meProfile?.employeeId
+
     const handleSubmit = async (values: ResourceRequestFormValues) => {
         if (!apiAccessToken || !requestId) return
+        if (!employeeId) {
+            toast('Your account is not linked to an employee profile.', 'error')
+            return
+        }
+        if (!companyId) {
+            toast('No company is selected for your account.', 'error')
+            return
+        }
         setSubmitting(true)
         try {
             const updated = await updateResourceRequestApi(
@@ -90,7 +100,7 @@ export default function MemberResourceRequestDetailPage() {
                     priority: values.priority,
                     estimatedCost: Number(values.estimatedCost),
                     productUrl: values.productUrl.trim() || undefined,
-                    employeeId: meProfile?.employeeId,
+                    employeeId,
                     companyId,
                 },
                 apiAccessToken
