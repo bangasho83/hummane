@@ -27,10 +27,24 @@ describe('validateResourceRequest', () => {
         expect(errors.title).toBeDefined()
         expect(errors.categoryId).toBeDefined()
         expect(errors.description).toBeDefined()
-        expect(errors.goalAlignment).toBeDefined()
         expect(errors.priority).toBeDefined()
-        expect(errors.estimatedCost).toBeDefined()
         expect(isResourceRequestValid(emptyResourceRequestFormValues)).toBe(false)
+    })
+
+    it('does not require goal alignment or estimated cost', () => {
+        const errors = validateResourceRequest(emptyResourceRequestFormValues)
+        expect(errors.goalAlignment).toBeUndefined()
+        expect(errors.estimatedCost).toBeUndefined()
+    })
+
+    it('allows an empty goal alignment (optional)', () => {
+        const errors = validateResourceRequest({ ...validValues, goalAlignment: '' })
+        expect(errors.goalAlignment).toBeUndefined()
+    })
+
+    it('allows an empty estimated cost (optional)', () => {
+        const errors = validateResourceRequest({ ...validValues, estimatedCost: '' })
+        expect(errors.estimatedCost).toBeUndefined()
     })
 
     it('rejects a title shorter than 3 characters', () => {

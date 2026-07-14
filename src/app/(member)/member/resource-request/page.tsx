@@ -151,7 +151,9 @@ export default function MemberResourceRequestPage() {
                                             <TableCell className="py-5 text-sm text-slate-600">{request.categoryName || '—'}</TableCell>
                                             <TableCell className="py-5 text-sm text-slate-600">{request.priority}</TableCell>
                                             <TableCell className="py-5 text-sm text-slate-600">
-                                                {Number(request.estimatedCost).toLocaleString()}
+                                                {request.estimatedCost != null
+                                                    ? Number(request.estimatedCost).toLocaleString()
+                                                    : '—'}
                                             </TableCell>
                                             <TableCell className="py-5">
                                                 <ResourceRequestStatusBadge status={request.status} />

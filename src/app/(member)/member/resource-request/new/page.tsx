@@ -60,14 +60,15 @@ export default function MemberNewResourceRequestPage() {
         }
         setSubmitting(true)
         try {
+            const estimatedCostRaw = values.estimatedCost.trim()
             await createResourceRequestApi(
                 {
                     title: values.title.trim(),
                     categoryId: values.categoryId,
                     description: values.description.trim(),
-                    goalAlignment: values.goalAlignment.trim(),
+                    goalAlignment: values.goalAlignment.trim() || undefined,
                     priority: values.priority,
-                    estimatedCost: Number(values.estimatedCost),
+                    estimatedCost: estimatedCostRaw ? Number(estimatedCostRaw) : undefined,
                     productUrl: values.productUrl.trim() || undefined,
                     employeeId,
                     companyId,

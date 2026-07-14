@@ -90,15 +90,16 @@ export default function MemberResourceRequestDetailPage() {
         }
         setSubmitting(true)
         try {
+            const estimatedCostRaw = values.estimatedCost.trim()
             const updated = await updateResourceRequestApi(
                 requestId,
                 {
                     title: values.title.trim(),
                     categoryId: values.categoryId,
                     description: values.description.trim(),
-                    goalAlignment: values.goalAlignment.trim(),
+                    goalAlignment: values.goalAlignment.trim() || undefined,
                     priority: values.priority,
-                    estimatedCost: Number(values.estimatedCost),
+                    estimatedCost: estimatedCostRaw ? Number(estimatedCostRaw) : undefined,
                     productUrl: values.productUrl.trim() || undefined,
                     employeeId,
                     companyId,
@@ -192,7 +193,11 @@ export default function MemberResourceRequestDetailPage() {
                                 </div>
                                 <div>
                                     <p className="text-xs font-bold text-slate-400 uppercase tracking-widest">Estimated Cost</p>
-                                    <p className="font-semibold text-slate-900">{Number(request.estimatedCost).toLocaleString()}</p>
+                                    <p className="font-semibold text-slate-900">
+                                        {request.estimatedCost != null
+                                            ? Number(request.estimatedCost).toLocaleString()
+                                            : '—'}
+                                    </p>
                                 </div>
                             </div>
                             <div>
@@ -201,7 +206,7 @@ export default function MemberResourceRequestDetailPage() {
                             </div>
                             <div>
                                 <p className="text-xs font-bold text-slate-400 uppercase tracking-widest">Goal Alignment</p>
-                                <p className="text-sm text-slate-700 whitespace-pre-wrap mt-1">{request.goalAlignment}</p>
+                                <p className="text-sm text-slate-700 whitespace-pre-wrap mt-1">{request.goalAlignment || '—'}</p>
                             </div>
                             {request.productUrl && (
                                 <div>

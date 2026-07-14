@@ -1401,9 +1401,9 @@ export type ResourceRequestPayload = {
   title: string
   categoryId: string
   description: string
-  goalAlignment: string
+  goalAlignment?: string
   priority: string
-  estimatedCost: number
+  estimatedCost?: number
   productUrl?: string
   employeeId?: string
   companyId: string

@@ -126,7 +126,7 @@ export function ResourceRequestForm({
                 </div>
 
                 <div>
-                    <Label htmlFor="estimatedCost">Estimated Cost</Label>
+                    <Label htmlFor="estimatedCost">Estimated Cost (optional)</Label>
                     <Input
                         id="estimatedCost"
                         type="number"
@@ -171,7 +171,7 @@ export function ResourceRequestForm({
             </div>
 
             <div>
-                <Label htmlFor="goalAlignment">Goal Alignment</Label>
+                <Label htmlFor="goalAlignment">Goal Alignment (optional)</Label>
                 <Textarea
                     id="goalAlignment"
                     value={values.goalAlignment}

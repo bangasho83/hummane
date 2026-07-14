@@ -67,12 +67,12 @@ export function validateResourceRequest(
     }
 
     const goalAlignment = values.goalAlignment.trim()
-    if (!goalAlignment) {
-        errors.goalAlignment = 'Goal alignment is required'
-    } else if (goalAlignment.length < 10) {
-        errors.goalAlignment = 'Goal alignment must be at least 10 characters'
-    } else if (goalAlignment.length > 2000) {
-        errors.goalAlignment = 'Goal alignment must be less than 2000 characters'
+    if (goalAlignment) {
+        if (goalAlignment.length < 10) {
+            errors.goalAlignment = 'Goal alignment must be at least 10 characters'
+        } else if (goalAlignment.length > 2000) {
+            errors.goalAlignment = 'Goal alignment must be less than 2000 characters'
+        }
     }
 
     if (!values.priority.trim()) {
@@ -86,9 +86,7 @@ export function validateResourceRequest(
     }
 
     const costRaw = values.estimatedCost.trim()
-    if (!costRaw) {
-        errors.estimatedCost = 'Estimated cost is required'
-    } else {
+    if (costRaw) {
         const cost = Number(costRaw)
         if (!Number.isFinite(cost)) {
             errors.estimatedCost = 'Estimated cost must be a number'
