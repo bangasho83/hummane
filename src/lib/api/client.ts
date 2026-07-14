@@ -1,4 +1,4 @@
-import type { Company, Department, Role, LeaveType, LeaveRecord, Holiday, Job, Applicant, Employee, EmployeeApi, EmployeeDocument, EmployeePersonalDetails, FeedbackCard, FeedbackEntry } from '@/types'
+import type { Company, Department, Role, LeaveType, LeaveRecord, Holiday, Job, Applicant, Employee, EmployeeApi, EmployeeDocument, EmployeePersonalDetails, FeedbackCard, FeedbackEntry, ResourceCategory, ResourceRequest } from '@/types'
 
 export type ApiUser = {
   id: string
@@ -35,6 +35,8 @@ const JOBS_PATH = `${API_BASE_URL}/jobs`
 const APPLICANTS_PATH = `${API_BASE_URL}/applicants`
 const DOCUMENTS_PATH = `${API_BASE_URL}/documents`
 const USERS_PATH = `${API_BASE_URL}/users`
+const RESOURCE_CATEGORIES_PATH = `${API_BASE_URL}/resource-categories`
+const RESOURCE_REQUESTS_PATH = `${API_BASE_URL}/resource-requests`
 const ACCESS_TOKEN_KEY = 'hummaneApiAccessToken'
 const API_USER_KEY = 'hummaneApiUser'
 const COMPANY_ID_KEY = 'hummaneCompanyId'
@@ -1393,6 +1395,147 @@ export const deleteFeedbackEntryApi = async (entryId: string, accessToken: strin
     const message = await response.text()
     throw new Error(message || 'Failed to delete feedback entry')
   }
+}
+
+export type ResourceRequestPayload = {
+  title: string
+  categoryId: string
+  description: string
+  goalAlignment: string
+  priority: string
+  estimatedCost: number
+  productUrl?: string
+  employeeId?: string
+  companyId: string
+}
+
+export const fetchResourceCategoriesApi = async (): Promise<ResourceCategory[]> => {
+  let response: Response
+  try {
+    response = await fetch(RESOURCE_CATEGORIES_PATH, {
+      method: 'GET',
+    })
+  } catch (error) {
+    console.error('API /resource-categories GET network error:', error)
+    throw new Error('Network error while contacting the API')
+  }
+
+  if (!response.ok) {
+    const message = await response.text()
+    throw new Error(message || 'Failed to fetch resource categories')
+  }
+
+  const data = await response.json().catch(() => null)
+  const list = data?.data || data?.resourceCategories || data
+  return Array.isArray(list) ? (list as ResourceCategory[]) : []
+}
+
+export const createResourceRequestApi = async (
+  payload: ResourceRequestPayload,
+  accessToken: string
+): Promise<ResourceRequest> => {
+  let response: Response
+  try {
+    response = await fetch(RESOURCE_REQUESTS_PATH, {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        Authorization: `Bearer ${accessToken}`,
+      },
+      body: JSON.stringify(payload),
+    })
+  } catch (error) {
+    console.error('API /resource-requests POST network error:', error)
+    throw new Error('Network error while contacting the API')
+  }
+
+  if (!response.ok) {
+    const message = await response.text()
+    throw new Error(message || 'Failed to create resource request')
+  }
+
+  const data = await response.json().catch(() => null)
+  return (data?.data || data?.resourceRequest || data) as ResourceRequest
+}
+
+export const fetchResourceRequestsApi = async (accessToken: string): Promise<ResourceRequest[]> => {
+  let response: Response
+  try {
+    response = await fetch(RESOURCE_REQUESTS_PATH, {
+      method: 'GET',
+      headers: {
+        Authorization: `Bearer ${accessToken}`,
+      },
+    })
+  } catch (error) {
+    console.error('API /resource-requests GET network error:', error)
+    throw new Error('Network error while contacting the API')
+  }
+
+  if (!response.ok) {
+    const message = await response.text()
+    throw new Error(message || 'Failed to fetch resource requests')
+  }
+
+  const data = await response.json().catch(() => null)
+  const list = data?.data || data?.resourceRequests || data
+  return Array.isArray(list) ? (list as ResourceRequest[]) : []
+}
+
+export const fetchResourceRequestApi = async (
+  requestId: string,
+  accessToken: string
+): Promise<ResourceRequest | null> => {
+  let response: Response
+  try {
+    response = await fetch(`${RESOURCE_REQUESTS_PATH}/${encodeURIComponent(requestId)}`, {
+      method: 'GET',
+      headers: {
+        Authorization: `Bearer ${accessToken}`,
+      },
+    })
+  } catch (error) {
+    console.error('API /resource-requests/:id GET network error:', error)
+    throw new Error('Network error while contacting the API')
+  }
+
+  if (!response.ok) {
+    const message = await response.text()
+    throw new Error(message || 'Failed to fetch resource request')
+  }
+
+  const data = await response.json().catch(() => null)
+  const request = (data?.data || data?.resourceRequest || data) as ResourceRequest | null
+  return request && typeof request === 'object' ? request : null
+}
+
+export const updateResourceRequestApi = async (
+  requestId: string,
+  payload: ResourceRequestPayload,
+  accessToken: string
+): Promise<ResourceRequest> => {
+  let response: Response
+  try {
+    response = await fetch(`${RESOURCE_REQUESTS_PATH}/${encodeURIComponent(requestId)}`, {
+      method: 'PUT',
+      headers: {
+        'Content-Type': 'application/json',
+        Authorization: `Bearer ${accessToken}`,
+      },
+      body: JSON.stringify(payload),
+    })
+  } catch (error) {
+    console.error('API /resource-requests PUT network error:', error)
+    throw new Error('Network error while contacting the API')
+  }
+
+  if (!response.ok) {
+    const message = await response.text()
+    throw new Error(message || 'Failed to update resource request')
+  }
+
+  const data = await response.json().catch(() => null)
+  return (data?.data || data?.resourceRequest || data) as ResourceRequest
 }
 
 export const createHolidayApi = async (
