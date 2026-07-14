@@ -1542,6 +1542,40 @@ export const updateResourceRequestApi = async (
   return (data?.data || data?.resourceRequest || data) as ResourceRequest
 }
 
+export type ResourceRequestStatusPayload = {
+  status: 'approved' | 'rejected' | 'fulfilled' | 'cancelled'
+  reviewerNote?: string
+}
+
+export const updateResourceRequestStatusApi = async (
+  requestId: string,
+  payload: ResourceRequestStatusPayload,
+  accessToken: string
+): Promise<ResourceRequest> => {
+  let response: Response
+  try {
+    response = await fetch(`${RESOURCE_REQUESTS_PATH}/${encodeURIComponent(requestId)}/status`, {
+      method: 'PATCH',
+      headers: {
+        'Content-Type': 'application/json',
+        Authorization: `Bearer ${accessToken}`,
+      },
+      body: JSON.stringify(payload),
+    })
+  } catch (error) {
+    console.error('API /resource-requests/:id/status PATCH network error:', error)
+    throw new Error('Network error while contacting the API')
+  }
+
+  if (!response.ok) {
+    const message = await response.text()
+    throw new Error(message || 'Failed to update resource request status')
+  }
+
+  const data = await response.json().catch(() => null)
+  return (data?.data || data?.resourceRequest || data) as ResourceRequest
+}
+
 export const createHolidayApi = async (
   payload: { date: string; name: string; companyId: string },
   accessToken: string

@@ -5,6 +5,7 @@ import {
     fetchResourceRequestsApi,
     fetchResourceRequestApi,
     updateResourceRequestApi,
+    updateResourceRequestStatusApi,
     type ResourceRequestPayload,
 } from './client'
 
@@ -120,6 +121,37 @@ describe('fetchResourceRequestApi', () => {
     it('returns null when the response is not an object', async () => {
         fetchMock.mockResolvedValue(okJson({ data: 'nope' }))
         expect(await fetchResourceRequestApi('id', 'tok')).toBeNull()
+    })
+})
+
+describe('updateResourceRequestStatusApi', () => {
+    it('PATCHes an encoded request id with status and optional note', async () => {
+        fetchMock.mockResolvedValue(okJson({
+            data: { id: 'r/1', status: 'approved', reviewerNote: 'Budget allocated' },
+        }))
+
+        const result = await updateResourceRequestStatusApi(
+            'r/1',
+            { status: 'approved', reviewerNote: 'Budget allocated' },
+            'tok'
+        )
+        const [url, init] = fetchMock.mock.calls[0]
+
+        expect(String(url)).toContain('/resource-requests/r%2F1/status')
+        expect(init.method).toBe('PATCH')
+        expect(init.headers.Authorization).toBe('Bearer tok')
+        expect(JSON.parse(init.body)).toEqual({
+            status: 'approved',
+            reviewerNote: 'Budget allocated',
+        })
+        expect(result.status).toBe('approved')
+    })
+
+    it('throws with the server message when status update fails', async () => {
+        fetchMock.mockResolvedValue(errRes('Invalid transition'))
+        await expect(
+            updateResourceRequestStatusApi('r1', { status: 'rejected' }, 'tok')
+        ).rejects.toThrow('Invalid transition')
     })
 })
 

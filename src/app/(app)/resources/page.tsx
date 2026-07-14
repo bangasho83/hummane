@@ -1,6 +1,7 @@
 'use client'
 
 import { useCallback, useEffect, useState } from 'react'
+import Link from 'next/link'
 import { Loader2, Package } from 'lucide-react'
 import { useApp } from '@/lib/context/AppContext'
 import type { ResourceRequest } from '@/types'
@@ -90,7 +91,14 @@ export default function ResourcesPage() {
                                     </TableRow>
                                 ) : requests.map((request) => (
                                     <TableRow key={request.id} className="hover:bg-slate-50/50 border-slate-50">
-                                        <TableCell className="pl-8 py-5 font-semibold text-slate-900">{request.title}</TableCell>
+                                        <TableCell className="pl-8 py-5">
+                                            <Link
+                                                href={`/resources/${request.id}`}
+                                                className="font-semibold text-blue-600 hover:text-blue-700"
+                                            >
+                                                {request.title}
+                                            </Link>
+                                        </TableCell>
                                         <TableCell className="py-5 text-sm text-slate-600">{request.employeeName || '—'}</TableCell>
                                         <TableCell className="py-5 text-sm text-slate-600">{request.category || '—'}</TableCell>
                                         <TableCell className="py-5 text-sm text-slate-600 capitalize">{request.priority}</TableCell>

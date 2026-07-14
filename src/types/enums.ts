@@ -35,6 +35,8 @@ export type ResourceRequestPriority = typeof RESOURCE_REQUEST_PRIORITIES[number]
 
 export const RESOURCE_REQUEST_STATUSES = ['pending', 'approved', 'rejected', 'fulfilled', 'cancelled'] as const
 export type ResourceRequestStatus = typeof RESOURCE_REQUEST_STATUSES[number]
+export const RESOURCE_REQUEST_ADMIN_STATUSES = ['approved', 'rejected', 'fulfilled', 'cancelled'] as const
+export type ResourceRequestAdminStatus = typeof RESOURCE_REQUEST_ADMIN_STATUSES[number]
 
 export const DOCUMENT_KINDS = [
   'Government ID',

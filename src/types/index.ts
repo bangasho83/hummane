@@ -362,6 +362,14 @@ export interface ResourceCategory {
     description: string
 }
 
+export interface ResourceRequestStatusHistoryEntry {
+    status: ResourceRequestStatus
+    changedBy?: string
+    changedByName?: string | null
+    changedAt: string
+    note?: string | null
+}
+
 export interface ResourceRequest {
     id: string
     companyId: string
@@ -369,12 +377,14 @@ export interface ResourceRequest {
     employeeName?: string | null
     title: string
     category: string
-    description: string
-    goalAlignment: string
+    description?: string
+    goalAlignment?: string
     priority: ResourceRequestPriority
-    estimatedCost: number
+    estimatedCost?: number
     productUrl?: string
     status: ResourceRequestStatus
+    reviewerNote?: string | null
+    statusHistory?: ResourceRequestStatusHistoryEntry[]
     createdAt: string
     updatedAt?: string
 }
