@@ -30,6 +30,12 @@ export type ApplicantStatus = typeof APPLICANT_STATUSES[number]
 export const FEEDBACK_SUBJECTS = ['Team Member', 'Applicant'] as const
 export type FeedbackSubject = typeof FEEDBACK_SUBJECTS[number]
 
+export const RESOURCE_REQUEST_PRIORITIES = ['Low', 'Medium', 'High', 'Urgent'] as const
+export type ResourceRequestPriority = typeof RESOURCE_REQUEST_PRIORITIES[number]
+
+export const RESOURCE_REQUEST_STATUSES = ['Pending', 'Approved', 'Rejected'] as const
+export type ResourceRequestStatus = typeof RESOURCE_REQUEST_STATUSES[number]
+
 export const DOCUMENT_KINDS = [
   'Government ID',
   'CV (Curriculum Vitae)',

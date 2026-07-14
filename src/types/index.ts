@@ -7,7 +7,9 @@ import type {
     FeedbackSubject,
     Gender,
     JobStatus,
-    LeaveUnit
+    LeaveUnit,
+    ResourceRequestPriority,
+    ResourceRequestStatus
 } from './enums'
 
 export interface User {
@@ -351,6 +353,32 @@ export interface FeedbackEntry {
     authorName?: string | null
     authorEmployeeId?: string | null
     answers: FeedbackEntryAnswer[]
+    createdAt: string
+    updatedAt?: string
+}
+
+export interface ResourceCategory {
+    id: string
+    name: string
+    companyId?: string
+    createdAt?: string
+    updatedAt?: string
+}
+
+export interface ResourceRequest {
+    id: string
+    companyId: string
+    employeeId?: string
+    employeeName?: string | null
+    title: string
+    categoryId: string
+    categoryName?: string | null
+    description: string
+    goalAlignment: string
+    priority: ResourceRequestPriority
+    estimatedCost: number
+    productUrl?: string
+    status: ResourceRequestStatus
     createdAt: string
     updatedAt?: string
 }
