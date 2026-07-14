@@ -9,6 +9,7 @@ const USER_ROLE_COOKIE = 'hummane_user_role'
 const ADMIN_ROUTES = [
   '/dashboard',
   '/team',
+  '/resources',
   '/attendance',
   '/payroll',
   '/organization',

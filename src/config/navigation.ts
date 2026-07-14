@@ -6,6 +6,7 @@ import {
   FileText,
   HelpCircle,
   LayoutDashboard,
+  Package,
   Settings,
   Users,
   UserCog,
@@ -25,6 +26,7 @@ const dashboardItems: NavItem[] = [
 
 const teamItems: NavItem[] = [
   { name: 'Team', href: '/team', icon: Users },
+  { name: 'Resources', href: '/resources', icon: Package },
   { name: 'Attendance', href: '/attendance', icon: Calendar },
   { name: 'Payroll', href: '/payroll', icon: Wallet },
   { name: 'Organization', href: '/organization', icon: Building2 },
