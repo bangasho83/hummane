@@ -84,7 +84,7 @@ export function ResourceRequestForm({
                 <div>
                     <Label htmlFor="category">Category</Label>
                     <Select
-                        value={values.categoryId || undefined}
+                        value={values.categoryId || 'none'}
                         onValueChange={(v) => setField('categoryId', v)}
                         disabled={submitting || categoriesLoading}
                     >
@@ -94,8 +94,9 @@ export function ResourceRequestForm({
                             />
                         </SelectTrigger>
                         <SelectContent>
+                            <SelectItem value="none" disabled>Select a category</SelectItem>
                             {categories.map((c) => (
-                                <SelectItem key={c.id} value={c.id}>
+                                <SelectItem key={c.name} value={c.name}>
                                     {c.name}
                                 </SelectItem>
                             ))}
@@ -107,7 +108,7 @@ export function ResourceRequestForm({
                 <div>
                     <Label htmlFor="priority">Priority</Label>
                     <Select
-                        value={values.priority || undefined}
+                        value={values.priority || 'none'}
                         onValueChange={(v) => setField('priority', v)}
                         disabled={submitting}
                     >
@@ -115,9 +116,10 @@ export function ResourceRequestForm({
                             <SelectValue placeholder="Select a priority" />
                         </SelectTrigger>
                         <SelectContent>
+                            <SelectItem value="none" disabled>Select a priority</SelectItem>
                             {RESOURCE_REQUEST_PRIORITIES.map((p) => (
                                 <SelectItem key={p} value={p}>
-                                    {p}
+                                    {p.charAt(0).toUpperCase() + p.slice(1)}
                                 </SelectItem>
                             ))}
                         </SelectContent>

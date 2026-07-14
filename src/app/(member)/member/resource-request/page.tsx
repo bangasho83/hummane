@@ -148,8 +148,8 @@ export default function MemberResourceRequestPage() {
                                                     {request.title}
                                                 </Link>
                                             </TableCell>
-                                            <TableCell className="py-5 text-sm text-slate-600">{request.categoryName || '—'}</TableCell>
-                                            <TableCell className="py-5 text-sm text-slate-600">{request.priority}</TableCell>
+                                            <TableCell className="py-5 text-sm text-slate-600">{request.category || '—'}</TableCell>
+                                            <TableCell className="py-5 text-sm text-slate-600 capitalize">{request.priority}</TableCell>
                                             <TableCell className="py-5 text-sm text-slate-600">
                                                 {request.estimatedCost != null
                                                     ? Number(request.estimatedCost).toLocaleString()

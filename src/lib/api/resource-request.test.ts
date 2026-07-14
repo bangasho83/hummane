@@ -24,10 +24,10 @@ const errRes = (message: string) =>
 
 const payload: ResourceRequestPayload = {
     title: 'Desk',
-    categoryId: 'cat-1',
+    category: 'Hardware',
     description: 'A desk',
     goalAlignment: 'Health',
-    priority: 'High',
+    priority: 'high',
     estimatedCost: 100,
     companyId: 'co-1',
 }
@@ -47,9 +47,9 @@ afterEach(() => {
 
 describe('fetchResourceCategoriesApi', () => {
     it('GETs categories without an Authorization header', async () => {
-        fetchMock.mockResolvedValue(okJson({ data: [{ id: 'c1', name: 'Hardware' }] }))
+        fetchMock.mockResolvedValue(okJson([{ name: 'Hardware', description: 'Equipment' }]))
         const result = await fetchResourceCategoriesApi()
-        expect(result).toEqual([{ id: 'c1', name: 'Hardware' }])
+        expect(result).toEqual([{ name: 'Hardware', description: 'Equipment' }])
         const [url, init] = fetchMock.mock.calls[0]
         expect(String(url)).toContain('/resource-categories')
         expect(init.method).toBe('GET')
@@ -59,6 +59,16 @@ describe('fetchResourceCategoriesApi', () => {
     it('returns [] when the payload is not an array', async () => {
         fetchMock.mockResolvedValue(okJson({ data: null }))
         expect(await fetchResourceCategoriesApi()).toEqual([])
+    })
+
+    it('filters malformed categories that have no selectable name', async () => {
+        fetchMock.mockResolvedValue(okJson([
+            { name: 'Hardware', description: 'Equipment' },
+            { description: 'Missing name' },
+        ]))
+        expect(await fetchResourceCategoriesApi()).toEqual([
+            { name: 'Hardware', description: 'Equipment' },
+        ])
     })
 })
 
@@ -71,7 +81,11 @@ describe('createResourceRequestApi', () => {
         expect(String(url)).toContain('/resource-requests')
         expect(init.method).toBe('POST')
         expect(init.headers.Authorization).toBe('Bearer token-123')
-        expect(JSON.parse(init.body)).toMatchObject({ title: 'Desk' })
+        expect(JSON.parse(init.body)).toMatchObject({
+            title: 'Desk',
+            category: 'Hardware',
+            priority: 'high',
+        })
     })
 
     it('throws with the server message on a non-ok response', async () => {

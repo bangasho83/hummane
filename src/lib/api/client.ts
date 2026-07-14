@@ -1399,7 +1399,7 @@ export const deleteFeedbackEntryApi = async (entryId: string, accessToken: strin
 
 export type ResourceRequestPayload = {
   title: string
-  categoryId: string
+  category: string
   description: string
   goalAlignment?: string
   priority: string
@@ -1427,7 +1427,11 @@ export const fetchResourceCategoriesApi = async (): Promise<ResourceCategory[]> 
 
   const data = await response.json().catch(() => null)
   const list = data?.data || data?.resourceCategories || data
-  return Array.isArray(list) ? (list as ResourceCategory[]) : []
+  if (!Array.isArray(list)) return []
+  return list.filter(
+    (item): item is ResourceCategory =>
+      typeof item?.name === 'string' && typeof item?.description === 'string'
+  )
 }
 
 export const createResourceRequestApi = async (

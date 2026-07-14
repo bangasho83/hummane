@@ -8,10 +8,10 @@ import {
 
 const validValues: ResourceRequestFormValues = {
     title: 'Standing desk',
-    categoryId: 'cat-1',
+    categoryId: 'Hardware',
     description: 'A height adjustable standing desk for my home office.',
     goalAlignment: 'Improves my focus and long-term health while working.',
-    priority: 'High',
+    priority: 'high',
     estimatedCost: '450',
     productUrl: 'https://example.com/desk',
 }
@@ -76,7 +76,7 @@ describe('validateResourceRequest', () => {
     })
 
     it('accepts each allowed priority', () => {
-        for (const priority of ['Low', 'Medium', 'High', 'Urgent']) {
+        for (const priority of ['low', 'normal', 'high', 'urgent']) {
             const errors = validateResourceRequest({ ...validValues, priority })
             expect(errors.priority).toBeUndefined()
         }

@@ -64,7 +64,7 @@ export default function MemberNewResourceRequestPage() {
             await createResourceRequestApi(
                 {
                     title: values.title.trim(),
-                    categoryId: values.categoryId,
+                    category: values.categoryId,
                     description: values.description.trim(),
                     goalAlignment: values.goalAlignment.trim() || undefined,
                     priority: values.priority,

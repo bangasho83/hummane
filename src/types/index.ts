@@ -358,11 +358,8 @@ export interface FeedbackEntry {
 }
 
 export interface ResourceCategory {
-    id: string
     name: string
-    companyId?: string
-    createdAt?: string
-    updatedAt?: string
+    description: string
 }
 
 export interface ResourceRequest {
@@ -371,8 +368,7 @@ export interface ResourceRequest {
     employeeId?: string
     employeeName?: string | null
     title: string
-    categoryId: string
-    categoryName?: string | null
+    category: string
     description: string
     goalAlignment: string
     priority: ResourceRequestPriority

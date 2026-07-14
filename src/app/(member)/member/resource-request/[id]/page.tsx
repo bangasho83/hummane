@@ -66,7 +66,7 @@ export default function MemberResourceRequestDetailPage() {
         if (!request) return null
         return {
             title: request.title || '',
-            categoryId: request.categoryId || '',
+            categoryId: request.category || '',
             description: request.description || '',
             goalAlignment: request.goalAlignment || '',
             priority: request.priority || '',
@@ -95,7 +95,7 @@ export default function MemberResourceRequestDetailPage() {
                 requestId,
                 {
                     title: values.title.trim(),
-                    categoryId: values.categoryId,
+                    category: values.categoryId,
                     description: values.description.trim(),
                     goalAlignment: values.goalAlignment.trim() || undefined,
                     priority: values.priority,
@@ -139,7 +139,7 @@ export default function MemberResourceRequestDetailPage() {
         )
     }
 
-    const isPending = request.status === 'Pending'
+    const isPending = request.status === 'pending'
 
     return (
         <div className="animate-in fade-in duration-500 slide-in-from-bottom-4 space-y-6 max-w-3xl">
@@ -185,7 +185,7 @@ export default function MemberResourceRequestDetailPage() {
                             <div className="grid grid-cols-1 md:grid-cols-3 gap-4 text-sm">
                                 <div>
                                     <p className="text-xs font-bold text-slate-400 uppercase tracking-widest">Category</p>
-                                    <p className="font-semibold text-slate-900">{request.categoryName || '—'}</p>
+                                    <p className="font-semibold text-slate-900">{request.category || '—'}</p>
                                 </div>
                                 <div>
                                     <p className="text-xs font-bold text-slate-400 uppercase tracking-widest">Priority</p>
