@@ -4,7 +4,11 @@ import { useCallback, useEffect, useState } from 'react'
 import { useParams, useRouter } from 'next/navigation'
 import { ArrowLeft, ExternalLink, Loader2 } from 'lucide-react'
 import { useApp } from '@/lib/context/AppContext'
-import type { ResourceRequest, ResourceRequestAdminStatus } from '@/types'
+import type {
+    ResourceRequest,
+    ResourceRequestAdminStatus,
+    ResourceRequestStatusHistoryEntry,
+} from '@/types'
 import { RESOURCE_REQUEST_ADMIN_STATUSES } from '@/types'
 import {
     fetchResourceRequestApi,
@@ -106,7 +110,14 @@ export default function ResourceRequestDetailPage() {
     }
 
     const statusOptions = RESOURCE_REQUEST_ADMIN_STATUSES.filter((option) => option !== request.status)
-    const history = [...(request.statusHistory || [])].reverse()
+    const history: ResourceRequestStatusHistoryEntry[] = request.statusHistory?.length
+        ? request.statusHistory
+        : [{
+            status: request.status,
+            changedByName: request.employeeName,
+            changedAt: request.updatedAt || request.createdAt,
+            note: request.reviewerNote,
+        }]
 
     return (
         <div className="animate-in fade-in duration-500 slide-in-from-bottom-4 space-y-6">
@@ -150,27 +161,10 @@ export default function ResourceRequestDetailPage() {
                         </CardContent>
                     </Card>
 
-                    {history.length > 0 && (
-                        <Card className="border border-slate-100 shadow-premium rounded-3xl bg-white">
-                            <CardHeader><CardTitle>Status history</CardTitle></CardHeader>
-                            <CardContent className="space-y-4">
-                                {history.map((entry, index) => (
-                                    <div key={`${entry.changedAt}-${index}`} className="flex gap-4 border-b border-slate-100 pb-4 last:border-0 last:pb-0">
-                                        <div className="pt-0.5"><ResourceRequestStatusBadge status={entry.status} /></div>
-                                        <div className="min-w-0">
-                                            <p className="text-sm font-semibold text-slate-900">{entry.changedByName || 'System'}</p>
-                                            <p className="text-xs text-slate-500">{formatDate(entry.changedAt)}</p>
-                                            {entry.note && <p className="text-sm text-slate-600 mt-2 whitespace-pre-wrap">{entry.note}</p>}
-                                        </div>
-                                    </div>
-                                ))}
-                            </CardContent>
-                        </Card>
-                    )}
                 </div>
 
                 <Card className="border border-slate-100 shadow-premium rounded-3xl bg-white xl:sticky xl:top-24">
-                    <CardHeader><CardTitle>Update status</CardTitle></CardHeader>
+                    <CardHeader><CardTitle>Status &amp; Timeline</CardTitle></CardHeader>
                     <CardContent className="space-y-5">
                         <div>
                             <Label htmlFor="request-status">New status</Label>
@@ -197,6 +191,10 @@ export default function ResourceRequestDetailPage() {
                             {updating && <Loader2 className="w-4 h-4 mr-2 animate-spin" />}
                             Update Status
                         </Button>
+                        <div className="border-t border-slate-100 pt-5">
+                            <p className="text-xs font-bold text-slate-400 uppercase tracking-widest mb-5">Timeline</p>
+                            <StatusTimeline history={history} />
+                        </div>
                     </CardContent>
                 </Card>
             </div>
@@ -209,6 +207,34 @@ function Detail({ label, value, multiline = false }: { label: string; value: str
         <div>
             <p className="text-xs font-bold text-slate-400 uppercase tracking-widest">{label}</p>
             <p className={`mt-1 text-sm text-slate-700 ${multiline ? 'whitespace-pre-wrap' : 'font-semibold'}`}>{value}</p>
+        </div>
+    )
+}
+
+function StatusTimeline({ history }: { history: ResourceRequestStatusHistoryEntry[] }) {
+    return (
+        <div>
+            {history.map((entry, index) => {
+                const isLast = index === history.length - 1
+                return (
+                    <div key={`${entry.changedAt}-${index}`} className="relative flex gap-3 pb-6 last:pb-0">
+                        <div className="relative flex w-3 shrink-0 justify-center">
+                            {!isLast && <span className="absolute top-3 bottom-[-24px] w-px bg-slate-200" />}
+                            <span className="relative mt-1.5 h-3 w-3 rounded-full border-2 border-blue-600 bg-white" />
+                        </div>
+                        <div className="min-w-0 flex-1">
+                            <ResourceRequestStatusBadge status={entry.status} />
+                            <p className="mt-2 text-sm font-semibold text-slate-900">{entry.changedByName || 'System'}</p>
+                            <p className="text-xs text-slate-500">{formatDate(entry.changedAt)}</p>
+                            {entry.note && (
+                                <p className="mt-2 rounded-xl bg-slate-50 p-3 text-sm text-slate-600 whitespace-pre-wrap">
+                                    {entry.note}
+                                </p>
+                            )}
+                        </div>
+                    </div>
+                )
+            })}
         </div>
     )
 }
