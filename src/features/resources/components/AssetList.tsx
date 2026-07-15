@@ -2,6 +2,7 @@
 
 import { useCallback, useEffect, useMemo, useState } from 'react'
 import Link from 'next/link'
+import { useRouter } from 'next/navigation'
 import { Eye, Loader2, Package, Pencil, Plus, Search } from 'lucide-react'
 import type { Resource, Vendor } from '@/types'
 import { RESOURCE_ASSIGNMENT_TYPES, RESOURCE_STATUSES, RESOURCE_TYPES } from '@/types'
@@ -23,6 +24,7 @@ import {
     employeeDisplayName,
     labelize,
     resourceAssignment,
+    resourceAssignmentHistory,
     resourceCategory,
     resourceCost,
     resourceCostType,
@@ -36,6 +38,7 @@ import {
 } from '@/features/resources/resource-ui'
 
 export function AssetList() {
+    const router = useRouter()
     const { apiAccessToken, currentCompany, employees, isHydrating } = useApp()
     const [resources, setResources] = useState<Resource[]>([])
     const [loading, setLoading] = useState(true)
@@ -80,7 +83,14 @@ export function AssetList() {
         const assignment = resourceAssignment(resource)
         const type = textValue(assignment.assignmentType || assignment.type)
         if (!type || type === 'unassigned') return 'Unassigned'
-        if (type === 'person') return assignmentEmployeeName(assignment, employeeNames) || 'Unknown employee'
+        if (type === 'person') {
+            const latestPerson = [...resourceAssignmentHistory(resource)]
+                .sort((a, b) => new Date(textValue(b.assignedAt)).getTime() - new Date(textValue(a.assignedAt)).getTime())
+                .find((entry) => textValue(entry.assignmentType || entry.type) === 'person')
+            return assignmentEmployeeName(assignment, employeeNames)
+                || (latestPerson ? assignmentEmployeeName(latestPerson, employeeNames) : '')
+                || 'Unknown employee'
+        }
         return labelize(type)
     }, [employeeNames])
 
@@ -137,19 +147,32 @@ export function AssetList() {
                     {isHydrating || loading ? <Loading /> : error ? <ErrorState error={error} retry={load} /> : filtered.length === 0 ? <Empty filtered={hasFilters} /> : (
                         <div className="overflow-x-auto">
                             <Table className="min-w-[1050px]">
-                                <TableHeader className="bg-slate-50/50"><TableRow className="border-slate-100 hover:bg-transparent"><Head className="pl-8">Type</Head><Head>Name</Head><Head>Category</Head><Head>Status</Head><Head>Vendor</Head><Head>Assignment</Head><Head>Cost</Head><Head className="pr-8 text-right">Actions</Head></TableRow></TableHeader>
+                                <TableHeader className="bg-slate-50/50"><TableRow className="border-slate-100 hover:bg-transparent"><Head className="pl-8">Type</Head><Head>Name</Head><Head>Category</Head><Head>Status</Head><Head>Vendor</Head><Head>Current assignee</Head><Head>Cost</Head><Head className="pr-8 text-right">Actions</Head></TableRow></TableHeader>
                                 <TableBody>{filtered.map((resource) => {
                                     const cost = resourceCost(resource)
                                     const id = resourceId(resource)
-                                    return <TableRow key={id} className="border-slate-50 hover:bg-slate-50/50">
+                                    return <TableRow
+                                        key={id}
+                                        role="link"
+                                        tabIndex={0}
+                                        aria-label={`Open ${resourceName(resource)}`}
+                                        className="cursor-pointer border-slate-50 hover:bg-slate-50/70 focus-visible:bg-blue-50/50 focus-visible:outline-none"
+                                        onClick={() => router.push(`/resources/assets/${id}`)}
+                                        onKeyDown={(event) => {
+                                            if (event.key === 'Enter' || event.key === ' ') {
+                                                event.preventDefault()
+                                                router.push(`/resources/assets/${id}`)
+                                            }
+                                        }}
+                                    >
                                         <TableCell className="py-5 pl-8 text-sm font-semibold text-slate-600">{labelize(resourceType(resource))}</TableCell>
-                                        <TableCell className="py-5"><Link href={`/resources/assets/${id}`} className="font-bold text-slate-900 hover:text-blue-600">{resourceName(resource)}</Link></TableCell>
+                                        <TableCell className="py-5"><Link href={`/resources/assets/${id}`} className="font-bold text-slate-900 hover:text-blue-600" onClick={(event) => event.stopPropagation()}>{resourceName(resource)}</Link></TableCell>
                                         <TableCell className="py-5 text-sm text-slate-600">{resourceCategory(resource) || '—'}</TableCell>
                                         <TableCell className="py-5"><ResourceBadge value={resourceStatus(resource)} /></TableCell>
                                         <TableCell className="py-5 text-sm text-slate-600">{resourceVendor(resource, vendorNames) || '—'}</TableCell>
                                         <TableCell className="py-5 text-sm text-slate-600">{assignmentName(resource)}</TableCell>
                                         <TableCell className="py-5 text-sm text-slate-600"><span className="font-semibold text-slate-800">{cost == null ? '—' : formatCurrency(cost, currentCompany?.currency)}</span>{resourceCostType(resource) && <span className="block text-xs text-slate-400">{labelize(resourceCostType(resource))}</span>}</TableCell>
-                                        <TableCell className="py-5 pr-8"><div className="flex justify-end gap-1"><IconLink href={`/resources/assets/${id}`} label="View"><Eye /></IconLink><IconLink href={`/resources/assets/${id}/edit`} label="Edit"><Pencil /></IconLink><DeleteResourceDialog name={resourceName(resource)} onDelete={() => remove(resource)} /></div></TableCell>
+                                        <TableCell className="py-5 pr-8" onClick={(event) => event.stopPropagation()} onKeyDown={(event) => event.stopPropagation()}><div className="flex justify-end gap-1"><IconLink href={`/resources/assets/${id}`} label="View"><Eye /></IconLink><IconLink href={`/resources/assets/${id}/edit`} label="Edit"><Pencil /></IconLink><DeleteResourceDialog name={resourceName(resource)} onDelete={() => remove(resource)} /></div></TableCell>
                                     </TableRow>
                                 })}</TableBody>
                             </Table>

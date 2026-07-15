@@ -83,7 +83,7 @@ export function ResourceDetail({ id }: ResourceDetailProps) {
     const history = useMemo(() => resource ? [...resourceAssignmentHistory(resource)].sort((a, b) => {
         const first = new Date(textValue(a.assignedAt || a.createdAt || a.date)).getTime()
         const second = new Date(textValue(b.assignedAt || b.createdAt || b.date)).getTime()
-        return first - second
+        return second - first
     }) : [], [resource])
 
     const employeeNames = useMemo(() => new Map(employees.map((employee) => [employee.id, employeeDisplayName(asRecord(employee))])), [employees])
@@ -125,6 +125,13 @@ export function ResourceDetail({ id }: ResourceDetailProps) {
     const assignedTo = assignmentType === 'person'
         ? assignmentEmployeeName(assignment, employeeNames) || 'Unknown employee'
         : assignmentType ? labelize(assignmentType) : 'Unassigned'
+    const currentTimelineEntry = {
+        ...assignment,
+        assignmentType: assignmentType || 'unassigned',
+        assignedAt: assignment.assignedAt || item.assignedAt || item.updatedAt || item.createdAt,
+        isCurrent: true,
+    }
+    const timeline = [currentTimelineEntry, ...history]
 
     return (
         <div className="animate-in fade-in slide-in-from-bottom-4 space-y-6 duration-500">
@@ -151,13 +158,10 @@ export function ResourceDetail({ id }: ResourceDetailProps) {
                         <CardContent className="p-8 pt-2">{attachments.length ? <div className="grid gap-3 sm:grid-cols-2">{attachments.map((url, index) => <a key={url} href={url} target="_blank" rel="noreferrer" className="flex items-center justify-between rounded-2xl border border-slate-200 p-4 text-sm font-semibold text-blue-600 hover:border-blue-200 hover:bg-blue-50"><span className="truncate">Attachment {index + 1}</span><ExternalLink className="h-4 w-4 shrink-0" /></a>)}</div> : <p className="text-sm text-slate-500">No attachments.</p>}</CardContent>
                     </Card>
 
-                    <Card className="rounded-3xl border-slate-100 bg-white shadow-premium">
-                        <CardHeader className="px-8 pt-8"><CardTitle className="flex items-center gap-2 text-lg"><History className="h-5 w-5 text-slate-400" />Assignment history</CardTitle></CardHeader>
-                        <CardContent className="p-8 pt-2">{history.length ? <div className="space-y-0">{history.map((entry, index) => <HistoryEntry key={`${textValue(entry.id || entry.assignedAt || entry.createdAt)}-${index}`} entry={entry} employeeName={assignmentEmployeeName(entry, employeeNames)} last={index === history.length - 1} />)}</div> : <p className="text-sm text-slate-500">No assignment history yet.</p>}</CardContent>
-                    </Card>
                 </div>
 
-                <div className="space-y-6 xl:sticky xl:top-24">
+                <div className="space-y-6">
+                    <div className="space-y-6 xl:sticky xl:top-24">
                     <Card className="rounded-3xl border-slate-100 bg-white shadow-premium">
                         <CardHeader className="px-6 pt-6"><CardTitle className="text-lg">Current assignment</CardTitle></CardHeader>
                         <CardContent className="space-y-5 px-6 pb-6 pt-1">
@@ -167,7 +171,14 @@ export function ResourceDetail({ id }: ResourceDetailProps) {
                             <Button className="w-full rounded-xl bg-blue-600 text-white hover:bg-blue-700" onClick={() => setAssignmentOpen(true)}>Update assignment</Button>
                         </CardContent>
                     </Card>
+                    <Card className="rounded-3xl border-slate-100 bg-white shadow-premium">
+                        <CardHeader className="px-6 pt-6"><CardTitle className="flex items-center gap-2 text-lg"><History className="h-5 w-5 text-slate-400" />Assignment timeline</CardTitle></CardHeader>
+                        <CardContent className="px-6 pb-6 pt-1">
+                            <div className="space-y-0">{timeline.map((entry, index) => <HistoryEntry key={`${textValue(asRecord(entry).id || asRecord(entry).assignedAt || asRecord(entry).createdAt)}-${index}`} entry={entry} employeeName={assignmentEmployeeName(entry, employeeNames)} last={index === timeline.length - 1} />)}</div>
+                        </CardContent>
+                    </Card>
                     <Card className="rounded-3xl border-slate-100 bg-white shadow-premium"><CardContent className="space-y-3 p-6"><p className="text-xs font-bold uppercase tracking-widest text-slate-400">Lifecycle</p>{history.length > 0 && resourceStatus(resource) !== 'retired' && <Button variant="outline" className="w-full rounded-xl border-amber-200 text-amber-700 hover:bg-amber-50" disabled={retiring} onClick={() => void retire()}>{retiring ? <Loader2 className="animate-spin" /> : <RotateCcw />}Retire resource</Button>}<DeleteResourceDialog name={resourceName(resource)} onDelete={remove} compact={false} /></CardContent></Card>
+                    </div>
                 </div>
             </div>
             <AssignmentDialog open={assignmentOpen} setOpen={setAssignmentOpen} resource={resource} employees={employees.map(asRecord)} token={apiAccessToken} onUpdated={setResource} />
@@ -216,7 +227,8 @@ function AssignmentDialog({ open, setOpen, resource, employees, token, onUpdated
 function HistoryEntry({ entry, employeeName, last }: { entry: Record<string, unknown>; employeeName?: string; last: boolean }) {
     const type = textValue(entry.assignmentType || entry.type)
     const name = type === 'person' ? employeeName || textValue(entry.assignedToEmployeeName || entry.employeeName) || 'Unknown employee' : labelize(type || 'Unassigned')
-    return <div className="relative flex gap-4 pb-7 last:pb-0"><div className="relative flex w-3 justify-center">{!last && <span className="absolute bottom-[-28px] top-3 w-px bg-slate-200" />}<span className="relative mt-1.5 h-3 w-3 rounded-full border-2 border-blue-600 bg-white" /></div><div className="min-w-0 flex-1"><div className="flex flex-wrap items-start justify-between gap-2"><p className="text-sm font-bold text-slate-900">{name}</p><p className="text-xs text-slate-400">{formatResourceDate(entry.assignedAt || entry.createdAt || entry.date, true)}</p></div>{textValue(entry.unassignedAt) && <p className="mt-1 text-xs text-slate-400">Unassigned {formatResourceDate(entry.unassignedAt, true)}</p>}{textValue(entry.location) && <p className="mt-1 text-sm text-slate-600">{textValue(entry.location)}</p>}{textValue(entry.note) && <p className="mt-2 rounded-xl bg-slate-50 p-3 text-sm text-slate-600">{textValue(entry.note)}</p>}</div></div>
+    const isCurrent = entry.isCurrent === true
+    return <div className="relative flex gap-4 pb-7 last:pb-0"><div className="relative flex w-3 justify-center">{!last && <span className="absolute bottom-[-28px] top-3 w-px bg-slate-200" />}<span className={`relative mt-1.5 h-3 w-3 rounded-full border-2 border-blue-600 ${isCurrent ? 'bg-blue-600' : 'bg-white'}`} /></div><div className="min-w-0 flex-1"><div className="flex flex-wrap items-start justify-between gap-2"><p className="text-sm font-bold text-slate-900">{name}{isCurrent && <span className="ml-2 rounded-full bg-blue-50 px-2 py-0.5 text-[10px] uppercase tracking-wide text-blue-700">Current</span>}</p><p className="text-xs text-slate-400">{formatResourceDate(entry.assignedAt || entry.createdAt || entry.date, true)}</p></div>{textValue(entry.unassignedAt) && <p className="mt-1 text-xs text-slate-400">Unassigned {formatResourceDate(entry.unassignedAt, true)}</p>}{textValue(entry.location) && <p className="mt-1 text-sm text-slate-600">{textValue(entry.location)}</p>}{textValue(entry.note) && <p className="mt-2 rounded-xl bg-slate-50 p-3 text-sm text-slate-600">{textValue(entry.note)}</p>}</div></div>
 }
 
 function Detail({ label, value, multiline }: { label: string; value: string; multiline?: boolean }) { return <div><p className="text-xs font-bold uppercase tracking-widest text-slate-400">{label}</p><p className={`mt-1 text-sm text-slate-700 ${multiline ? 'whitespace-pre-wrap' : 'font-semibold'}`}>{value}</p></div> }
