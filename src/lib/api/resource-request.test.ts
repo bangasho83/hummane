@@ -94,6 +94,15 @@ describe('createResourceRequestApi', () => {
         await expect(createResourceRequestApi(payload, 't')).rejects.toThrow('boom')
     })
 
+    it('extracts structured validation details from an error response', async () => {
+        fetchMock.mockResolvedValue(errRes(JSON.stringify({
+            message: [{ path: ['estimatedCost'], message: 'Expected number' }],
+        })))
+        await expect(createResourceRequestApi(payload, 't')).rejects.toThrow(
+            'estimatedCost: Expected number'
+        )
+    })
+
     it('wraps network errors', async () => {
         fetchMock.mockRejectedValue(new Error('down'))
         await expect(createResourceRequestApi(payload, 't')).rejects.toThrow('Network error')

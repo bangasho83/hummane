@@ -1480,8 +1480,8 @@ export const createResourceRequestApi = async (
   }
 
   if (!response.ok) {
-    const message = await response.text()
-    throw new Error(message || 'Failed to create resource request')
+    const body = await response.text()
+    throw new Error(parseApiError(body, 'Failed to create resource request'))
   }
 
   const data = await response.json().catch(() => null)
