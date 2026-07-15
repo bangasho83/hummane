@@ -1703,6 +1703,7 @@ export type ResourceFilters = {
   resourceType?: ResourceType
   status?: ResourceStatus
   assignedToEmployeeId?: string
+  paidByEmployeeId?: string
   vendorId?: string
   limit?: number
 }
@@ -1802,6 +1803,7 @@ export const fetchResourcesApi = async (
   if (filters.resourceType) query.set('resourceType', filters.resourceType)
   if (filters.status) query.set('status', filters.status)
   if (filters.assignedToEmployeeId) query.set('assignedToEmployeeId', filters.assignedToEmployeeId)
+  if (filters.paidByEmployeeId) query.set('paidByEmployeeId', filters.paidByEmployeeId)
   if (filters.vendorId) query.set('vendorId', filters.vendorId)
   if (filters.limit !== undefined) {
     query.set('limit', String(Math.min(Math.max(Math.trunc(filters.limit), 1), 100)))

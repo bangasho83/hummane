@@ -69,6 +69,7 @@ describe('Resource API', () => {
             resourceType: 'subscription',
             status: 'inactive',
             assignedToEmployeeId: 'employee / 1',
+            paidByEmployeeId: 'payer / 1',
             vendorId: 'vendor&1',
             limit: 500,
         })
@@ -78,6 +79,7 @@ describe('Resource API', () => {
             resourceType: 'subscription',
             status: 'inactive',
             assignedToEmployeeId: 'employee / 1',
+            paidByEmployeeId: 'payer / 1',
             vendorId: 'vendor&1',
             limit: '100',
         })
