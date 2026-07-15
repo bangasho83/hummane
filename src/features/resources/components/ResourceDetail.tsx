@@ -190,6 +190,7 @@ function AssignmentDialog({ open, setOpen, resource, employees, token, onUpdated
     const current = resourceAssignment(resource)
     const [assignmentType, setAssignmentType] = useState(textValue(current.assignmentType || current.type))
     const [employeeId, setEmployeeId] = useState(assignmentEmployeeId(current))
+    const [employeeQuery, setEmployeeQuery] = useState('')
     const [location, setLocation] = useState(textValue(current.location))
     const [note, setNote] = useState(textValue(current.note))
     const [saving, setSaving] = useState(false)
@@ -199,9 +200,14 @@ function AssignmentDialog({ open, setOpen, resource, employees, token, onUpdated
         const assignment = resourceAssignment(resource)
         setAssignmentType(textValue(assignment.assignmentType || assignment.type))
         setEmployeeId(assignmentEmployeeId(assignment))
+        setEmployeeQuery('')
         setLocation(textValue(assignment.location))
         setNote(textValue(assignment.note))
     }, [open, resource])
+
+    const filteredEmployees = employees.filter((employee) =>
+        employeeDisplayName(employee).toLowerCase().includes(employeeQuery.trim().toLowerCase())
+    )
 
     const save = async () => {
         if (!token || !assignmentType || (assignmentType === 'person' && !employeeId)) return
@@ -221,7 +227,7 @@ function AssignmentDialog({ open, setOpen, resource, employees, token, onUpdated
         finally { setSaving(false) }
     }
 
-    return <Dialog open={open} onOpenChange={setOpen}><DialogContent className="rounded-3xl border-slate-100 sm:max-w-xl"><DialogHeader><DialogTitle>Update assignment</DialogTitle><DialogDescription>Assignment changes are recorded in this resource&apos;s history.</DialogDescription></DialogHeader><div className="grid gap-5 py-3 sm:grid-cols-2"><div className="space-y-2"><Label>Assignment type *</Label><Select value={assignmentType} onValueChange={setAssignmentType} disabled={saving}><SelectTrigger className="h-11 rounded-xl"><SelectValue placeholder="Select assignment" /></SelectTrigger><SelectContent>{(RESOURCE_ASSIGNMENT_TYPES as readonly string[]).map((type) => <SelectItem key={type} value={type}>{labelize(type)}</SelectItem>)}</SelectContent></Select></div>{assignmentType === 'person' && <div className="space-y-2"><Label>Employee *</Label><Select value={employeeId} onValueChange={setEmployeeId} disabled={saving}><SelectTrigger className="h-11 rounded-xl"><SelectValue placeholder="Select employee" /></SelectTrigger><SelectContent>{employees.map((employee) => <SelectItem key={textValue(employee.id)} value={textValue(employee.id)}>{employeeDisplayName(employee)}</SelectItem>)}</SelectContent></Select></div>}<div className="space-y-2 sm:col-span-2"><Label>Location</Label><Input value={location} onChange={(event) => setLocation(event.target.value)} className="h-11 rounded-xl" disabled={saving} /></div><div className="space-y-2 sm:col-span-2"><Label>Note</Label><Textarea value={note} onChange={(event) => setNote(event.target.value)} className="min-h-24 rounded-xl" disabled={saving} /></div></div><DialogFooter><Button variant="outline" className="rounded-xl" onClick={() => setOpen(false)} disabled={saving}>Cancel</Button><Button className="rounded-xl bg-blue-600 text-white hover:bg-blue-700" onClick={() => void save()} disabled={saving || !assignmentType || (assignmentType === 'person' && !employeeId)}>{saving && <Loader2 className="animate-spin" />}Save assignment</Button></DialogFooter></DialogContent></Dialog>
+    return <Dialog open={open} onOpenChange={setOpen}><DialogContent className="rounded-3xl border-slate-100 sm:max-w-xl"><DialogHeader><DialogTitle>Update assignment</DialogTitle><DialogDescription>Assignment changes are recorded in this resource&apos;s history.</DialogDescription></DialogHeader><div className="grid gap-5 py-3 sm:grid-cols-2"><div className="space-y-2"><Label>Assignment type *</Label><Select value={assignmentType} onValueChange={setAssignmentType} disabled={saving}><SelectTrigger className="h-11 rounded-xl"><SelectValue placeholder="Select assignment" /></SelectTrigger><SelectContent>{(RESOURCE_ASSIGNMENT_TYPES as readonly string[]).map((type) => <SelectItem key={type} value={type}>{labelize(type)}</SelectItem>)}</SelectContent></Select></div>{assignmentType === 'person' && <div className="space-y-2"><Label>Employee *</Label><Select value={employeeId} onValueChange={setEmployeeId} disabled={saving}><SelectTrigger className="h-11 rounded-xl"><SelectValue placeholder="Select employee" /></SelectTrigger><SelectContent className="max-h-72 overflow-y-auto"><div className="sticky top-0 z-10 border-b border-slate-100 bg-white p-2"><Input value={employeeQuery} onChange={(event) => setEmployeeQuery(event.target.value)} placeholder="Search employees..." className="h-9 rounded-lg" onKeyDown={(event) => event.stopPropagation()} onClick={(event) => event.stopPropagation()} /></div>{filteredEmployees.length > 0 ? filteredEmployees.map((employee) => <SelectItem key={textValue(employee.id)} value={textValue(employee.id)}>{employeeDisplayName(employee)}</SelectItem>) : <SelectItem value="no-results" disabled>No employees found</SelectItem>}</SelectContent></Select></div>}<div className="space-y-2 sm:col-span-2"><Label>Location</Label><Input value={location} onChange={(event) => setLocation(event.target.value)} className="h-11 rounded-xl" disabled={saving} /></div><div className="space-y-2 sm:col-span-2"><Label>Note</Label><Textarea value={note} onChange={(event) => setNote(event.target.value)} className="min-h-24 rounded-xl" disabled={saving} /></div></div><DialogFooter><Button variant="outline" className="rounded-xl" onClick={() => setOpen(false)} disabled={saving}>Cancel</Button><Button className="rounded-xl bg-blue-600 text-white hover:bg-blue-700" onClick={() => void save()} disabled={saving || !assignmentType || (assignmentType === 'person' && !employeeId)}>{saving && <Loader2 className="animate-spin" />}Save assignment</Button></DialogFooter></DialogContent></Dialog>
 }
 
 function HistoryEntry({ entry, employeeName, last }: { entry: Record<string, unknown>; employeeName?: string; last: boolean }) {
