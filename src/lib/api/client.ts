@@ -44,7 +44,9 @@ export type AuthLoginResponse = {
   [key: string]: unknown
 }
 
-const API_BASE_URL = process.env.NEXT_PUBLIC_API_BASE_URL || 'https://hummane-api.vercel.app'
+const API_BASE_URL = (
+  process.env.NEXT_PUBLIC_API_BASE_URL || 'https://hummane-api.vercel.app'
+).replace(/\/+$/, '')
 const AUTH_LOGIN_PATH = `${API_BASE_URL}/auth/login`
 const COMPANIES_PATH = `${API_BASE_URL}/companies`
 const EMPLOYEES_PATH = `${API_BASE_URL}/employees`

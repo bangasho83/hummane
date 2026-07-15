@@ -80,6 +80,7 @@ describe('createResourceRequestApi', () => {
         expect(result).toMatchObject({ id: 'r1' })
         const [url, init] = fetchMock.mock.calls[0]
         expect(String(url)).toContain('/resource-requests')
+        expect(String(url)).not.toContain('//resource-requests')
         expect(init.method).toBe('POST')
         expect(init.headers.Authorization).toBe('Bearer token-123')
         expect(JSON.parse(init.body)).toMatchObject({
