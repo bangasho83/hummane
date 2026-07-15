@@ -375,10 +375,15 @@ export interface Vendor {
 
 export interface ResourceAssignmentHistoryEntry {
     assignmentType: ResourceAssignmentType
+    employeeId?: string | null
+    employeeName?: string | null
     assignedToEmployeeId?: string | null
     assignedToEmployeeName?: string | null
     location?: string | null
     assignedAt: string
+    unassignedAt?: string | null
+    changedBy?: string | null
+    changedByName?: string | null
     assignedBy?: string | null
     assignedByName?: string | null
     note?: string | null

@@ -96,7 +96,7 @@ export default function ResourcesPage() {
     return (
         <div className="animate-in fade-in duration-500 slide-in-from-bottom-4 space-y-6">
             <div>
-                <h1 className="text-3xl font-extrabold text-slate-900 tracking-tight">Resources</h1>
+                <h1 className="text-3xl font-extrabold text-slate-900 tracking-tight">Requests</h1>
                 <p className="text-slate-500 font-medium">Review resource requests from your team.</p>
             </div>
 

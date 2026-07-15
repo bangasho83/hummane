@@ -103,9 +103,11 @@ describe('validateResource', () => {
         const values = validValues('bill')
         values.vendorId = ''
         values.expenseDate = ''
+        values.costAmount = ''
         expect(validateResource(values, 'bill')).toMatchObject({
             vendorId: 'Vendor is required for a bill',
             expenseDate: 'Expense date is required for a bill',
+            costAmount: 'Amount is required for a bill',
         })
     })
 

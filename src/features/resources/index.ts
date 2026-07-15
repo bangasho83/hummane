@@ -1,0 +1,7 @@
+export * from './components/ResourcePageFrame'
+export * from './components/ResourceTabs'
+export { ResourceForm } from './components/ResourceForm'
+export { AssetList } from './components/AssetList'
+export { BillList } from './components/BillList'
+export { ResourceDetail } from './components/ResourceDetail'
+export { ResourceEditPage } from './components/ResourceEditPage'

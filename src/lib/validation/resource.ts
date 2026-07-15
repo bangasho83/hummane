@@ -127,6 +127,7 @@ export function validateResource(
     if (mode === 'bill') {
         if (!values.vendorId.trim()) errors.vendorId = 'Vendor is required for a bill'
         if (!values.expenseDate.trim()) errors.expenseDate = 'Expense date is required for a bill'
+        if (!cost) errors.costAmount = 'Amount is required for a bill'
     }
 
     if (resourceType === 'reimbursement') {
