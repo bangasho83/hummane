@@ -8,9 +8,9 @@ import { cn } from '@/lib/utils'
 const tabs = [
     { href: '/organization/departments', label: 'Departments', description: 'Manage teams and reporting lines.', icon: Building2 },
     { href: '/organization/roles', label: 'Roles', description: 'Define responsibilities and permissions.', icon: Briefcase },
-    { href: '/organization/vendors', label: 'Vendors', description: 'Manage suppliers and contacts.', icon: Store },
     { href: '/organization/leaves', label: 'Leaves', description: 'Leave types and allowances.', icon: Leaf },
-    { href: '/organization/general', label: 'General', description: 'Time, currency, and hours.', icon: Cog }
+    { href: '/organization/general', label: 'General', description: 'Time, currency, and hours.', icon: Cog },
+    { href: '/organization/vendors', label: 'Vendors', description: 'Manage suppliers and contacts.', icon: Store }
 ]
 
 export function OrgTabs() {
