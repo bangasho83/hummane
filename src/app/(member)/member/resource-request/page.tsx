@@ -63,8 +63,8 @@ export default function MemberResourceRequestPage() {
         return (
             <div className="animate-in fade-in duration-500 slide-in-from-bottom-4 space-y-6">
                 <div>
-                    <h1 className="text-3xl font-extrabold text-slate-900 tracking-tight">Resource Request</h1>
-                    <p className="text-slate-500 font-medium">Request the resources you need to do your best work</p>
+                    <h2 className="text-2xl font-extrabold text-slate-900 tracking-tight">Requests</h2>
+                    <p className="text-slate-500 font-medium">Request the resources you need to do your best work.</p>
                 </div>
                 <Card className="border-dashed">
                     <CardHeader className="text-center pb-4">
@@ -89,8 +89,8 @@ export default function MemberResourceRequestPage() {
         <div className="animate-in fade-in duration-500 slide-in-from-bottom-4 space-y-6">
             <div className="flex items-end justify-between gap-4">
                 <div>
-                    <h1 className="text-3xl font-extrabold text-slate-900 tracking-tight">Resource Request</h1>
-                    <p className="text-slate-500 font-medium">Request the resources you need to do your best work</p>
+                    <h2 className="text-2xl font-extrabold text-slate-900 tracking-tight">Requests</h2>
+                    <p className="text-slate-500 font-medium">Request the resources you need to do your best work.</p>
                 </div>
                 <Button
                     asChild
