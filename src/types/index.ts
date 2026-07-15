@@ -357,6 +357,18 @@ export interface FeedbackEntry {
     updatedAt?: string
 }
 
+export interface Vendor {
+    id: string
+    companyId: string
+    name: string
+    contactName?: string | null
+    email?: string | null
+    phone?: string | null
+    isActive: boolean
+    createdAt?: string
+    updatedAt?: string
+}
+
 export interface ResourceCategory {
     name: string
     description: string

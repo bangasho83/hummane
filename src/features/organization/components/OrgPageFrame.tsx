@@ -14,7 +14,7 @@ export function OrgPageFrame({ children }: { children: React.ReactNode }) {
                         Structure & Permissions
                     </h1>
                     <p className="text-slate-500 font-medium max-w-2xl">
-                        Manage departments, roles, and leave types in one place.
+                        Manage departments, roles, vendors, and leave types in one place.
                     </p>
                 </div>
 

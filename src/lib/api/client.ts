@@ -1,4 +1,4 @@
-import type { Company, Department, Role, LeaveType, LeaveRecord, Holiday, Job, Applicant, Employee, EmployeeApi, EmployeeDocument, EmployeePersonalDetails, FeedbackCard, FeedbackEntry, ResourceCategory, ResourceRequest } from '@/types'
+import type { Company, Department, Role, LeaveType, LeaveRecord, Holiday, Job, Applicant, Employee, EmployeeApi, EmployeeDocument, EmployeePersonalDetails, FeedbackCard, FeedbackEntry, ResourceCategory, ResourceRequest, Vendor } from '@/types'
 
 export type ApiUser = {
   id: string
@@ -37,6 +37,7 @@ const DOCUMENTS_PATH = `${API_BASE_URL}/documents`
 const USERS_PATH = `${API_BASE_URL}/users`
 const RESOURCE_CATEGORIES_PATH = `${API_BASE_URL}/resource-categories`
 const RESOURCE_REQUESTS_PATH = `${API_BASE_URL}/resource-requests`
+const VENDORS_PATH = `${API_BASE_URL}/vendors`
 const ACCESS_TOKEN_KEY = 'hummaneApiAccessToken'
 const API_USER_KEY = 'hummaneApiUser'
 const COMPANY_ID_KEY = 'hummaneCompanyId'
@@ -1575,6 +1576,74 @@ export const updateResourceRequestStatusApi = async (
   const data = await response.json().catch(() => null)
   return (data?.data || data?.resourceRequest || data) as ResourceRequest
 }
+
+export type VendorPayload = {
+  name?: string
+  contactName?: string
+  email?: string
+  phone?: string
+  isActive?: boolean
+}
+
+const vendorRequest = async <T>(
+  path: string,
+  accessToken: string,
+  init: RequestInit = {}
+): Promise<T> => {
+  let response: Response
+  try {
+    response = await fetch(`${VENDORS_PATH}${path}`, {
+      ...init,
+      headers: {
+        ...(init.body ? { 'Content-Type': 'application/json' } : {}),
+        Authorization: `Bearer ${accessToken}`,
+        ...init.headers,
+      },
+    })
+  } catch (error) {
+    console.error(`API /vendors${path} network error:`, error)
+    throw new Error('Network error while contacting the API')
+  }
+
+  if (!response.ok) {
+    const message = await response.text()
+    throw new Error(message || 'Vendor request failed')
+  }
+
+  if (response.status === 204) return undefined as T
+  const data = await response.json().catch(() => null)
+  if (data == null) return undefined as T
+  return (data?.data || data?.vendor || data) as T
+}
+
+export const fetchVendorsApi = async (
+  accessToken: string,
+  limit = 100
+): Promise<Vendor[]> => {
+  const list = await vendorRequest<unknown>(`?limit=${Math.min(Math.max(limit, 1), 100)}`, accessToken)
+  return Array.isArray(list) ? (list as Vendor[]) : []
+}
+
+export const fetchVendorApi = async (vendorId: string, accessToken: string): Promise<Vendor> =>
+  vendorRequest<Vendor>(`/${encodeURIComponent(vendorId)}`, accessToken)
+
+export const createVendorApi = async (payload: VendorPayload, accessToken: string): Promise<Vendor> =>
+  vendorRequest<Vendor>('', accessToken, {
+    method: 'POST',
+    body: JSON.stringify(payload),
+  })
+
+export const updateVendorApi = async (
+  vendorId: string,
+  payload: VendorPayload,
+  accessToken: string
+): Promise<Vendor> => vendorRequest<Vendor>(`/${encodeURIComponent(vendorId)}`, accessToken, {
+  method: 'PUT',
+  body: JSON.stringify(payload),
+})
+
+export const deleteVendorApi = async (vendorId: string, accessToken: string): Promise<void> =>
+  vendorRequest<void>(`/${encodeURIComponent(vendorId)}`, accessToken, { method: 'DELETE' })
 
 export const createHolidayApi = async (
   payload: { date: string; name: string; companyId: string },
