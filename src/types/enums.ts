@@ -38,6 +38,31 @@ export type ResourceRequestStatus = typeof RESOURCE_REQUEST_STATUSES[number]
 export const RESOURCE_REQUEST_ADMIN_STATUSES = ['approved', 'rejected', 'fulfilled', 'cancelled'] as const
 export type ResourceRequestAdminStatus = typeof RESOURCE_REQUEST_ADMIN_STATUSES[number]
 
+export const RESOURCE_TYPES = [
+  'physical_asset',
+  'subscription',
+  'service',
+  'expense',
+  'event',
+  'reimbursement'
+] as const
+export type ResourceType = typeof RESOURCE_TYPES[number]
+
+export const RESOURCE_STATUSES = ['active', 'inactive', 'maintenance', 'lost', 'retired'] as const
+export type ResourceStatus = typeof RESOURCE_STATUSES[number]
+
+export const RESOURCE_ASSIGNMENT_TYPES = [
+  'person',
+  'shared',
+  'company',
+  'unassigned',
+  'not_applicable'
+] as const
+export type ResourceAssignmentType = typeof RESOURCE_ASSIGNMENT_TYPES[number]
+
+export const RESOURCE_COST_TYPES = ['one_time', 'recurring'] as const
+export type ResourceCostType = typeof RESOURCE_COST_TYPES[number]
+
 export const DOCUMENT_KINDS = [
   'Government ID',
   'CV (Curriculum Vitae)',

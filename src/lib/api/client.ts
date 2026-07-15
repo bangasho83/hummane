@@ -1,4 +1,28 @@
-import type { Company, Department, Role, LeaveType, LeaveRecord, Holiday, Job, Applicant, Employee, EmployeeApi, EmployeeDocument, EmployeePersonalDetails, FeedbackCard, FeedbackEntry, ResourceCategory, ResourceRequest, Vendor } from '@/types'
+import type {
+  Applicant,
+  Company,
+  Department,
+  Employee,
+  EmployeeApi,
+  EmployeeDocument,
+  EmployeePersonalDetails,
+  FeedbackCard,
+  FeedbackEntry,
+  Holiday,
+  Job,
+  LeaveRecord,
+  LeaveType,
+  Resource,
+  ResourceAssignmentType,
+  ResourceAttachments,
+  ResourceCategory,
+  ResourceCostType,
+  ResourceRequest,
+  ResourceStatus,
+  ResourceType,
+  Role,
+  Vendor,
+} from '@/types'
 
 export type ApiUser = {
   id: string
@@ -37,6 +61,7 @@ const DOCUMENTS_PATH = `${API_BASE_URL}/documents`
 const USERS_PATH = `${API_BASE_URL}/users`
 const RESOURCE_CATEGORIES_PATH = `${API_BASE_URL}/resource-categories`
 const RESOURCE_REQUESTS_PATH = `${API_BASE_URL}/resource-requests`
+const RESOURCES_PATH = `${API_BASE_URL}/resources`
 const VENDORS_PATH = `${API_BASE_URL}/vendors`
 const ACCESS_TOKEN_KEY = 'hummaneApiAccessToken'
 const API_USER_KEY = 'hummaneApiUser'
@@ -1644,6 +1669,187 @@ export const updateVendorApi = async (
 
 export const deleteVendorApi = async (vendorId: string, accessToken: string): Promise<void> =>
   vendorRequest<void>(`/${encodeURIComponent(vendorId)}`, accessToken, { method: 'DELETE' })
+
+export type ResourcePayload = {
+  resourceType: ResourceType
+  name: string
+  category: string
+  description?: string
+  identifier?: string
+  status?: ResourceStatus
+  assignmentType?: ResourceAssignmentType
+  assignedToEmployeeId?: string
+  location?: string
+  vendorId?: string
+  costAmount?: number
+  costType?: ResourceCostType
+  expenseDate?: string
+  paidByEmployeeId?: string
+  isSettled?: boolean
+  details?: Record<string, unknown>
+  attachments?: ResourceAttachments
+}
+
+export type ResourceAssignmentPayload = {
+  assignmentType: ResourceAssignmentType
+  assignedToEmployeeId?: string
+  location?: string
+  note?: string
+}
+
+export type ResourceFilters = {
+  resourceType?: ResourceType
+  status?: ResourceStatus
+  assignedToEmployeeId?: string
+  vendorId?: string
+  limit?: number
+}
+
+const RESOURCE_PAYLOAD_KEYS = [
+  'resourceType', 'name', 'category', 'description', 'identifier', 'status',
+  'assignmentType', 'assignedToEmployeeId', 'location', 'vendorId', 'costAmount',
+  'costType', 'expenseDate', 'paidByEmployeeId', 'isSettled', 'details', 'attachments',
+] as const
+
+const ASSIGNMENT_PAYLOAD_KEYS = [
+  'assignmentType', 'assignedToEmployeeId', 'location', 'note',
+] as const
+
+const pickDefined = <T extends object>(source: T, keys: readonly string[]): Partial<T> =>
+  Object.fromEntries(
+    keys.flatMap((key) => {
+      const value = (source as Record<string, unknown>)[key]
+      return value === undefined ? [] : [[key, value]]
+    })
+  ) as Partial<T>
+
+const formatApiIssues = (value: unknown): string | null => {
+  if (!Array.isArray(value)) return null
+  const issues = value.flatMap((issue) => {
+    if (typeof issue === 'string') return [issue]
+    if (!issue || typeof issue !== 'object') return []
+    const item = issue as { path?: unknown; message?: unknown }
+    if (typeof item.message !== 'string') return []
+    const path = Array.isArray(item.path) ? item.path.map(String).join('.') : ''
+    return [`${path ? `${path}: ` : ''}${item.message}`]
+  })
+  return issues.length > 0 ? issues.join('; ') : null
+}
+
+const findApiIssues = (value: unknown): string | null => {
+  const direct = formatApiIssues(value)
+  if (direct || !value || typeof value !== 'object') return direct
+  const data = value as { issues?: unknown; errors?: unknown; message?: unknown; error?: unknown }
+  return formatApiIssues(data.issues) || formatApiIssues(data.errors)
+    || findApiIssues(data.error) || findApiIssues(data.message)
+}
+
+export const parseApiError = (body: string, fallback: string): string => {
+  if (!body) return fallback
+  try {
+    const parsed = JSON.parse(body) as unknown
+    const issues = findApiIssues(parsed)
+    if (issues) return issues
+    if (parsed && typeof parsed === 'object') {
+      const data = parsed as { message?: unknown; error?: unknown }
+      if (typeof data.message === 'string' && data.message) return data.message
+      if (typeof data.error === 'string' && data.error) return data.error
+    }
+  } catch {
+    // Plain-text API errors are already useful to callers.
+  }
+  return body
+}
+
+const resourceRequest = async <T>(
+  path: string,
+  accessToken: string,
+  init: RequestInit = {}
+): Promise<T> => {
+  let response: Response
+  try {
+    response = await fetch(`${RESOURCES_PATH}${path}`, {
+      ...init,
+      headers: {
+        ...(init.body ? { 'Content-Type': 'application/json' } : {}),
+        Authorization: `Bearer ${accessToken}`,
+        ...init.headers,
+      },
+    })
+  } catch (error) {
+    console.error(`API /resources${path} network error:`, error)
+    throw new Error('Network error while contacting the API')
+  }
+
+  if (!response.ok) {
+    const body = await response.text()
+    throw new Error(parseApiError(body, 'Resource request failed'))
+  }
+
+  if (response.status === 204) return undefined as T
+  const data = await response.json().catch(() => null)
+  if (data == null) return undefined as T
+  return (data?.data || data?.resource || data?.resources || data) as T
+}
+
+export const fetchResourcesApi = async (
+  accessToken: string,
+  filters: ResourceFilters = {}
+): Promise<Resource[]> => {
+  const query = new URLSearchParams()
+  if (filters.resourceType) query.set('resourceType', filters.resourceType)
+  if (filters.status) query.set('status', filters.status)
+  if (filters.assignedToEmployeeId) query.set('assignedToEmployeeId', filters.assignedToEmployeeId)
+  if (filters.vendorId) query.set('vendorId', filters.vendorId)
+  if (filters.limit !== undefined) {
+    query.set('limit', String(Math.min(Math.max(Math.trunc(filters.limit), 1), 100)))
+  }
+  const suffix = query.size > 0 ? `?${query.toString()}` : ''
+  const list = await resourceRequest<unknown>(suffix, accessToken)
+  return Array.isArray(list) ? list as Resource[] : []
+}
+
+export const fetchResourceApi = async (
+  resourceId: string,
+  accessToken: string
+): Promise<Resource> => resourceRequest<Resource>(`/${encodeURIComponent(resourceId)}`, accessToken)
+
+export const createResourceApi = async (
+  payload: ResourcePayload,
+  accessToken: string
+): Promise<Resource> => resourceRequest<Resource>('', accessToken, {
+  method: 'POST',
+  body: JSON.stringify(pickDefined(payload, RESOURCE_PAYLOAD_KEYS)),
+})
+
+export const updateResourceApi = async (
+  resourceId: string,
+  payload: Partial<ResourcePayload>,
+  accessToken: string
+): Promise<Resource> => resourceRequest<Resource>(`/${encodeURIComponent(resourceId)}`, accessToken, {
+  method: 'PUT',
+  body: JSON.stringify(pickDefined(payload, RESOURCE_PAYLOAD_KEYS)),
+})
+
+export const updateResourceAssignmentApi = async (
+  resourceId: string,
+  payload: ResourceAssignmentPayload,
+  accessToken: string
+): Promise<Resource> => resourceRequest<Resource>(
+  `/${encodeURIComponent(resourceId)}/assignment`,
+  accessToken,
+  {
+    method: 'PATCH',
+    body: JSON.stringify(pickDefined(payload, ASSIGNMENT_PAYLOAD_KEYS)),
+  }
+)
+
+export const deleteResourceApi = async (
+  resourceId: string,
+  accessToken: string
+): Promise<void> => resourceRequest<void>(`/${encodeURIComponent(resourceId)}`, accessToken, {
+  method: 'DELETE',
+})
 
 export const createHolidayApi = async (
   payload: { date: string; name: string; companyId: string },

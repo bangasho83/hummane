@@ -8,8 +8,12 @@ import type {
     Gender,
     JobStatus,
     LeaveUnit,
+    ResourceAssignmentType,
+    ResourceCostType,
     ResourceRequestPriority,
-    ResourceRequestStatus
+    ResourceRequestStatus,
+    ResourceStatus,
+    ResourceType
 } from './enums'
 
 export interface User {
@@ -366,6 +370,50 @@ export interface Vendor {
     phone?: string | null
     isActive: boolean
     createdAt?: string
+    updatedAt?: string
+}
+
+export interface ResourceAssignmentHistoryEntry {
+    assignmentType: ResourceAssignmentType
+    assignedToEmployeeId?: string | null
+    assignedToEmployeeName?: string | null
+    location?: string | null
+    assignedAt: string
+    assignedBy?: string | null
+    assignedByName?: string | null
+    note?: string | null
+}
+
+export interface ResourceAttachments {
+    files: string[]
+}
+
+export interface Resource {
+    id: string
+    companyId: string
+    resourceType: ResourceType
+    name: string
+    category: string
+    description?: string | null
+    identifier?: string | null
+    status: ResourceStatus
+    assignmentType: ResourceAssignmentType
+    assignedToEmployeeId?: string | null
+    assignedToEmployeeName?: string | null
+    location?: string | null
+    vendorId?: string | null
+    vendorName?: string | null
+    costAmount?: number | null
+    costType?: ResourceCostType | null
+    expenseDate?: string | null
+    paidByEmployeeId?: string | null
+    paidByEmployeeName?: string | null
+    isSettled?: boolean
+    details: Record<string, unknown>
+    attachments: ResourceAttachments
+    assignmentHistory: ResourceAssignmentHistoryEntry[]
+    createdBy?: string
+    createdAt: string
     updatedAt?: string
 }
 
