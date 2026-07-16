@@ -7,6 +7,7 @@ import { useApp } from '@/lib/context/AppContext'
 import { Button } from '@/components/ui/button'
 import { Plus, CalendarCheck, Briefcase, UserPlus, FileText, User, Cake, PartyPopper, Calendar, Users } from 'lucide-react'
 import { StatsCards } from '@/features/dashboard'
+import { DashboardResourceRequests } from '@/features/dashboard/components/DashboardResourceRequests'
 import { formatCurrency, formatDate, parseLocalDate, getLocalTodayKey } from '@/lib/utils'
 import { EMPLOYMENT_TYPES } from '@/types'
 
@@ -409,78 +410,7 @@ export default function DashboardPage() {
             )}
 
             <section className="mt-8 grid grid-cols-1 xl:grid-cols-3 gap-8">
-                <div className="bg-white p-8 rounded-3xl shadow-premium border border-slate-100 xl:col-span-2">
-                    <div className="mb-6">
-                        <h3 className="text-xl font-bold text-slate-900">Organization Snapshot</h3>
-                        <p className="text-sm text-slate-500">Headcount mix, departments, and core configuration.</p>
-                    </div>
-    
-                    <div className="grid grid-cols-2 lg:grid-cols-4 gap-4 mb-6">
-                        <div className="rounded-2xl border border-slate-100 p-4">
-                            <p className="text-[11px] uppercase tracking-widest text-slate-400 font-semibold">Departments</p>
-                            <p className="text-xl font-bold text-slate-900 mt-2">{departments.length}</p>
-                        </div>
-                        <div className="rounded-2xl border border-slate-100 p-4">
-                            <p className="text-[11px] uppercase tracking-widest text-slate-400 font-semibold">Roles</p>
-                            <p className="text-xl font-bold text-slate-900 mt-2">{roles.length}</p>
-                        </div>
-                        <div className="rounded-2xl border border-slate-100 p-4">
-                            <p className="text-[11px] uppercase tracking-widest text-slate-400 font-semibold">Leave Types</p>
-                            <p className="text-xl font-bold text-slate-900 mt-2">{leaveTypes.length}</p>
-                        </div>
-                        <div className="rounded-2xl border border-slate-100 p-4">
-                            <p className="text-[11px] uppercase tracking-widest text-slate-400 font-semibold">Avg Salary</p>
-                            <p className="text-xl font-bold text-slate-900 mt-2">
-                                {formatCurrency(avgSalary, currency)}
-                            </p>
-                        </div>
-                    </div>
-    
-                    <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
-                        <div>
-                            <h4 className="text-sm font-bold text-slate-700 mb-4">Employment Type</h4>
-                            <div className="space-y-4">
-                                {employmentStats.map(stat => (
-                                    <div key={stat.type} className="space-y-2">
-                                        <div className="flex items-center justify-between text-sm">
-                                            <span className="font-semibold text-slate-700">{stat.type}</span>
-                                            <span className="text-slate-500">{stat.count}</span>
-                                        </div>
-                                        <div className="h-2 rounded-full bg-slate-100 overflow-hidden">
-                                            <div
-                                                className="h-2 rounded-full bg-blue-500"
-                                                style={{ width: `${stat.percent}%` }}
-                                            />
-                                        </div>
-                                    </div>
-                                ))}
-                            </div>
-                        </div>
-                        <div>
-                            <h4 className="text-sm font-bold text-slate-700 mb-4">Departments</h4>
-                            {departmentStats.length === 0 ? (
-                                <p className="text-sm text-slate-500">No department assignments yet.</p>
-                            ) : (
-                                <div className="space-y-4">
-                                    {departmentStats.map(([dept, count]) => (
-                                        <div key={dept} className="space-y-2">
-                                            <div className="flex items-center justify-between text-sm">
-                                                <span className="font-semibold text-slate-700">{dept}</span>
-                                                <span className="text-slate-500">{count}</span>
-                                            </div>
-                                            <div className="h-2 rounded-full bg-slate-100 overflow-hidden">
-                                                <div
-                                                    className="h-2 rounded-full bg-blue-500"
-                                                    style={{ width: `${totalEmployees ? Math.round((count / totalEmployees) * 100) : 0}%` }}
-                                                />
-                                            </div>
-                                        </div>
-                                    ))}
-                                </div>
-                            )}
-                        </div>
-                    </div>
-                </div>
+                <DashboardResourceRequests />
     
                 {/* Right Column - On Leave Today & Upcoming Holidays */}
                 <div className="space-y-6">
@@ -580,6 +510,81 @@ export default function DashboardPage() {
                                 })}
                             </div>
                         )}
+                    </div>
+                </div>
+            </section>
+
+            <section className="mt-8">
+                <div className="bg-white p-8 rounded-3xl shadow-premium border border-slate-100">
+                    <div className="mb-6">
+                        <h3 className="text-xl font-bold text-slate-900">Organization Snapshot</h3>
+                        <p className="text-sm text-slate-500">Headcount mix, departments, and core configuration.</p>
+                    </div>
+
+                    <div className="grid grid-cols-2 lg:grid-cols-4 gap-4 mb-6">
+                        <div className="rounded-2xl border border-slate-100 p-4">
+                            <p className="text-[11px] uppercase tracking-widest text-slate-400 font-semibold">Departments</p>
+                            <p className="text-xl font-bold text-slate-900 mt-2">{departments.length}</p>
+                        </div>
+                        <div className="rounded-2xl border border-slate-100 p-4">
+                            <p className="text-[11px] uppercase tracking-widest text-slate-400 font-semibold">Roles</p>
+                            <p className="text-xl font-bold text-slate-900 mt-2">{roles.length}</p>
+                        </div>
+                        <div className="rounded-2xl border border-slate-100 p-4">
+                            <p className="text-[11px] uppercase tracking-widest text-slate-400 font-semibold">Leave Types</p>
+                            <p className="text-xl font-bold text-slate-900 mt-2">{leaveTypes.length}</p>
+                        </div>
+                        <div className="rounded-2xl border border-slate-100 p-4">
+                            <p className="text-[11px] uppercase tracking-widest text-slate-400 font-semibold">Avg Salary</p>
+                            <p className="text-xl font-bold text-slate-900 mt-2">
+                                {formatCurrency(avgSalary, currency)}
+                            </p>
+                        </div>
+                    </div>
+
+                    <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+                        <div>
+                            <h4 className="text-sm font-bold text-slate-700 mb-4">Employment Type</h4>
+                            <div className="space-y-4">
+                                {employmentStats.map(stat => (
+                                    <div key={stat.type} className="space-y-2">
+                                        <div className="flex items-center justify-between text-sm">
+                                            <span className="font-semibold text-slate-700">{stat.type}</span>
+                                            <span className="text-slate-500">{stat.count}</span>
+                                        </div>
+                                        <div className="h-2 rounded-full bg-slate-100 overflow-hidden">
+                                            <div
+                                                className="h-2 rounded-full bg-blue-500"
+                                                style={{ width: `${stat.percent}%` }}
+                                            />
+                                        </div>
+                                    </div>
+                                ))}
+                            </div>
+                        </div>
+                        <div>
+                            <h4 className="text-sm font-bold text-slate-700 mb-4">Departments</h4>
+                            {departmentStats.length === 0 ? (
+                                <p className="text-sm text-slate-500">No department assignments yet.</p>
+                            ) : (
+                                <div className="space-y-4">
+                                    {departmentStats.map(([dept, count]) => (
+                                        <div key={dept} className="space-y-2">
+                                            <div className="flex items-center justify-between text-sm">
+                                                <span className="font-semibold text-slate-700">{dept}</span>
+                                                <span className="text-slate-500">{count}</span>
+                                            </div>
+                                            <div className="h-2 rounded-full bg-slate-100 overflow-hidden">
+                                                <div
+                                                    className="h-2 rounded-full bg-blue-500"
+                                                    style={{ width: `${totalEmployees ? Math.round((count / totalEmployees) * 100) : 0}%` }}
+                                                />
+                                            </div>
+                                        </div>
+                                    ))}
+                                </div>
+                            )}
+                        </div>
                     </div>
                 </div>
             </section>
