@@ -1,6 +1,6 @@
 'use client'
 
-import { useEffect, useMemo } from 'react'
+import { useEffect, useMemo, useState } from 'react'
 import { useRouter } from 'next/navigation'
 import Link from 'next/link'
 import { useApp } from '@/lib/context/AppContext'
@@ -14,6 +14,7 @@ import { EMPLOYMENT_TYPES } from '@/types'
 export default function DashboardPage() {
     const router = useRouter()
     const { currentUser, currentCompany, employees, departments, roles, leaveTypes, leaves, jobs, applicants, holidays, isHydrating } = useApp()
+    const [resourceRequestCount, setResourceRequestCount] = useState(0)
     const todayKey = useMemo(() => getLocalTodayKey(), [])
 
     const totalEmployees = employees.length
@@ -357,7 +358,12 @@ export default function DashboardPage() {
                         </Button>
                     </div>
                 </div>
-                <StatsCards employees={employees} jobs={jobs} leaveTypes={leaveTypes} applicants={applicants} />
+                <StatsCards
+                    employees={employees}
+                    jobs={jobs}
+                    applicants={applicants}
+                    resourceRequestCount={resourceRequestCount}
+                />
             </section>
 
             {/* Upcoming Birthdays & Anniversaries */}
@@ -410,7 +416,7 @@ export default function DashboardPage() {
             )}
 
             <section className="mt-8 grid grid-cols-1 xl:grid-cols-3 gap-8">
-                <DashboardResourceRequests />
+                <DashboardResourceRequests onCountChange={setResourceRequestCount} />
 
                 <div className="h-full bg-white p-6 rounded-3xl shadow-premium border border-slate-100">
                         <div className="flex items-center justify-between mb-4">

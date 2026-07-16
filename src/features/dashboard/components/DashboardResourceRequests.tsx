@@ -10,7 +10,11 @@ import { fetchResourceRequestsApi } from '@/lib/api/client'
 import { useApp } from '@/lib/context/AppContext'
 import { getRecentResourceRequests } from '../resource-requests'
 
-export function DashboardResourceRequests() {
+interface DashboardResourceRequestsProps {
+    onCountChange?: (count: number) => void
+}
+
+export function DashboardResourceRequests({ onCountChange }: DashboardResourceRequestsProps) {
     const { apiAccessToken, isHydrating } = useApp()
     const [requests, setRequests] = useState<ResourceRequest[]>([])
     const [loading, setLoading] = useState(true)
@@ -18,6 +22,7 @@ export function DashboardResourceRequests() {
 
     const loadRequests = useCallback(async () => {
         if (!apiAccessToken) {
+            onCountChange?.(0)
             setLoading(false)
             return
         }
@@ -25,14 +30,17 @@ export function DashboardResourceRequests() {
         setLoading(true)
         setError(false)
         try {
-            setRequests(getRecentResourceRequests(await fetchResourceRequestsApi(apiAccessToken)))
+            const allRequests = await fetchResourceRequestsApi(apiAccessToken)
+            setRequests(getRecentResourceRequests(allRequests))
+            onCountChange?.(allRequests.length)
         } catch {
             setRequests([])
+            onCountChange?.(0)
             setError(true)
         } finally {
             setLoading(false)
         }
-    }, [apiAccessToken])
+    }, [apiAccessToken, onCountChange])
 
     useEffect(() => {
         if (!isHydrating) void loadRequests()
