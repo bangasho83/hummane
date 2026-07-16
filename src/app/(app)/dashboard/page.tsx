@@ -411,11 +411,8 @@ export default function DashboardPage() {
 
             <section className="mt-8 grid grid-cols-1 xl:grid-cols-3 gap-8">
                 <DashboardResourceRequests />
-    
-                {/* Right Column - On Leave Today & Upcoming Holidays */}
-                <div className="space-y-6">
-                    {/* On Leave Today */}
-                    <div className="bg-white p-6 rounded-3xl shadow-premium border border-slate-100">
+
+                <div className="h-full bg-white p-6 rounded-3xl shadow-premium border border-slate-100">
                         <div className="flex items-center justify-between mb-4">
                             <div>
                                 <h3 className="text-lg font-bold text-slate-900">On Leave Today</h3>
@@ -469,10 +466,75 @@ export default function DashboardPage() {
                                 )}
                             </div>
                         )}
+                </div>
+
+                <div className="h-full bg-white p-8 rounded-3xl shadow-premium border border-slate-100 xl:col-span-2">
+                    <div className="mb-6">
+                        <h3 className="text-xl font-bold text-slate-900">Hiring Pipeline</h3>
+                        <p className="text-sm text-slate-500">Track open roles and applicant movement.</p>
                     </div>
 
-                    {/* Upcoming Holidays */}
-                    <div className="bg-white p-6 rounded-3xl shadow-premium border border-slate-100">
+                    <div className="grid grid-cols-1 md:grid-cols-3 gap-4 mb-6">
+                        <div className="rounded-2xl border border-slate-100 p-4">
+                            <p className="text-[11px] uppercase tracking-widest text-slate-400 font-semibold">Open Jobs</p>
+                            <p className="text-xl font-bold text-slate-900 mt-2">{jobs.filter(job => job.status === 'open').length}</p>
+                        </div>
+                        <div className="rounded-2xl border border-slate-100 p-4">
+                            <p className="text-[11px] uppercase tracking-widest text-slate-400 font-semibold">Total Applicants</p>
+                            <p className="text-xl font-bold text-slate-900 mt-2">{applicants.length}</p>
+                        </div>
+                        <div className="rounded-2xl border border-slate-100 p-4">
+                            <p className="text-[11px] uppercase tracking-widest text-slate-400 font-semibold">Active Applicants</p>
+                            <p className="text-xl font-bold text-slate-900 mt-2">{activeApplicants}</p>
+                        </div>
+                    </div>
+
+                    <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+                        <div>
+                            <h4 className="text-sm font-bold text-slate-700 mb-4">Stage Breakdown</h4>
+                            <div className="space-y-3">
+                                {[
+                                    { key: 'new', label: 'New', tone: 'bg-blue-100 text-blue-700' },
+                                    { key: 'first interview', label: 'First Interview', tone: 'bg-amber-100 text-amber-700' },
+                                    { key: 'second interview', label: 'Second Interview', tone: 'bg-purple-100 text-purple-700' },
+                                    { key: 'final interview', label: 'Final Interview', tone: 'bg-indigo-100 text-indigo-700' },
+                                    { key: 'initiate documentation', label: 'Initiate Documentation', tone: 'bg-emerald-100 text-emerald-700' },
+                                    { key: 'hired', label: 'Hired', tone: 'bg-slate-100 text-slate-700' },
+                                    { key: 'rejected', label: 'Rejected', tone: 'bg-red-100 text-red-700' }
+                                ].filter(stage => applicantCounts[stage.key as keyof typeof applicantCounts] > 0).map(stage => (
+                                    <div key={stage.key} className="flex items-center justify-between text-sm">
+                                        <span className={`px-3 py-1 rounded-full text-xs font-semibold ${stage.tone}`}>
+                                            {stage.label}
+                                        </span>
+                                        <span className="font-semibold text-slate-700">
+                                            {applicantCounts[stage.key as keyof typeof applicantCounts]}
+                                        </span>
+                                    </div>
+                                ))}
+                            </div>
+                        </div>
+                        <div>
+                            <h4 className="text-sm font-bold text-slate-700 mb-4">Recent Applicants</h4>
+                            {recentApplicants.length === 0 ? (
+                                <p className="text-sm text-slate-500">No applicants yet.</p>
+                            ) : (
+                                <div className="space-y-3">
+                                    {recentApplicants.map(applicant => (
+                                        <div key={applicant.id} className="flex items-center justify-between text-sm">
+                                            <div>
+                                                <p className="font-semibold text-slate-700">{applicant.fullName}</p>
+                                                <p className="text-xs text-slate-500">{applicant.positionApplied}</p>
+                                            </div>
+                                            <span className="text-xs text-slate-400">{formatDate(applicant.appliedDate)}</span>
+                                        </div>
+                                    ))}
+                                </div>
+                            )}
+                        </div>
+                    </div>
+                </div>
+
+                <div className="h-full bg-white p-6 rounded-3xl shadow-premium border border-slate-100">
                         <div className="mb-4">
                             <h3 className="text-lg font-bold text-slate-900">Upcoming Holidays</h3>
                             <p className="text-sm text-slate-500">Company holidays ahead</p>
@@ -510,12 +572,11 @@ export default function DashboardPage() {
                                 })}
                             </div>
                         )}
-                    </div>
                 </div>
             </section>
 
-            <section className="mt-8">
-                <div className="bg-white p-8 rounded-3xl shadow-premium border border-slate-100">
+            <section className="mt-8 grid grid-cols-1 xl:grid-cols-3 gap-8">
+                <div className="bg-white p-8 rounded-3xl shadow-premium border border-slate-100 xl:col-span-2">
                     <div className="mb-6">
                         <h3 className="text-xl font-bold text-slate-900">Organization Snapshot</h3>
                         <p className="text-sm text-slate-500">Headcount mix, departments, and core configuration.</p>
@@ -587,75 +648,7 @@ export default function DashboardPage() {
                         </div>
                     </div>
                 </div>
-            </section>
 
-            <section className="mt-8 grid grid-cols-1 xl:grid-cols-3 gap-8">
-                <div className="bg-white p-8 rounded-3xl shadow-premium border border-slate-100 xl:col-span-2">
-                    <div className="mb-6">
-                        <h3 className="text-xl font-bold text-slate-900">Hiring Pipeline</h3>
-                        <p className="text-sm text-slate-500">Track open roles and applicant movement.</p>
-                    </div>
-    
-                    <div className="grid grid-cols-1 md:grid-cols-3 gap-4 mb-6">
-                        <div className="rounded-2xl border border-slate-100 p-4">
-                            <p className="text-[11px] uppercase tracking-widest text-slate-400 font-semibold">Open Jobs</p>
-                            <p className="text-xl font-bold text-slate-900 mt-2">{jobs.filter(job => job.status === 'open').length}</p>
-                        </div>
-                        <div className="rounded-2xl border border-slate-100 p-4">
-                            <p className="text-[11px] uppercase tracking-widest text-slate-400 font-semibold">Total Applicants</p>
-                            <p className="text-xl font-bold text-slate-900 mt-2">{applicants.length}</p>
-                        </div>
-                        <div className="rounded-2xl border border-slate-100 p-4">
-                            <p className="text-[11px] uppercase tracking-widest text-slate-400 font-semibold">Active Applicants</p>
-                            <p className="text-xl font-bold text-slate-900 mt-2">{activeApplicants}</p>
-                        </div>
-                    </div>
-    
-                    <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
-                        <div>
-                            <h4 className="text-sm font-bold text-slate-700 mb-4">Stage Breakdown</h4>
-                            <div className="space-y-3">
-                                {[
-                                    { key: 'new', label: 'New', tone: 'bg-blue-100 text-blue-700' },
-                                    { key: 'first interview', label: 'First Interview', tone: 'bg-amber-100 text-amber-700' },
-                                    { key: 'second interview', label: 'Second Interview', tone: 'bg-purple-100 text-purple-700' },
-                                    { key: 'final interview', label: 'Final Interview', tone: 'bg-indigo-100 text-indigo-700' },
-                                    { key: 'initiate documentation', label: 'Initiate Documentation', tone: 'bg-emerald-100 text-emerald-700' },
-                                    { key: 'hired', label: 'Hired', tone: 'bg-slate-100 text-slate-700' },
-                                    { key: 'rejected', label: 'Rejected', tone: 'bg-red-100 text-red-700' }
-                                ].filter(stage => applicantCounts[stage.key as keyof typeof applicantCounts] > 0).map(stage => (
-                                    <div key={stage.key} className="flex items-center justify-between text-sm">
-                                        <span className={`px-3 py-1 rounded-full text-xs font-semibold ${stage.tone}`}>
-                                            {stage.label}
-                                        </span>
-                                        <span className="font-semibold text-slate-700">
-                                            {applicantCounts[stage.key as keyof typeof applicantCounts]}
-                                        </span>
-                                    </div>
-                                ))}
-                            </div>
-                        </div>
-                        <div>
-                            <h4 className="text-sm font-bold text-slate-700 mb-4">Recent Applicants</h4>
-                            {recentApplicants.length === 0 ? (
-                                <p className="text-sm text-slate-500">No applicants yet.</p>
-                            ) : (
-                                <div className="space-y-3">
-                                    {recentApplicants.map(applicant => (
-                                        <div key={applicant.id} className="flex items-center justify-between text-sm">
-                                            <div>
-                                                <p className="font-semibold text-slate-700">{applicant.fullName}</p>
-                                                <p className="text-xs text-slate-500">{applicant.positionApplied}</p>
-                                            </div>
-                                            <span className="text-xs text-slate-400">{formatDate(applicant.appliedDate)}</span>
-                                        </div>
-                                    ))}
-                                </div>
-                            )}
-                        </div>
-                    </div>
-                </div>
-    
                 <div className="bg-white p-8 rounded-3xl shadow-premium border border-slate-100">
                     <div className="mb-6">
                         <h3 className="text-xl font-bold text-slate-900">Recent Activity</h3>

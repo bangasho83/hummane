@@ -13,6 +13,15 @@ const request = (id: string, createdAt: string): ResourceRequest => ({
 })
 
 describe('getRecentResourceRequests', () => {
+    it('limits the dashboard preview to four requests by default', () => {
+        const requests = Array.from({ length: 5 }, (_, index) =>
+            request(String(index), `2026-07-0${index + 1}T09:00:00Z`)
+        )
+
+        expect(getRecentResourceRequests(requests).map(({ id }) => id))
+            .toEqual(['4', '3', '2', '1'])
+    })
+
     it('returns the newest requests without mutating the source list', () => {
         const requests = [
             request('oldest', '2026-07-01T09:00:00Z'),

@@ -51,18 +51,18 @@ export function DashboardResourceRequests() {
             </div>
 
             {isHydrating || loading ? (
-                <div className="flex min-h-80 items-center justify-center">
+                <div className="flex min-h-56 items-center justify-center">
                     <Loader2 className="h-7 w-7 animate-spin text-blue-600" />
                 </div>
             ) : error ? (
-                <div className="flex min-h-80 flex-col items-center justify-center gap-4 p-8 text-center">
+                <div className="flex min-h-56 flex-col items-center justify-center gap-4 p-8 text-center">
                     <p className="text-sm font-medium text-red-700">We could not load resource requests.</p>
                     <Button variant="outline" className="rounded-xl" onClick={() => void loadRequests()}>
                         Try again
                     </Button>
                 </div>
             ) : requests.length === 0 ? (
-                <div className="flex min-h-80 flex-col items-center justify-center p-8 text-center">
+                <div className="flex min-h-56 flex-col items-center justify-center p-8 text-center">
                     <div className="mb-3 flex h-12 w-12 items-center justify-center rounded-2xl bg-slate-50">
                         <ClipboardList className="h-6 w-6 text-slate-300" />
                     </div>
