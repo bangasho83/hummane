@@ -2,13 +2,14 @@
 
 import Link from 'next/link'
 import { usePathname } from 'next/navigation'
-import { ClipboardList, FileText, Package } from 'lucide-react'
+import { BookOpen, ClipboardList, FileText, Package } from 'lucide-react'
 import { cn } from '@/lib/utils'
 
 const tabs = [
     { href: '/member/resource-request', label: 'Requests', icon: ClipboardList },
     { href: '/member/resource-request/resources', label: 'Resources', icon: Package },
     { href: '/member/resource-request/reimbursements', label: 'Reimbursements', icon: FileText },
+    { href: '/member/resource-request/library', label: 'Library', icon: BookOpen },
 ]
 
 export function MemberResourceTabs() {
@@ -16,7 +17,7 @@ export function MemberResourceTabs() {
     return (
         <div className="flex flex-wrap gap-2">
             {tabs.map((tab) => {
-                const childTabs = ['/member/resource-request/resources', '/member/resource-request/reimbursements']
+                const childTabs = ['/member/resource-request/resources', '/member/resource-request/reimbursements', '/member/resource-request/library']
                 const active = tab.label === 'Requests'
                     ? pathname === tab.href || (pathname.startsWith(`${tab.href}/`) && !childTabs.some((href) => pathname.startsWith(href)))
                     : pathname.startsWith(tab.href)

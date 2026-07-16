@@ -10,6 +10,7 @@ import { Button } from '@/components/ui/button'
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table'
 import { ResourceBadge } from '@/features/resources/components/ResourceBadge'
+import { isLibraryBook } from '@/features/resources/library'
 import {
     assignmentEmployeeId,
     formatResourceDate,
@@ -48,6 +49,7 @@ export default function MyResourcesPage() {
             })
             setResources(list.filter((resource) =>
                 resourceType(resource) !== 'expense'
+                && !isLibraryBook(resource)
                 && assignmentEmployeeId(resourceAssignment(resource)) === employeeId
             ))
         } catch (loadError) {
