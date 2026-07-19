@@ -1,7 +1,7 @@
 'use client'
 
 import { useEffect, useState } from 'react'
-import { Loader2, Paperclip, Save } from 'lucide-react'
+import { Loader2, Paperclip, Save, Upload } from 'lucide-react'
 import type { ResourceCategory } from '@/types'
 import { fetchResourceCategoriesApi } from '@/lib/api/client'
 import {
@@ -19,7 +19,7 @@ import { Textarea } from '@/components/ui/textarea'
 
 interface ReimbursementFormProps {
     submitting: boolean
-    onSubmit: (values: ReimbursementFormValues) => void
+    onSubmit: (values: ReimbursementFormValues, files: File[]) => void
     onCancel: () => void
 }
 
@@ -31,6 +31,7 @@ export function ReimbursementForm({ submitting, onSubmit, onCancel }: Reimbursem
     const [errors, setErrors] = useState<ReimbursementFormErrors>({})
     const [categories, setCategories] = useState<ResourceCategory[]>([])
     const [categoriesLoading, setCategoriesLoading] = useState(true)
+    const [receiptFiles, setReceiptFiles] = useState<File[]>([])
 
     useEffect(() => {
         let active = true
@@ -53,7 +54,7 @@ export function ReimbursementForm({ submitting, onSubmit, onCancel }: Reimbursem
             setErrors(validation)
             return
         }
-        onSubmit(values)
+        onSubmit(values, receiptFiles)
     }
 
     return (
@@ -76,10 +77,21 @@ export function ReimbursementForm({ submitting, onSubmit, onCancel }: Reimbursem
                 </CardContent>
             </Card>
             <Card className="rounded-3xl border-slate-100 bg-white shadow-premium">
-                <CardHeader className="px-8 pt-8"><CardTitle className="text-lg">Receipt links</CardTitle></CardHeader>
-                <CardContent className="p-8 pt-2">
-                    <Field label="Attachment URLs" error={errors.attachmentUrls}>
-                        <div className="relative"><Paperclip className="absolute left-4 top-4 h-4 w-4 text-slate-400" /><Textarea value={values.attachmentUrls.join('\n')} onChange={(event) => setField('attachmentUrls', event.target.value.split(/\r?\n|,/))} placeholder="One https:// receipt URL per line" className="min-h-24 rounded-xl border-slate-200 pl-11" disabled={submitting} /></div>
+                <CardHeader className="px-8 pt-8"><CardTitle className="text-lg">Receipts</CardTitle></CardHeader>
+                <CardContent className="space-y-5 p-8 pt-2">
+                    <Field label="Upload receipt files">
+                        <div className="rounded-2xl border border-dashed border-slate-300 bg-slate-50/60 p-4">
+                            <label className="flex cursor-pointer items-center gap-3 text-sm font-semibold text-blue-600">
+                                <Upload className="h-4 w-4" />
+                                <span>{receiptFiles.length ? 'Choose more files' : 'Choose files'}</span>
+                                <Input type="file" multiple className="sr-only" onChange={(event) => setReceiptFiles((current) => [...current, ...Array.from(event.target.files || [])])} disabled={submitting} />
+                            </label>
+                            {receiptFiles.length > 0 && <p className="mt-2 text-xs text-slate-500">{receiptFiles.map((file) => file.name).join(', ')}</p>}
+                            <p className="mt-1 text-xs text-slate-400">Files are uploaded to Firebase Storage under resources/ when submitted.</p>
+                        </div>
+                    </Field>
+                    <Field label="Existing or external URLs" error={errors.attachmentUrls}>
+                        <div className="relative"><Paperclip className="absolute left-4 top-4 h-4 w-4 text-slate-400" /><Textarea value={values.attachmentUrls.join('\n')} onChange={(event) => setField('attachmentUrls', event.target.value.split(/\r?\n|,/))} placeholder="Optional: one https:// receipt URL per line" className="min-h-24 rounded-xl border-slate-200 pl-11" disabled={submitting} /></div>
                     </Field>
                 </CardContent>
             </Card>

@@ -4,6 +4,7 @@ import { useState } from 'react'
 import { useRouter } from 'next/navigation'
 import { ArrowLeft } from 'lucide-react'
 import { createResourceApi } from '@/lib/api/client'
+import { uploadResourceFiles } from '@/lib/firebase/storage'
 import { useApp } from '@/lib/context/AppContext'
 import { buildReimbursementPayload, type ReimbursementFormValues } from '@/lib/validation/reimbursement'
 import { ReimbursementForm } from '@/features/member/components/ReimbursementForm'
@@ -16,12 +17,19 @@ export default function NewMemberReimbursementPage() {
     const [submitting, setSubmitting] = useState(false)
     const listPath = '/member/resource-request/reimbursements'
 
-    const submit = async (values: ReimbursementFormValues) => {
+    const submit = async (values: ReimbursementFormValues, files: File[]) => {
         if (!apiAccessToken) { toast('You must be signed in to submit a reimbursement.', 'error'); return }
         if (!meProfile?.employeeId) { toast('Your account is not linked to an employee profile.', 'error'); return }
         setSubmitting(true)
         try {
-            await createResourceApi(buildReimbursementPayload(values, meProfile.employeeId), apiAccessToken)
+            const uploadedUrls = await uploadResourceFiles(files, meProfile.employeeId)
+            await createResourceApi(
+                buildReimbursementPayload({
+                    ...values,
+                    attachmentUrls: [...values.attachmentUrls, ...uploadedUrls],
+                }, meProfile.employeeId),
+                apiAccessToken
+            )
             toast('Reimbursement submitted.', 'success')
             router.push(listPath)
             router.refresh()
@@ -34,7 +42,7 @@ export default function NewMemberReimbursementPage() {
     return (
         <div className="mx-auto max-w-4xl space-y-6">
             <div className="flex items-center gap-4"><Button variant="ghost" size="icon" onClick={() => router.push(listPath)} className="rounded-xl"><ArrowLeft className="h-5 w-5" /></Button><div><p className="text-xs font-bold uppercase tracking-widest text-slate-400">New reimbursement</p><h2 className="text-2xl font-extrabold tracking-tight text-slate-900">Request reimbursement</h2></div></div>
-            <ReimbursementForm submitting={submitting} onSubmit={(values) => void submit(values)} onCancel={() => router.push(listPath)} />
+            <ReimbursementForm submitting={submitting} onSubmit={(values, files) => void submit(values, files)} onCancel={() => router.push(listPath)} />
         </div>
     )
 }
