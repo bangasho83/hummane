@@ -27,7 +27,9 @@ import {
     TableRow,
 } from '@/components/ui/table'
 
-const capitalize = (value: string) => value.charAt(0).toUpperCase() + value.slice(1)
+const capitalize = (value: string) => value
+    .replace(/[_-]+/g, ' ')
+    .replace(/\b\w/g, (letter) => letter.toUpperCase())
 
 export default function ResourcesPage() {
     const { apiAccessToken, isHydrating } = useApp()

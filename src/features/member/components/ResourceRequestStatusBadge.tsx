@@ -5,9 +5,10 @@ import type { ResourceRequestStatus } from '@/types'
 
 const STATUS_VARIANT: Record<
     ResourceRequestStatus,
-    'warning' | 'success' | 'destructive' | 'secondary'
+    'default' | 'warning' | 'success' | 'destructive' | 'secondary'
 > = {
     pending: 'warning',
+    in_review: 'default',
     approved: 'success',
     rejected: 'destructive',
     fulfilled: 'success',
@@ -20,5 +21,6 @@ export function ResourceRequestStatusBadge({
     status: ResourceRequestStatus
 }) {
     const variant = STATUS_VARIANT[status] ?? 'secondary'
-    return <Badge variant={variant} className="capitalize">{status}</Badge>
+    const label = status === 'in_review' ? 'In Review' : status
+    return <Badge variant={variant} className="capitalize">{label}</Badge>
 }

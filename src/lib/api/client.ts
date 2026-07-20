@@ -1571,7 +1571,7 @@ export const updateResourceRequestApi = async (
 }
 
 export type ResourceRequestStatusPayload = {
-  status: 'approved' | 'rejected' | 'fulfilled' | 'cancelled'
+  status: 'in_review' | 'approved' | 'rejected' | 'fulfilled' | 'cancelled'
   reviewerNote?: string
 }
 

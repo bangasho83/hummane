@@ -137,12 +137,12 @@ describe('fetchResourceRequestApi', () => {
 describe('updateResourceRequestStatusApi', () => {
     it('PATCHes an encoded request id with status and optional note', async () => {
         fetchMock.mockResolvedValue(okJson({
-            data: { id: 'r/1', status: 'approved', reviewerNote: 'Budget allocated' },
+            data: { id: 'r/1', status: 'in_review', reviewerNote: 'Review started' },
         }))
 
         const result = await updateResourceRequestStatusApi(
             'r/1',
-            { status: 'approved', reviewerNote: 'Budget allocated' },
+            { status: 'in_review', reviewerNote: 'Review started' },
             'tok'
         )
         const [url, init] = fetchMock.mock.calls[0]
@@ -151,10 +151,10 @@ describe('updateResourceRequestStatusApi', () => {
         expect(init.method).toBe('PATCH')
         expect(init.headers.Authorization).toBe('Bearer tok')
         expect(JSON.parse(init.body)).toEqual({
-            status: 'approved',
-            reviewerNote: 'Budget allocated',
+            status: 'in_review',
+            reviewerNote: 'Review started',
         })
-        expect(result.status).toBe('approved')
+        expect(result.status).toBe('in_review')
     })
 
     it('throws with the server message when status update fails', async () => {

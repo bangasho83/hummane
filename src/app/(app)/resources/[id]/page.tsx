@@ -29,7 +29,9 @@ import {
 import { toast } from '@/components/ui/toast'
 
 const formatDate = (value?: string) => value ? new Date(value).toLocaleString() : '—'
-const capitalize = (value: string) => value.charAt(0).toUpperCase() + value.slice(1)
+const capitalize = (value: string) => value
+    .replace(/[_-]+/g, ' ')
+    .replace(/\b\w/g, (letter) => letter.toUpperCase())
 
 export default function ResourceRequestDetailPage() {
     const router = useRouter()
