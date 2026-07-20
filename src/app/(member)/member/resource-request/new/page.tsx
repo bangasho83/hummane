@@ -77,8 +77,13 @@ export default function MemberNewResourceRequestPage() {
             )
             toast('Resource request submitted.', 'success')
             router.push('/member/resource-request')
-        } catch {
-            toast('Failed to submit resource request. Please try again.', 'error')
+        } catch (error) {
+            toast(
+                error instanceof Error
+                    ? error.message
+                    : 'Failed to submit resource request. Please try again.',
+                'error'
+            )
             setSubmitting(false)
         }
     }
@@ -116,6 +121,7 @@ export default function MemberNewResourceRequestPage() {
                         categoriesLoading={categoriesLoading}
                         submitting={submitting}
                         submitLabel="Submit Request"
+                        currency={currentCompany?.currency}
                         onSubmit={handleSubmit}
                         onCancel={() => router.push('/member/resource-request')}
                     />

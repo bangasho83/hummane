@@ -17,6 +17,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table'
 import { DeleteResourceDialog } from './DeleteResourceDialog'
 import { ResourceBadge } from './ResourceBadge'
+import { isLibraryBook } from '../library'
 import {
     asRecord,
     assignmentEmployeeId,
@@ -64,7 +65,7 @@ export function AssetList() {
                 fetchResourcesApi(apiAccessToken, { limit: 100 }),
                 fetchVendorsApi(apiAccessToken).catch(() => [] as Vendor[]),
             ])
-            setResources(items.filter((item) => resourceType(item) !== 'expense'))
+            setResources(items.filter((item) => resourceType(item) !== 'expense' && !isLibraryBook(item)))
             setVendors(vendorItems)
         } catch (loadError) {
             setResources([])

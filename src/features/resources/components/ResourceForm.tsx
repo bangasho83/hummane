@@ -2,7 +2,7 @@
 
 import { useEffect, useMemo, useState } from 'react'
 import { useRouter } from 'next/navigation'
-import { Loader2, Paperclip, Save } from 'lucide-react'
+import { Loader2, Paperclip, Save, Upload } from 'lucide-react'
 import type { Resource, ResourceCategory, Vendor } from '@/types'
 import {
     RESOURCE_ASSIGNMENT_TYPES,
@@ -23,6 +23,7 @@ import {
     type ResourceFormValues,
 } from '@/lib/validation/resource'
 import { useApp } from '@/lib/context/AppContext'
+import { uploadResourceFiles } from '@/lib/firebase/storage'
 import { toast } from '@/components/ui/toast'
 import { Button } from '@/components/ui/button'
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
@@ -115,6 +116,7 @@ export function ResourceForm({ mode, resource }: ResourceFormProps) {
     const [vendors, setVendors] = useState<Vendor[]>([])
     const [optionsLoading, setOptionsLoading] = useState(true)
     const [saving, setSaving] = useState(false)
+    const [attachmentFiles, setAttachmentFiles] = useState<File[]>([])
 
     useEffect(() => setValues(toFormState(mode, resource)), [mode, resource])
 
@@ -174,10 +176,13 @@ export function ResourceForm({ mode, resource }: ResourceFormProps) {
         ])))
     }
 
-    const buildPayload = (): ResourcePayload => {
-        const attachmentUrls = (Array.isArray(values.attachmentUrls) ? values.attachmentUrls : [])
-            .map((url) => textValue(url).trim())
-            .filter(Boolean)
+    const buildPayload = (uploadedUrls: string[] = []): ResourcePayload => {
+        const attachmentUrls = [
+            ...(Array.isArray(values.attachmentUrls) ? values.attachmentUrls : [])
+                .map((url) => textValue(url).trim())
+                .filter(Boolean),
+            ...uploadedUrls,
+        ]
         const assignment = compact({
             assignmentType,
             assignedToEmployeeId: assignmentType === 'person' ? textValue(values.assignedToEmployeeId).trim() || undefined : undefined,
@@ -217,7 +222,11 @@ export function ResourceForm({ mode, resource }: ResourceFormProps) {
         }
         setSaving(true)
         try {
-            const payload = buildPayload()
+            const uploadPrefix = editing && resource
+                ? resourceId(resource)
+                : mode === 'bill' ? 'bill' : type || 'resource'
+            const uploadedUrls = await uploadResourceFiles(attachmentFiles, uploadPrefix)
+            const payload = buildPayload(uploadedUrls)
             if (editing && resource) {
                 await updateResourceApi(resourceId(resource), payload, apiAccessToken)
                 toast(mode === 'bill' ? 'Bill updated.' : 'Resource updated.', 'success')
@@ -287,10 +296,21 @@ export function ResourceForm({ mode, resource }: ResourceFormProps) {
                     <Field label="Identifier" error={errorFor('identifier')}>
                         <Input value={textValue(values.identifier)} onChange={(event) => setField('identifier', event.target.value)} className={fieldClass} placeholder="Asset tag or reference" disabled={saving} />
                     </Field>
-                    <Field label="Attachment URLs" error={errorFor('attachmentUrls')} className="md:col-span-3">
+                    <Field label="Upload files" className="md:col-span-3">
+                        <div className="rounded-2xl border border-dashed border-slate-300 bg-slate-50/60 p-4">
+                            <label className="flex cursor-pointer items-center gap-3 text-sm font-semibold text-blue-600">
+                                <Upload className="h-4 w-4" />
+                                <span>{attachmentFiles.length ? 'Choose more files' : 'Choose files'}</span>
+                                <Input type="file" multiple className="sr-only" onChange={(event) => setAttachmentFiles((current) => [...current, ...Array.from(event.target.files || [])])} disabled={saving} />
+                            </label>
+                            {attachmentFiles.length > 0 && <p className="mt-2 text-xs text-slate-500">{attachmentFiles.map((file) => file.name).join(', ')}</p>}
+                            <p className="mt-1 text-xs text-slate-400">Files are uploaded securely when you save.</p>
+                        </div>
+                    </Field>
+                    <Field label="Existing or external URLs" error={errorFor('attachmentUrls')} className="md:col-span-3">
                         <div className="relative">
                             <Paperclip className="absolute left-4 top-4 h-4 w-4 text-slate-400" />
-                            <Textarea value={(Array.isArray(values.attachmentUrls) ? values.attachmentUrls : []).join('\n')} onChange={(event) => setField('attachmentUrls', event.target.value.split(/\r?\n|,/))} className="min-h-24 rounded-xl border-slate-200 pl-11" placeholder="One https:// URL per line" disabled={saving} />
+                            <Textarea value={(Array.isArray(values.attachmentUrls) ? values.attachmentUrls : []).join('\n')} onChange={(event) => setField('attachmentUrls', event.target.value.split(/\r?\n|,/))} className="min-h-24 rounded-xl border-slate-200 pl-11" placeholder="Optional: one https:// URL per line" disabled={saving} />
                         </div>
                     </Field>
                     {(mode === 'bill' || type === 'reimbursement') && (

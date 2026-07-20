@@ -44,7 +44,9 @@ export type AuthLoginResponse = {
   [key: string]: unknown
 }
 
-const API_BASE_URL = process.env.NEXT_PUBLIC_API_BASE_URL || 'https://hummane-api.vercel.app'
+const API_BASE_URL = (
+  process.env.NEXT_PUBLIC_API_BASE_URL || 'https://hummane-api.vercel.app'
+).replace(/\/+$/, '')
 const AUTH_LOGIN_PATH = `${API_BASE_URL}/auth/login`
 const COMPANIES_PATH = `${API_BASE_URL}/companies`
 const EMPLOYEES_PATH = `${API_BASE_URL}/employees`
@@ -1480,8 +1482,8 @@ export const createResourceRequestApi = async (
   }
 
   if (!response.ok) {
-    const message = await response.text()
-    throw new Error(message || 'Failed to create resource request')
+    const body = await response.text()
+    throw new Error(parseApiError(body, 'Failed to create resource request'))
   }
 
   const data = await response.json().catch(() => null)
@@ -1569,7 +1571,7 @@ export const updateResourceRequestApi = async (
 }
 
 export type ResourceRequestStatusPayload = {
-  status: 'approved' | 'rejected' | 'fulfilled' | 'cancelled'
+  status: 'in_review' | 'approved' | 'rejected' | 'fulfilled' | 'cancelled'
   reviewerNote?: string
 }
 
@@ -1701,6 +1703,7 @@ export type ResourceFilters = {
   resourceType?: ResourceType
   status?: ResourceStatus
   assignedToEmployeeId?: string
+  paidByEmployeeId?: string
   vendorId?: string
   limit?: number
 }
@@ -1800,6 +1803,7 @@ export const fetchResourcesApi = async (
   if (filters.resourceType) query.set('resourceType', filters.resourceType)
   if (filters.status) query.set('status', filters.status)
   if (filters.assignedToEmployeeId) query.set('assignedToEmployeeId', filters.assignedToEmployeeId)
+  if (filters.paidByEmployeeId) query.set('paidByEmployeeId', filters.paidByEmployeeId)
   if (filters.vendorId) query.set('vendorId', filters.vendorId)
   if (filters.limit !== undefined) {
     query.set('limit', String(Math.min(Math.max(Math.trunc(filters.limit), 1), 100)))

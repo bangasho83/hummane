@@ -2,24 +2,24 @@
 
 import Link from 'next/link'
 import { usePathname } from 'next/navigation'
-import { BookOpen, ClipboardList, HandCoins, Package, ReceiptText } from 'lucide-react'
+import { BookOpen, ClipboardList, FileText, Package } from 'lucide-react'
 import { cn } from '@/lib/utils'
 
 const tabs = [
-    { href: '/resources', label: 'Requests', icon: ClipboardList, exact: true },
-    { href: '/resources/assets', label: 'Resources', icon: Package },
-    { href: '/resources/bills', label: 'Bills', icon: ReceiptText },
-    { href: '/resources/reimbursements', label: 'Reimbursements', icon: HandCoins },
-    { href: '/resources/library', label: 'Library', icon: BookOpen },
+    { href: '/member/resource-request', label: 'Requests', icon: ClipboardList },
+    { href: '/member/resource-request/resources', label: 'Resources', icon: Package },
+    { href: '/member/resource-request/reimbursements', label: 'Reimbursements', icon: FileText },
+    { href: '/member/resource-request/library', label: 'Library', icon: BookOpen },
 ]
 
-export function ResourceTabs() {
+export function MemberResourceTabs() {
     const pathname = usePathname()
     return (
         <div className="flex flex-wrap gap-2">
             {tabs.map((tab) => {
-                const active = tab.exact
-                    ? pathname === tab.href || (pathname.startsWith('/resources/') && !pathname.startsWith('/resources/assets') && !pathname.startsWith('/resources/bills') && !pathname.startsWith('/resources/reimbursements') && !pathname.startsWith('/resources/library'))
+                const childTabs = ['/member/resource-request/resources', '/member/resource-request/reimbursements', '/member/resource-request/library']
+                const active = tab.label === 'Requests'
+                    ? pathname === tab.href || (pathname.startsWith(`${tab.href}/`) && !childTabs.some((href) => pathname.startsWith(href)))
                     : pathname.startsWith(tab.href)
                 const Icon = tab.icon
                 return (

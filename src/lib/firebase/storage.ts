@@ -141,3 +141,6 @@ export const uploadFileToStorage = async (file: File, folder: string, prefix?: s
     await uploadBytes(storageRef, file)
     return await getDownloadURL(storageRef)
 }
+
+export const uploadResourceFiles = async (files: File[], prefix?: string): Promise<string[]> =>
+    Promise.all(files.map((file) => uploadFileToStorage(file, 'resources', prefix)))

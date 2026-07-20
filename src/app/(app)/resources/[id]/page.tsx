@@ -4,6 +4,7 @@ import { useCallback, useEffect, useState } from 'react'
 import { useParams, useRouter } from 'next/navigation'
 import { ArrowLeft, ExternalLink, Loader2 } from 'lucide-react'
 import { useApp } from '@/lib/context/AppContext'
+import { formatCurrency } from '@/lib/utils'
 import type {
     ResourceRequest,
     ResourceRequestAdminStatus,
@@ -29,13 +30,15 @@ import {
 import { toast } from '@/components/ui/toast'
 
 const formatDate = (value?: string) => value ? new Date(value).toLocaleString() : '—'
-const capitalize = (value: string) => value.charAt(0).toUpperCase() + value.slice(1)
+const capitalize = (value: string) => value
+    .replace(/[_-]+/g, ' ')
+    .replace(/\b\w/g, (letter) => letter.toUpperCase())
 
 export default function ResourceRequestDetailPage() {
     const router = useRouter()
     const params = useParams<{ id: string }>()
     const requestId = params?.id
-    const { apiAccessToken, isHydrating } = useApp()
+    const { apiAccessToken, currentCompany, isHydrating } = useApp()
     const [request, setRequest] = useState<ResourceRequest | null>(null)
     const [loading, setLoading] = useState(true)
     const [error, setError] = useState<string | null>(null)
@@ -142,7 +145,7 @@ export default function ResourceRequestDetailPage() {
                                 <Detail label="Requested by" value={request.employeeName || '—'} />
                                 <Detail label="Category" value={request.category || '—'} />
                                 <Detail label="Priority" value={capitalize(request.priority)} />
-                                <Detail label="Estimated cost" value={request.estimatedCost != null ? Number(request.estimatedCost).toLocaleString() : '—'} />
+                                <Detail label="Estimated cost" value={request.estimatedCost != null ? formatCurrency(Number(request.estimatedCost), currentCompany?.currency) : '—'} />
                             </div>
                             <Detail label="Description" value={request.description || '—'} multiline />
                             <Detail label="Goal alignment" value={request.goalAlignment || '—'} multiline />

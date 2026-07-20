@@ -80,6 +80,7 @@ describe('createResourceRequestApi', () => {
         expect(result).toMatchObject({ id: 'r1' })
         const [url, init] = fetchMock.mock.calls[0]
         expect(String(url)).toContain('/resource-requests')
+        expect(String(url)).not.toContain('//resource-requests')
         expect(init.method).toBe('POST')
         expect(init.headers.Authorization).toBe('Bearer token-123')
         expect(JSON.parse(init.body)).toMatchObject({
@@ -92,6 +93,15 @@ describe('createResourceRequestApi', () => {
     it('throws with the server message on a non-ok response', async () => {
         fetchMock.mockResolvedValue(errRes('boom'))
         await expect(createResourceRequestApi(payload, 't')).rejects.toThrow('boom')
+    })
+
+    it('extracts structured validation details from an error response', async () => {
+        fetchMock.mockResolvedValue(errRes(JSON.stringify({
+            message: [{ path: ['estimatedCost'], message: 'Expected number' }],
+        })))
+        await expect(createResourceRequestApi(payload, 't')).rejects.toThrow(
+            'estimatedCost: Expected number'
+        )
     })
 
     it('wraps network errors', async () => {
@@ -127,12 +137,12 @@ describe('fetchResourceRequestApi', () => {
 describe('updateResourceRequestStatusApi', () => {
     it('PATCHes an encoded request id with status and optional note', async () => {
         fetchMock.mockResolvedValue(okJson({
-            data: { id: 'r/1', status: 'approved', reviewerNote: 'Budget allocated' },
+            data: { id: 'r/1', status: 'in_review', reviewerNote: 'Review started' },
         }))
 
         const result = await updateResourceRequestStatusApi(
             'r/1',
-            { status: 'approved', reviewerNote: 'Budget allocated' },
+            { status: 'in_review', reviewerNote: 'Review started' },
             'tok'
         )
         const [url, init] = fetchMock.mock.calls[0]
@@ -141,10 +151,10 @@ describe('updateResourceRequestStatusApi', () => {
         expect(init.method).toBe('PATCH')
         expect(init.headers.Authorization).toBe('Bearer tok')
         expect(JSON.parse(init.body)).toEqual({
-            status: 'approved',
-            reviewerNote: 'Budget allocated',
+            status: 'in_review',
+            reviewerNote: 'Review started',
         })
-        expect(result.status).toBe('approved')
+        expect(result.status).toBe('in_review')
     })
 
     it('throws with the server message when status update fails', async () => {

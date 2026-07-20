@@ -14,6 +14,7 @@ import {
 } from '@/components/ui/select'
 import { Loader2 } from 'lucide-react'
 import { RESOURCE_REQUEST_PRIORITIES, type ResourceCategory } from '@/types'
+import { getCurrencySymbol } from '@/lib/utils'
 import {
     validateResourceRequest,
     type ResourceRequestFormErrors,
@@ -26,6 +27,7 @@ interface ResourceRequestFormProps {
     categoriesLoading?: boolean
     submitting?: boolean
     submitLabel?: string
+    currency?: string
     onSubmit: (values: ResourceRequestFormValues) => void
     onCancel?: () => void
 }
@@ -38,11 +40,13 @@ export function ResourceRequestForm({
     categoriesLoading = false,
     submitting = false,
     submitLabel = 'Submit Request',
+    currency,
     onSubmit,
     onCancel,
 }: ResourceRequestFormProps) {
     const [values, setValues] = useState<ResourceRequestFormValues>(initialValues)
     const [errors, setErrors] = useState<ResourceRequestFormErrors>({})
+    const currencySymbol = getCurrencySymbol(currency)
 
     const setField = <K extends keyof ResourceRequestFormValues>(
         key: K,
@@ -128,7 +132,7 @@ export function ResourceRequestForm({
                 </div>
 
                 <div>
-                    <Label htmlFor="estimatedCost">Estimated Cost (optional)</Label>
+                    <Label htmlFor="estimatedCost">Estimated Cost{currencySymbol ? ` (${currencySymbol})` : ''} (optional)</Label>
                     <Input
                         id="estimatedCost"
                         type="number"

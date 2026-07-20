@@ -3,6 +3,7 @@
 import { useCallback, useEffect, useState } from 'react'
 import Link from 'next/link'
 import { useApp } from '@/lib/context/AppContext'
+import { formatCurrency } from '@/lib/utils'
 import type { ResourceRequest } from '@/types'
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
 import { Button } from '@/components/ui/button'
@@ -19,7 +20,7 @@ import { fetchResourceRequestsApi } from '@/lib/api/client'
 import { ResourceRequestStatusBadge } from '@/features/member/components/ResourceRequestStatusBadge'
 
 export default function MemberResourceRequestPage() {
-    const { employees, meProfile, isHydrating, apiAccessToken } = useApp()
+    const { employees, meProfile, currentCompany, isHydrating, apiAccessToken } = useApp()
     const [requests, setRequests] = useState<ResourceRequest[]>([])
     const [loading, setLoading] = useState(true)
     const [error, setError] = useState<string | null>(null)
@@ -63,8 +64,8 @@ export default function MemberResourceRequestPage() {
         return (
             <div className="animate-in fade-in duration-500 slide-in-from-bottom-4 space-y-6">
                 <div>
-                    <h1 className="text-3xl font-extrabold text-slate-900 tracking-tight">Resource Request</h1>
-                    <p className="text-slate-500 font-medium">Request the resources you need to do your best work</p>
+                    <h2 className="text-2xl font-extrabold text-slate-900 tracking-tight">Requests</h2>
+                    <p className="text-slate-500 font-medium">Request the resources you need to do your best work.</p>
                 </div>
                 <Card className="border-dashed">
                     <CardHeader className="text-center pb-4">
@@ -89,8 +90,8 @@ export default function MemberResourceRequestPage() {
         <div className="animate-in fade-in duration-500 slide-in-from-bottom-4 space-y-6">
             <div className="flex items-end justify-between gap-4">
                 <div>
-                    <h1 className="text-3xl font-extrabold text-slate-900 tracking-tight">Resource Request</h1>
-                    <p className="text-slate-500 font-medium">Request the resources you need to do your best work</p>
+                    <h2 className="text-2xl font-extrabold text-slate-900 tracking-tight">Requests</h2>
+                    <p className="text-slate-500 font-medium">Request the resources you need to do your best work.</p>
                 </div>
                 <Button
                     asChild
@@ -152,7 +153,7 @@ export default function MemberResourceRequestPage() {
                                             <TableCell className="py-5 text-sm text-slate-600 capitalize">{request.priority}</TableCell>
                                             <TableCell className="py-5 text-sm text-slate-600">
                                                 {request.estimatedCost != null
-                                                    ? Number(request.estimatedCost).toLocaleString()
+                                                    ? formatCurrency(Number(request.estimatedCost), currentCompany?.currency)
                                                     : '—'}
                                             </TableCell>
                                             <TableCell className="py-5">

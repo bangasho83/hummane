@@ -2,30 +2,22 @@
 
 import { useMemo } from 'react'
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
-import { Users, Briefcase, CalendarCheck, UserCheck } from 'lucide-react'
-import type { Applicant, Employee, Job, LeaveType } from '@/types'
+import { Users, Briefcase, ClipboardList, UserCheck } from 'lucide-react'
+import type { Applicant, Employee, Job } from '@/types'
+import { getDashboardStats } from '../stats'
 
 interface StatsCardsProps {
     employees: Employee[]
     jobs: Job[]
-    leaveTypes: LeaveType[]
     applicants: Applicant[]
+    resourceRequestCount: number
 }
 
-export function StatsCards({ employees, jobs, leaveTypes, applicants }: StatsCardsProps) {
-    const stats = useMemo(() => {
-        const totalEmployees = employees.length
-        const openJobs = jobs.filter(job => job.status === 'open').length
-        const activeLeaveTypes = leaveTypes.length
-        const activeApplicants = applicants.filter(app => app.status !== 'rejected' && app.status !== 'hired').length
-
-        return {
-            totalEmployees,
-            openJobs,
-            activeLeaveTypes,
-            activeApplicants
-        }
-    }, [employees, jobs, leaveTypes, applicants])
+export function StatsCards({ employees, jobs, applicants, resourceRequestCount }: StatsCardsProps) {
+    const stats = useMemo(
+        () => getDashboardStats(employees, jobs, applicants, resourceRequestCount),
+        [employees, jobs, applicants, resourceRequestCount]
+    )
 
     const cards = [
         {
@@ -47,13 +39,13 @@ export function StatsCards({ employees, jobs, leaveTypes, applicants }: StatsCar
             caption: 'Hiring in progress'
         },
         {
-            title: 'Leave Types',
-            value: stats.activeLeaveTypes.toString(),
-            icon: CalendarCheck,
+            title: 'Resource Requests',
+            value: stats.resourceRequestCount.toString(),
+            icon: ClipboardList,
             color: 'text-emerald-600',
             bgColor: 'bg-emerald-50',
             gradient: 'from-emerald-600/10 to-transparent',
-            caption: 'Configured policies'
+            caption: 'Submitted requests'
         },
         {
             title: 'Active Applicants',
