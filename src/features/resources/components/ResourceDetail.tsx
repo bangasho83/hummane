@@ -142,7 +142,7 @@ export function ResourceDetail({ id, variant = 'resource' }: ResourceDetailProps
         <div className="animate-in fade-in slide-in-from-bottom-4 space-y-6 duration-500">
             <div className="flex flex-col justify-between gap-4 sm:flex-row sm:items-center">
                 <div className="flex items-center gap-4"><Button variant="ghost" size="icon" className="rounded-xl" onClick={() => router.push(listPath)}><ArrowLeft /></Button><div><p className="text-xs font-bold uppercase tracking-widest text-slate-400">{libraryMode ? 'Library book' : labelize(resourceType(resource))}</p><h1 className="text-3xl font-extrabold tracking-tight text-slate-900">{resourceName(resource)}</h1></div></div>
-                <div className="flex flex-wrap items-center gap-2"><ResourceBadge value={resourceStatus(resource)} />{!libraryMode && <Button asChild variant="outline" className="rounded-xl border-slate-200"><Link href={`/resources/assets/${id}/edit`}><Pencil />Edit</Link></Button>}</div>
+                <div className="flex flex-wrap items-center gap-2"><ResourceBadge value={resourceStatus(resource)} /><Button asChild variant="outline" className="rounded-xl border-slate-200"><Link href={libraryMode ? `/resources/library/${id}/edit` : `/resources/assets/${id}/edit`}><Pencil />Edit</Link></Button></div>
             </div>
 
             <div className="grid grid-cols-1 items-start gap-6 xl:grid-cols-[minmax(0,2fr)_minmax(310px,1fr)]">

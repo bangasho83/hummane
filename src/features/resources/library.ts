@@ -26,14 +26,12 @@ export const isLibraryBook = (resource: Resource): boolean =>
     resourceType(resource) === 'physical_asset'
     && resourceCategory(resource).trim().toLowerCase() === LIBRARY_CATEGORY.toLowerCase()
 
-export const buildLibraryBookPayload = (values: LibraryBookValues): ResourcePayload => ({
+const libraryBookMetadata = (values: LibraryBookValues): Partial<ResourcePayload> => ({
     resourceType: 'physical_asset',
     category: LIBRARY_CATEGORY,
     name: values.title.trim(),
     ...(values.identifier.trim() ? { identifier: values.identifier.trim() } : {}),
     description: values.description.trim() || undefined,
-    status: 'active',
-    assignmentType: 'unassigned',
     location: values.location.trim() || undefined,
     details: Object.fromEntries(Object.entries({
         isbn: values.isbn.trim() || undefined,
@@ -42,6 +40,47 @@ export const buildLibraryBookPayload = (values: LibraryBookValues): ResourcePayl
         edition: values.edition.trim() || undefined,
     }).filter(([, value]) => value !== undefined)),
 })
+
+export const buildLibraryBookPayload = (values: LibraryBookValues): ResourcePayload => ({
+    ...libraryBookMetadata(values),
+    resourceType: 'physical_asset',
+    category: LIBRARY_CATEGORY,
+    name: values.title.trim(),
+    status: 'active',
+    assignmentType: 'unassigned',
+})
+
+export const buildLibraryBookUpdatePayload = (
+    values: LibraryBookValues,
+    resource: Resource
+): Partial<ResourcePayload> => {
+    const editableDetailKeys = new Set(['isbn', 'author', 'publisher', 'edition'])
+    const preservedDetails = Object.fromEntries(
+        Object.entries(resourceDetails(resource)).filter(([key]) => !editableDetailKeys.has(key))
+    )
+    const metadata = libraryBookMetadata(values)
+    return {
+        ...metadata,
+        identifier: values.identifier.trim(),
+        description: values.description.trim(),
+        location: values.location.trim(),
+        details: { ...preservedDetails, ...metadata.details },
+    }
+}
+
+export const libraryBookValues = (resource: Resource): LibraryBookValues => {
+    const item = resource as Resource & { identifier?: string | null; location?: string | null; description?: string | null }
+    return {
+        title: resource.name,
+        identifier: item.identifier || '',
+        author: libraryBookDetail(resource, 'author'),
+        isbn: libraryBookDetail(resource, 'isbn'),
+        publisher: libraryBookDetail(resource, 'publisher'),
+        edition: libraryBookDetail(resource, 'edition'),
+        location: item.location || '',
+        description: item.description || '',
+    }
+}
 
 export const libraryBooksAssignedTo = (resources: Resource[], employeeId: string): Resource[] =>
     resources.filter((resource) =>
