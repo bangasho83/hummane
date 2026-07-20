@@ -5,6 +5,19 @@ export function cn(...inputs: ClassValue[]) {
     return twMerge(clsx(inputs))
 }
 
+export function getCurrencySymbol(currency?: string): string {
+    if (!currency) return ''
+    try {
+        return new Intl.NumberFormat('en-US', {
+            style: 'currency',
+            currency,
+            currencyDisplay: 'narrowSymbol',
+        }).formatToParts(0).find((part) => part.type === 'currency')?.value || currency
+    } catch {
+        return currency
+    }
+}
+
 export function formatCurrency(amount: number, currency?: string): string {
     if (!currency) {
         return new Intl.NumberFormat('en-US', {

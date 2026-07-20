@@ -3,6 +3,7 @@
 import { useCallback, useEffect, useState } from 'react'
 import Link from 'next/link'
 import { useApp } from '@/lib/context/AppContext'
+import { formatCurrency } from '@/lib/utils'
 import type { ResourceRequest } from '@/types'
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
 import { Button } from '@/components/ui/button'
@@ -19,7 +20,7 @@ import { fetchResourceRequestsApi } from '@/lib/api/client'
 import { ResourceRequestStatusBadge } from '@/features/member/components/ResourceRequestStatusBadge'
 
 export default function MemberResourceRequestPage() {
-    const { employees, meProfile, isHydrating, apiAccessToken } = useApp()
+    const { employees, meProfile, currentCompany, isHydrating, apiAccessToken } = useApp()
     const [requests, setRequests] = useState<ResourceRequest[]>([])
     const [loading, setLoading] = useState(true)
     const [error, setError] = useState<string | null>(null)
@@ -152,7 +153,7 @@ export default function MemberResourceRequestPage() {
                                             <TableCell className="py-5 text-sm text-slate-600 capitalize">{request.priority}</TableCell>
                                             <TableCell className="py-5 text-sm text-slate-600">
                                                 {request.estimatedCost != null
-                                                    ? Number(request.estimatedCost).toLocaleString()
+                                                    ? formatCurrency(Number(request.estimatedCost), currentCompany?.currency)
                                                     : '—'}
                                             </TableCell>
                                             <TableCell className="py-5">

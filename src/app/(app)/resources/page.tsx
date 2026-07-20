@@ -4,6 +4,7 @@ import { useCallback, useEffect, useMemo, useState } from 'react'
 import Link from 'next/link'
 import { Loader2, Package, Search } from 'lucide-react'
 import { useApp } from '@/lib/context/AppContext'
+import { formatCurrency } from '@/lib/utils'
 import type { ResourceRequest } from '@/types'
 import { RESOURCE_REQUEST_PRIORITIES, RESOURCE_REQUEST_STATUSES } from '@/types'
 import { fetchResourceRequestsApi } from '@/lib/api/client'
@@ -32,7 +33,7 @@ const capitalize = (value: string) => value
     .replace(/\b\w/g, (letter) => letter.toUpperCase())
 
 export default function ResourcesPage() {
-    const { apiAccessToken, isHydrating } = useApp()
+    const { apiAccessToken, currentCompany, isHydrating } = useApp()
     const [requests, setRequests] = useState<ResourceRequest[]>([])
     const [loading, setLoading] = useState(true)
     const [error, setError] = useState<string | null>(null)
@@ -226,7 +227,7 @@ export default function ResourcesPage() {
                                         <TableCell className="py-5 text-sm text-slate-600 capitalize">{request.priority}</TableCell>
                                         <TableCell className="py-5 text-sm text-slate-600">
                                             {request.estimatedCost != null
-                                                ? Number(request.estimatedCost).toLocaleString()
+                                                ? formatCurrency(Number(request.estimatedCost), currentCompany?.currency)
                                                 : '—'}
                                         </TableCell>
                                         <TableCell className="py-5">

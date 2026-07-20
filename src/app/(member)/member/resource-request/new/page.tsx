@@ -121,6 +121,7 @@ export default function MemberNewResourceRequestPage() {
                         categoriesLoading={categoriesLoading}
                         submitting={submitting}
                         submitLabel="Submit Request"
+                        currency={currentCompany?.currency}
                         onSubmit={handleSubmit}
                         onCancel={() => router.push('/member/resource-request')}
                     />

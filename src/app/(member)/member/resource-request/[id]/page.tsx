@@ -3,6 +3,7 @@
 import { useCallback, useEffect, useState } from 'react'
 import { useParams, useRouter } from 'next/navigation'
 import { useApp } from '@/lib/context/AppContext'
+import { formatCurrency } from '@/lib/utils'
 import type { ResourceRequest } from '@/types'
 import { Card, CardContent } from '@/components/ui/card'
 import { Button } from '@/components/ui/button'
@@ -14,7 +15,7 @@ export default function MemberResourceRequestDetailPage() {
     const router = useRouter()
     const params = useParams<{ id: string }>()
     const requestId = params?.id
-    const { apiAccessToken, isHydrating } = useApp()
+    const { apiAccessToken, currentCompany, isHydrating } = useApp()
 
     const [request, setRequest] = useState<ResourceRequest | null>(null)
     const [loading, setLoading] = useState(true)
@@ -105,7 +106,7 @@ export default function MemberResourceRequestDetailPage() {
                                 <p className="text-xs font-bold text-slate-400 uppercase tracking-widest">Estimated Cost</p>
                                 <p className="font-semibold text-slate-900">
                                     {request.estimatedCost != null
-                                        ? Number(request.estimatedCost).toLocaleString()
+                                        ? formatCurrency(Number(request.estimatedCost), currentCompany?.currency)
                                         : '—'}
                                 </p>
                             </div>
