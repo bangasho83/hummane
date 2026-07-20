@@ -38,6 +38,8 @@ export function ReimbursementList() {
     const [loading, setLoading] = useState(true)
     const [error, setError] = useState<string | null>(null)
     const [search, setSearch] = useState('')
+    const [employeeFilter, setEmployeeFilter] = useState('all')
+    const [categoryFilter, setCategoryFilter] = useState('all')
     const [paymentFilter, setPaymentFilter] = useState('all')
     const [updatingId, setUpdatingId] = useState<string | null>(null)
 
@@ -71,6 +73,9 @@ export function ReimbursementList() {
         return textValue(item.paidByEmployeeName) || employeeNames.get(employeeId) || employeeId || '—'
     }, [employeeNames])
 
+    const claimants = useMemo(() => [...new Set(items.map(claimantName).filter((name) => name !== '—'))].sort(), [claimantName, items])
+    const categories = useMemo(() => [...new Set(items.map(resourceCategory).filter(Boolean))].sort(), [items])
+
     const filtered = useMemo(() => {
         const term = search.trim().toLowerCase()
         return [...items]
@@ -79,10 +84,12 @@ export function ReimbursementList() {
                 const searchable = [resourceName(resource), claimantName(resource), resourceCategory(resource), textValue(details.purpose), textValue(details.notes)].join(' ').toLowerCase()
                 const settled = resourceIsSettled(resource)
                 return (!term || searchable.includes(term))
+                    && (employeeFilter === 'all' || claimantName(resource) === employeeFilter)
+                    && (categoryFilter === 'all' || resourceCategory(resource) === categoryFilter)
                     && (paymentFilter === 'all' || (paymentFilter === 'paid' ? settled : !settled))
             })
             .sort((a, b) => resourceDate(b).localeCompare(resourceDate(a)))
-    }, [claimantName, items, paymentFilter, search])
+    }, [categoryFilter, claimantName, employeeFilter, items, paymentFilter, search])
 
     const markPaid = async (resource: Resource) => {
         if (!apiAccessToken || resourceIsSettled(resource)) return
@@ -97,7 +104,7 @@ export function ReimbursementList() {
         } finally { setUpdatingId(null) }
     }
 
-    const hasFilters = !!search || paymentFilter !== 'all'
+    const hasFilters = !!search || employeeFilter !== 'all' || categoryFilter !== 'all' || paymentFilter !== 'all'
 
     return (
         <div className="animate-in fade-in slide-in-from-bottom-4 space-y-6 duration-500">
@@ -106,8 +113,10 @@ export function ReimbursementList() {
                 <CardContent className="p-0">
                     <div className="flex flex-wrap items-center gap-3 border-b border-slate-100 p-5 sm:p-8">
                         <div className="relative min-w-[240px] flex-1"><Search className="absolute left-4 top-1/2 h-4 w-4 -translate-y-1/2 text-slate-400" /><Input value={search} onChange={(event) => setSearch(event.target.value)} placeholder="Search claims or employees…" className="h-12 rounded-2xl border-slate-100 bg-slate-50 pl-11" /></div>
+                        <Select value={employeeFilter} onValueChange={setEmployeeFilter}><SelectTrigger className="h-12 w-[180px] rounded-2xl border-slate-100 bg-slate-50"><SelectValue /></SelectTrigger><SelectContent><SelectItem value="all">All employees</SelectItem>{claimants.map((claimant) => <SelectItem key={claimant} value={claimant}>{claimant}</SelectItem>)}</SelectContent></Select>
+                        <Select value={categoryFilter} onValueChange={setCategoryFilter}><SelectTrigger className="h-12 w-[180px] rounded-2xl border-slate-100 bg-slate-50"><SelectValue /></SelectTrigger><SelectContent><SelectItem value="all">All categories</SelectItem>{categories.map((category) => <SelectItem key={category} value={category}>{category}</SelectItem>)}</SelectContent></Select>
                         <Select value={paymentFilter} onValueChange={setPaymentFilter}><SelectTrigger className="h-12 w-[180px] rounded-2xl border-slate-100 bg-slate-50"><SelectValue /></SelectTrigger><SelectContent><SelectItem value="all">All payments</SelectItem><SelectItem value="pending">Pending</SelectItem><SelectItem value="paid">Paid</SelectItem></SelectContent></Select>
-                        {hasFilters && <button type="button" onClick={() => { setSearch(''); setPaymentFilter('all') }} className="text-sm font-semibold text-slate-500 hover:text-red-600">Reset</button>}
+                        {hasFilters && <button type="button" onClick={() => { setSearch(''); setEmployeeFilter('all'); setCategoryFilter('all'); setPaymentFilter('all') }} className="text-sm font-semibold text-slate-500 hover:text-red-600">Reset</button>}
                     </div>
                     {isHydrating || loading ? <div className="flex justify-center p-20"><Loader2 className="h-8 w-8 animate-spin text-blue-600" /></div> : error ? <div className="space-y-4 p-20 text-center"><p className="text-sm font-medium text-red-700">{error}</p><Button variant="outline" className="rounded-xl" onClick={() => void load()}>Try again</Button></div> : filtered.length === 0 ? <div className="p-20 text-center"><HandCoins className="mx-auto mb-4 h-10 w-10 text-slate-300" /><p className="font-medium text-slate-500">{hasFilters ? 'No reimbursements match your filters.' : 'No reimbursements yet.'}</p></div> : (
                         <div className="overflow-x-auto"><Table className="min-w-[1100px]">
