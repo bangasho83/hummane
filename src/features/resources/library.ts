@@ -30,7 +30,7 @@ export const buildLibraryBookPayload = (values: LibraryBookValues): ResourcePayl
     resourceType: 'physical_asset',
     category: LIBRARY_CATEGORY,
     name: values.title.trim(),
-    identifier: values.identifier.trim(),
+    ...(values.identifier.trim() ? { identifier: values.identifier.trim() } : {}),
     description: values.description.trim() || undefined,
     status: 'active',
     assignmentType: 'unassigned',

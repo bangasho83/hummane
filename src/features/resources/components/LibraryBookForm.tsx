@@ -34,7 +34,6 @@ export function LibraryBookForm() {
         event.preventDefault()
         const nextErrors: Record<string, string> = {}
         if (!values.title.trim()) nextErrors.title = 'Book title is required.'
-        if (!values.identifier.trim()) nextErrors.identifier = 'Barcode or internal book ID is required.'
         if (Object.keys(nextErrors).length) {
             setErrors(nextErrors)
             return
@@ -65,8 +64,8 @@ export function LibraryBookForm() {
                         <Field label="Book title *" error={errors.title}>
                             <Input value={values.title} onChange={(event) => setValue('title', event.target.value)} placeholder="e.g. Clean Code" className="h-11 rounded-xl" disabled={saving} />
                         </Field>
-                        <Field label="Barcode / Book ID *" error={errors.identifier}>
-                            <Input value={values.identifier} onChange={(event) => setValue('identifier', event.target.value)} placeholder="e.g. BOOK-001" className="h-11 rounded-xl" disabled={saving} />
+                        <Field label="Identifier">
+                            <Input value={values.identifier} onChange={(event) => setValue('identifier', event.target.value)} placeholder="Optional identifier" className="h-11 rounded-xl" disabled={saving} />
                         </Field>
                         <Field label="Author">
                             <Input value={values.author} onChange={(event) => setValue('author', event.target.value)} placeholder="Author name" className="h-11 rounded-xl" disabled={saving} />

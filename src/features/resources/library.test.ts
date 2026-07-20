@@ -34,6 +34,13 @@ describe('library resource mapping', () => {
         })
     })
 
+    it('omits an identifier when the optional field is blank', () => {
+        expect(buildLibraryBookPayload({
+            title: 'Clean Code', identifier: '  ', author: '', isbn: '',
+            publisher: '', edition: '', location: '', description: '',
+        })).not.toHaveProperty('identifier')
+    })
+
     it('separates library books from other physical assets', () => {
         expect(isLibraryBook(resource())).toBe(true)
         expect(isLibraryBook(resource({ category: 'IT Equipment' }))).toBe(false)
