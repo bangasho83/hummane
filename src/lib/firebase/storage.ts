@@ -143,4 +143,4 @@ export const uploadFileToStorage = async (file: File, folder: string, prefix?: s
 }
 
 export const uploadResourceFiles = async (files: File[], prefix?: string): Promise<string[]> =>
-    Promise.all(files.map((file) => uploadFileToStorage(file, 'resources', prefix)))
+    Promise.all(files.map((file) => uploadFileToStorage(file, 'team/resources', prefix)))

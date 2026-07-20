@@ -304,7 +304,7 @@ export function ResourceForm({ mode, resource }: ResourceFormProps) {
                                 <Input type="file" multiple className="sr-only" onChange={(event) => setAttachmentFiles((current) => [...current, ...Array.from(event.target.files || [])])} disabled={saving} />
                             </label>
                             {attachmentFiles.length > 0 && <p className="mt-2 text-xs text-slate-500">{attachmentFiles.map((file) => file.name).join(', ')}</p>}
-                            <p className="mt-1 text-xs text-slate-400">Files are uploaded to Firebase Storage under resources/ when you save.</p>
+                            <p className="mt-1 text-xs text-slate-400">Files are uploaded securely when you save.</p>
                         </div>
                     </Field>
                     <Field label="Existing or external URLs" error={errorFor('attachmentUrls')} className="md:col-span-3">

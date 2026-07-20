@@ -19,7 +19,7 @@ import { uploadResourceFiles } from './storage'
 describe('uploadResourceFiles', () => {
     beforeEach(() => vi.clearAllMocks())
 
-    it('uploads every file under resources with a sanitized unique name', async () => {
+    it('uploads every file under the authorized team/resources path with a sanitized unique name', async () => {
         const files = [
             new File(['receipt'], 'fuel receipt.pdf', { type: 'application/pdf' }),
             new File(['photo'], 'invoice#.png', { type: 'image/png' }),
@@ -28,8 +28,8 @@ describe('uploadResourceFiles', () => {
         const urls = await uploadResourceFiles(files, 'EMP-42')
 
         expect(refMock).toHaveBeenCalledTimes(2)
-        expect(refMock.mock.calls[0][1]).toMatch(/^resources\/EMP-42_.+_fuel_receipt\.pdf$/)
-        expect(refMock.mock.calls[1][1]).toMatch(/^resources\/EMP-42_.+_invoice_\.png$/)
+        expect(refMock.mock.calls[0][1]).toMatch(/^team\/resources\/EMP-42_.+_fuel_receipt\.pdf$/)
+        expect(refMock.mock.calls[1][1]).toMatch(/^team\/resources\/EMP-42_.+_invoice_\.png$/)
         expect(uploadBytesMock).toHaveBeenNthCalledWith(1, expect.anything(), files[0])
         expect(urls).toHaveLength(2)
     })

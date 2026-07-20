@@ -87,7 +87,7 @@ export function ReimbursementForm({ submitting, onSubmit, onCancel }: Reimbursem
                                 <Input type="file" multiple className="sr-only" onChange={(event) => setReceiptFiles((current) => [...current, ...Array.from(event.target.files || [])])} disabled={submitting} />
                             </label>
                             {receiptFiles.length > 0 && <p className="mt-2 text-xs text-slate-500">{receiptFiles.map((file) => file.name).join(', ')}</p>}
-                            <p className="mt-1 text-xs text-slate-400">Files are uploaded to Firebase Storage under resources/ when submitted.</p>
+                            <p className="mt-1 text-xs text-slate-400">Files are uploaded securely when submitted.</p>
                         </div>
                     </Field>
                     <Field label="Existing or external URLs" error={errors.attachmentUrls}>
