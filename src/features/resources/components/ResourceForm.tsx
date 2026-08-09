@@ -116,6 +116,7 @@ export function ResourceForm({ mode, resource }: ResourceFormProps) {
     const [categories, setCategories] = useState<ResourceCategory[]>([])
     const [vendors, setVendors] = useState<Vendor[]>([])
     const [templates, setTemplates] = useState<ResourceTemplate[]>([])
+    const [employeeQuery, setEmployeeQuery] = useState('')
     const [optionsLoading, setOptionsLoading] = useState(true)
     const [saving, setSaving] = useState(false)
 
@@ -155,6 +156,13 @@ export function ResourceForm({ mode, resource }: ResourceFormProps) {
         () => [...employees].sort((a, b) => a.name.localeCompare(b.name)),
         [employees]
     )
+    const filteredEmployees = useMemo(() => {
+        const query = employeeQuery.trim().toLowerCase()
+        if (!query) return employeeOptions
+        return employeeOptions.filter((employee) => (
+            `${employee.name} ${employee.employeeId}`.toLowerCase().includes(query)
+        ))
+    }, [employeeOptions, employeeQuery])
 
     const setField = (key: string, value: unknown) => {
         setValues((current) => ({ ...current, [key]: value }))
@@ -348,7 +356,21 @@ export function ResourceForm({ mode, resource }: ResourceFormProps) {
                             <Field label="Employee" error={errorFor('assignedToEmployeeId')}>
                                 <Select value={textValue(values.assignedToEmployeeId)} onValueChange={(value) => setField('assignedToEmployeeId', value)} disabled={saving}>
                                     <SelectTrigger className={fieldClass}><SelectValue placeholder="Select employee" /></SelectTrigger>
-                                    <SelectContent>{employeeOptions.map((employee) => <SelectItem key={employee.id} value={employee.id}>{employeeDisplayName(asRecord(employee))}</SelectItem>)}</SelectContent>
+                                    <SelectContent className="max-h-72 overflow-y-auto">
+                                        <div className="sticky top-0 z-10 border-b border-slate-100 bg-white p-2">
+                                            <Input
+                                                value={employeeQuery}
+                                                onChange={(event) => setEmployeeQuery(event.target.value)}
+                                                placeholder="Search employees..."
+                                                className="h-9 rounded-lg"
+                                                onKeyDown={(event) => event.stopPropagation()}
+                                                onClick={(event) => event.stopPropagation()}
+                                            />
+                                        </div>
+                                        {filteredEmployees.map((employee) => (
+                                            <SelectItem key={employee.id} value={employee.id}>{employeeDisplayName(asRecord(employee))}</SelectItem>
+                                        ))}
+                                    </SelectContent>
                                 </Select>
                             </Field>
                         )}
