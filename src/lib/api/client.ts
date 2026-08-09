@@ -19,6 +19,7 @@ import type {
   ResourceCostType,
   ResourceRequest,
   ResourceStatus,
+  ResourceTemplate,
   ResourceType,
   Role,
   Vendor,
@@ -62,6 +63,7 @@ const USERS_PATH = `${API_BASE_URL}/users`
 const RESOURCE_CATEGORIES_PATH = `${API_BASE_URL}/resource-categories`
 const RESOURCE_REQUESTS_PATH = `${API_BASE_URL}/resource-requests`
 const RESOURCES_PATH = `${API_BASE_URL}/resources`
+const RESOURCE_TEMPLATES_PATH = `${API_BASE_URL}/resource-templates`
 const VENDORS_PATH = `${API_BASE_URL}/vendors`
 const ACCESS_TOKEN_KEY = 'hummaneApiAccessToken'
 const API_USER_KEY = 'hummaneApiUser'
@@ -1670,8 +1672,75 @@ export const updateVendorApi = async (
 export const deleteVendorApi = async (vendorId: string, accessToken: string): Promise<void> =>
   vendorRequest<void>(`/${encodeURIComponent(vendorId)}`, accessToken, { method: 'DELETE' })
 
+export type ResourceTemplatePayload = {
+  name: string
+  resourceType?: ResourceType
+  category: string
+  description?: string
+  vendorId?: string
+  defaultCostAmount?: number
+  defaultCostType?: ResourceCostType
+  defaultDetails?: Record<string, unknown>
+  isActive?: boolean
+}
+
+const resourceTemplateRequest = async <T>(
+  path: string,
+  accessToken: string,
+  init: RequestInit = {}
+): Promise<T> => {
+  let response: Response
+  try {
+    response = await fetch(`${RESOURCE_TEMPLATES_PATH}${path}`, {
+      ...init,
+      headers: {
+        ...(init.body ? { 'Content-Type': 'application/json' } : {}),
+        Authorization: `Bearer ${accessToken}`,
+        ...init.headers,
+      },
+    })
+  } catch {
+    throw new Error('Network error while contacting resource templates API')
+  }
+  if (!response.ok) {
+    throw new Error(parseApiError(await response.text(), 'Resource template request failed'))
+  }
+  if (response.status === 204) return undefined as T
+  const data = await response.json().catch(() => null)
+  return (data?.data || data?.resourceTemplate || data?.resourceTemplates || data) as T
+}
+
+export const fetchResourceTemplatesApi = async (
+  accessToken: string,
+  activeOnly = true
+): Promise<ResourceTemplate[]> => {
+  const list = await resourceTemplateRequest<unknown>(`?limit=100&activeOnly=${activeOnly}`, accessToken)
+  return Array.isArray(list) ? list as ResourceTemplate[] : []
+}
+
+export const createResourceTemplateApi = async (
+  payload: ResourceTemplatePayload,
+  accessToken: string
+): Promise<ResourceTemplate> => resourceTemplateRequest<ResourceTemplate>('', accessToken, {
+  method: 'POST',
+  body: JSON.stringify(payload),
+})
+
+export const updateResourceTemplateApi = async (
+  templateId: string,
+  payload: Partial<ResourceTemplatePayload>,
+  accessToken: string
+): Promise<ResourceTemplate> => resourceTemplateRequest<ResourceTemplate>(`/${encodeURIComponent(templateId)}`, accessToken, {
+  method: 'PUT',
+  body: JSON.stringify(payload),
+})
+
+export const archiveResourceTemplateApi = async (templateId: string, accessToken: string): Promise<ResourceTemplate> =>
+  resourceTemplateRequest<ResourceTemplate>(`/${encodeURIComponent(templateId)}`, accessToken, { method: 'DELETE' })
+
 export type ResourcePayload = {
   resourceType: ResourceType
+  resourceTemplateId?: string
   name: string
   category: string
   description?: string
@@ -1699,6 +1768,7 @@ export type ResourceAssignmentPayload = {
 
 export type ResourceFilters = {
   resourceType?: ResourceType
+  resourceTemplateId?: string
   status?: ResourceStatus
   assignedToEmployeeId?: string
   vendorId?: string
@@ -1706,7 +1776,7 @@ export type ResourceFilters = {
 }
 
 const RESOURCE_PAYLOAD_KEYS = [
-  'resourceType', 'name', 'category', 'description', 'identifier', 'status',
+  'resourceType', 'resourceTemplateId', 'name', 'category', 'description', 'identifier', 'status',
   'assignmentType', 'assignedToEmployeeId', 'location', 'vendorId', 'costAmount',
   'costType', 'expenseDate', 'paidByEmployeeId', 'isSettled', 'details', 'attachments',
 ] as const
@@ -1798,6 +1868,7 @@ export const fetchResourcesApi = async (
 ): Promise<Resource[]> => {
   const query = new URLSearchParams()
   if (filters.resourceType) query.set('resourceType', filters.resourceType)
+  if (filters.resourceTemplateId) query.set('resourceTemplateId', filters.resourceTemplateId)
   if (filters.status) query.set('status', filters.status)
   if (filters.assignedToEmployeeId) query.set('assignedToEmployeeId', filters.assignedToEmployeeId)
   if (filters.vendorId) query.set('vendorId', filters.vendorId)
@@ -1813,6 +1884,40 @@ export const fetchResourceApi = async (
   resourceId: string,
   accessToken: string
 ): Promise<Resource> => resourceRequest<Resource>(`/${encodeURIComponent(resourceId)}`, accessToken)
+
+export type ResourceCostReportRow = {
+  templateId?: string | null
+  templateName: string
+  employeeId?: string | null
+  employeeName?: string
+  totalCost: number
+  resourceCount: number
+}
+
+export type ResourceCostReport = {
+  totalCost: number
+  resourceCount: number
+  byTemplate: ResourceCostReportRow[]
+  byEmployee: ResourceCostReportRow[]
+}
+
+export const fetchResourceCostReportApi = async (
+  accessToken: string,
+  filters: { resourceType?: ResourceType; status?: ResourceStatus; employeeId?: string; resourceTemplateId?: string } = {}
+): Promise<ResourceCostReport> => {
+  const query = new URLSearchParams()
+  if (filters.resourceType) query.set('resourceType', filters.resourceType)
+  if (filters.status) query.set('status', filters.status)
+  if (filters.employeeId) query.set('employeeId', filters.employeeId)
+  if (filters.resourceTemplateId) query.set('resourceTemplateId', filters.resourceTemplateId)
+  const result = await resourceRequest<ResourceCostReport>(`/reports/costs?${query.toString()}`, accessToken)
+  return {
+    totalCost: Number(result?.totalCost || 0),
+    resourceCount: Number(result?.resourceCount || 0),
+    byTemplate: Array.isArray(result?.byTemplate) ? result.byTemplate : [],
+    byEmployee: Array.isArray(result?.byEmployee) ? result.byEmployee : [],
+  }
+}
 
 export const createResourceApi = async (
   payload: ResourcePayload,

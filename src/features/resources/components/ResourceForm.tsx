@@ -3,7 +3,7 @@
 import { useEffect, useMemo, useState } from 'react'
 import { useRouter } from 'next/navigation'
 import { Loader2, Paperclip, Save } from 'lucide-react'
-import type { Resource, ResourceCategory, Vendor } from '@/types'
+import type { Resource, ResourceCategory, ResourceTemplate, Vendor } from '@/types'
 import {
     RESOURCE_ASSIGNMENT_TYPES,
     RESOURCE_COST_TYPES,
@@ -13,6 +13,7 @@ import {
 import {
     createResourceApi,
     fetchResourceCategoriesApi,
+    fetchResourceTemplatesApi,
     fetchVendorsApi,
     updateResourceApi,
     type ResourcePayload,
@@ -78,6 +79,7 @@ const toFormState = (mode: 'resource' | 'bill', resource?: Resource | null): For
     const vendor = asRecord(item.vendor)
     return {
         ...empty,
+        resourceTemplateId: textValue(item.resourceTemplateId),
         name: textValue(item.name),
         resourceType: mode === 'bill' ? 'expense' : textValue(item.resourceType || item.type),
         category: textValue(item.categoryName) || textValue(category.name) || textValue(item.category),
@@ -113,6 +115,7 @@ export function ResourceForm({ mode, resource }: ResourceFormProps) {
     const [errors, setErrors] = useState<FormErrors>({})
     const [categories, setCategories] = useState<ResourceCategory[]>([])
     const [vendors, setVendors] = useState<Vendor[]>([])
+    const [templates, setTemplates] = useState<ResourceTemplate[]>([])
     const [optionsLoading, setOptionsLoading] = useState(true)
     const [saving, setSaving] = useState(false)
 
@@ -126,13 +129,15 @@ export function ResourceForm({ mode, resource }: ResourceFormProps) {
                 return
             }
             try {
-                const [categoryItems, vendorItems] = await Promise.all([
+                const [categoryItems, vendorItems, templateItems] = await Promise.all([
                     fetchResourceCategoriesApi(),
                     fetchVendorsApi(apiAccessToken),
+                    fetchResourceTemplatesApi(apiAccessToken),
                 ])
                 if (active) {
                     setCategories(categoryItems)
                     setVendors(vendorItems)
+                    setTemplates(templateItems)
                 }
             } catch (error) {
                 if (active) toast(error instanceof Error ? error.message : 'Failed to load form options', 'error')
@@ -157,6 +162,24 @@ export function ResourceForm({ mode, resource }: ResourceFormProps) {
     }
 
     const errorFor = (key: string) => errors[key]
+
+    const selectTemplate = (templateId: string) => {
+        setField('resourceTemplateId', templateId === 'none' ? '' : templateId)
+        if (templateId === 'none') return
+        const template = templates.find((item) => item.id === templateId)
+        if (!template) return
+        setValues((current) => ({
+            ...current,
+            resourceTemplateId: template.id,
+            resourceType: template.resourceType,
+            name: template.name,
+            category: template.category,
+            vendorId: template.vendorId || '',
+            costAmount: template.defaultCostAmount == null ? '' : String(template.defaultCostAmount),
+            costType: template.defaultCostType || 'recurring',
+            ...template.defaultDetails,
+        }))
+    }
 
     const buildDetails = () => {
         const fields: Record<string, string[]> = {
@@ -185,6 +208,7 @@ export function ResourceForm({ mode, resource }: ResourceFormProps) {
         })
         const payload = compact({
             resourceType: type,
+            resourceTemplateId: textValue(values.resourceTemplateId).trim() || undefined,
             name: textValue(values.name).trim(),
             category: textValue(values.category).trim(),
             description: textValue(values.description).trim() || undefined,
@@ -248,6 +272,17 @@ export function ResourceForm({ mode, resource }: ResourceFormProps) {
                         </Field>
                     ) : (
                         <Field label="Type"><Input value="Expense · Company" readOnly className={`${fieldClass} bg-slate-50 text-slate-500`} /></Field>
+                    )}
+                    {mode === 'resource' && (
+                        <Field label="Template" error={errorFor('resourceTemplateId')}>
+                            <Select value={textValue(values.resourceTemplateId) || 'none'} onValueChange={selectTemplate} disabled={saving || optionsLoading}>
+                                <SelectTrigger className={fieldClass}><SelectValue placeholder={optionsLoading ? 'Loading templates…' : 'Start from a template (optional)'} /></SelectTrigger>
+                                <SelectContent>
+                                    <SelectItem value="none">No template</SelectItem>
+                                    {templates.map((template) => <SelectItem key={template.id} value={template.id}>{template.name}</SelectItem>)}
+                                </SelectContent>
+                            </Select>
+                        </Field>
                     )}
                     <Field label="Category" error={errorFor('category')} required>
                         <Select value={textValue(values.category)} onValueChange={(value) => setField('category', value)} disabled={saving || optionsLoading}>

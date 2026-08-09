@@ -396,6 +396,7 @@ export interface ResourceAttachments {
 export interface Resource {
     id: string
     companyId: string
+    resourceTemplateId?: string | null
     resourceType: ResourceType
     name: string
     category: string
@@ -419,6 +420,23 @@ export interface Resource {
     assignmentHistory: ResourceAssignmentHistoryEntry[]
     createdBy?: string
     createdAt: string
+    updatedAt?: string
+}
+
+export interface ResourceTemplate {
+    id: string
+    companyId: string
+    name: string
+    resourceType: ResourceType
+    category: string
+    description?: string | null
+    vendorId?: string | null
+    defaultCostAmount?: number | null
+    defaultCostType?: ResourceCostType | null
+    defaultDetails: Record<string, unknown>
+    isActive: boolean
+    createdBy?: string | null
+    createdAt?: string
     updatedAt?: string
 }
 

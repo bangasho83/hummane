@@ -13,6 +13,7 @@ export type ResourceFormMode = 'resource' | 'bill'
 
 export interface ResourceFormValues {
     resourceType: string
+    resourceTemplateId: string
     name: string
     category: string
     description: string
@@ -44,6 +45,7 @@ export type ResourceFormErrors = Partial<Record<keyof ResourceFormValues, string
 
 export const emptyResourceFormValues = (mode: ResourceFormMode): ResourceFormValues => ({
     resourceType: mode === 'bill' ? 'expense' : 'physical_asset',
+    resourceTemplateId: '',
     name: '',
     category: '',
     description: '',
