@@ -9,9 +9,10 @@ import { Card, CardContent } from '@/components/ui/card'
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table'
 import { ResourceBadge } from '@/features/resources/components/ResourceBadge'
 import { labelize } from '@/features/resources/resource-ui'
+import { formatCurrency } from '@/lib/utils'
 
 export default function MemberResourcesPage() {
-    const { apiAccessToken, isHydrating, meProfile } = useApp()
+    const { apiAccessToken, currentCompany, isHydrating, meProfile } = useApp()
     const [resources, setResources] = useState<Resource[]>([])
     const [loading, setLoading] = useState(true)
 
@@ -51,8 +52,8 @@ export default function MemberResourcesPage() {
                     {isHydrating || loading ? <div className="flex justify-center p-20"><Loader2 className="h-8 w-8 animate-spin text-blue-600" /></div> : resources.length === 0 ? <div className="p-20 text-center"><Package className="mx-auto mb-4 h-10 w-10 text-slate-300" /><p className="font-medium text-slate-500">No resources are currently assigned to you.</p></div> : (
                         <div className="overflow-x-auto">
                             <Table>
-                                <TableHeader className="bg-slate-50/50"><TableRow className="border-slate-100 hover:bg-transparent"><TableHead className="pl-8">Type</TableHead><TableHead>Name</TableHead><TableHead>Category</TableHead><TableHead>Status</TableHead><TableHead className="pr-8">Vendor</TableHead></TableRow></TableHeader>
-                                <TableBody>{resources.map((resource) => <TableRow key={resource.id} className="border-slate-50"><TableCell className="py-5 pl-8 text-sm font-semibold text-slate-600">{labelize(resource.resourceType)}</TableCell><TableCell className="py-5 font-bold text-slate-900">{resource.name}</TableCell><TableCell className="py-5 text-sm text-slate-600">{resource.category}</TableCell><TableCell className="py-5"><ResourceBadge value={resource.status} /></TableCell><TableCell className="py-5 pr-8 text-sm text-slate-600">{resource.vendorName || '—'}</TableCell></TableRow>)}</TableBody>
+                                <TableHeader className="bg-slate-50/50"><TableRow className="border-slate-100 hover:bg-transparent"><TableHead className="pl-8">Type</TableHead><TableHead>Name</TableHead><TableHead>Category</TableHead><TableHead>Status</TableHead><TableHead className="pr-8">Cost</TableHead></TableRow></TableHeader>
+                                <TableBody>{resources.map((resource) => <TableRow key={resource.id} className="border-slate-50"><TableCell className="py-5 pl-8 text-sm font-semibold text-slate-600">{labelize(resource.resourceType)}</TableCell><TableCell className="py-5 font-bold text-slate-900">{resource.name}</TableCell><TableCell className="py-5 text-sm text-slate-600">{resource.category}</TableCell><TableCell className="py-5"><ResourceBadge value={resource.status} /></TableCell><TableCell className="py-5 pr-8 text-sm text-slate-600">{resource.costAmount == null ? '—' : <><span className="font-semibold text-slate-800">{formatCurrency(resource.costAmount, currentCompany?.currency)}</span>{resource.costType && <span className="block text-xs text-slate-400">{labelize(resource.costType)}</span>}</>}</TableCell></TableRow>)}</TableBody>
                             </Table>
                         </div>
                     )}
