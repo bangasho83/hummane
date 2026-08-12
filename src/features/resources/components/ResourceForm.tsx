@@ -69,6 +69,8 @@ const numberOrUndefined = (value: unknown): number | undefined => {
     return Number.isFinite(number) ? number : undefined
 }
 
+const priceInputValue = (value: number | null | undefined): string => value == null ? '' : String(Number(value))
+
 const categoryValue = (category: ResourceCategory): string => {
     const item = asRecord(category)
     return textValue(item.id) || textValue(item.name)
@@ -200,7 +202,7 @@ export function ResourceForm({ mode, resource, initialResourceType, resourceLabe
             name: template.name,
             category: template.category,
             vendorId: template.vendorId || '',
-            costAmount: template.defaultCostAmount == null ? '' : String(template.defaultCostAmount),
+            costAmount: priceInputValue(template.defaultCostAmount),
             costType: template.defaultCostType || 'recurring',
             ...template.defaultDetails,
         }))

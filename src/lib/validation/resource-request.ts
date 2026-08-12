@@ -1,4 +1,4 @@
-import { RESOURCE_REQUEST_PRIORITIES, type ResourceRequestPriority } from '@/types'
+import { RESOURCE_REQUEST_PRIORITIES, RESOURCE_REQUEST_TYPES, type ResourceRequestPriority, type ResourceRequestType } from '@/types'
 
 /**
  * Pure validation for the member Resource Request form.
@@ -7,6 +7,7 @@ import { RESOURCE_REQUEST_PRIORITIES, type ResourceRequestPriority } from '@/typ
  */
 
 export interface ResourceRequestFormValues {
+    requestType: string
     title: string
     categoryId: string
     description: string
@@ -14,6 +15,14 @@ export interface ResourceRequestFormValues {
     priority: string
     estimatedCost: string
     productUrl: string
+    role: string
+    headcount: string
+    skills: string
+    team: string
+    startDate: string
+    employmentType: string
+    teamMember: string
+    allocationPercentage: string
 }
 
 export type ResourceRequestFormErrors = Partial<
@@ -21,6 +30,7 @@ export type ResourceRequestFormErrors = Partial<
 >
 
 export const emptyResourceRequestFormValues: ResourceRequestFormValues = {
+    requestType: 'resource',
     title: '',
     categoryId: '',
     description: '',
@@ -28,6 +38,14 @@ export const emptyResourceRequestFormValues: ResourceRequestFormValues = {
     priority: '',
     estimatedCost: '',
     productUrl: '',
+    role: '',
+    headcount: '',
+    skills: '',
+    team: '',
+    startDate: '',
+    employmentType: '',
+    teamMember: '',
+    allocationPercentage: '',
 }
 
 const isValidUrl = (value: string): boolean => {
@@ -43,6 +61,11 @@ export function validateResourceRequest(
     values: ResourceRequestFormValues
 ): ResourceRequestFormErrors {
     const errors: ResourceRequestFormErrors = {}
+    const requestType = values.requestType as ResourceRequestType
+
+    if (!RESOURCE_REQUEST_TYPES.includes(requestType)) {
+        errors.requestType = 'Please select a valid request type'
+    }
 
     const title = values.title.trim()
     if (!title) {
@@ -53,7 +76,7 @@ export function validateResourceRequest(
         errors.title = 'Title must be less than 120 characters'
     }
 
-    if (!values.categoryId.trim()) {
+    if (requestType === 'resource' && !values.categoryId.trim()) {
         errors.categoryId = 'Please select a category'
     }
 
@@ -100,6 +123,23 @@ export function validateResourceRequest(
     const productUrl = values.productUrl.trim()
     if (productUrl && !isValidUrl(productUrl)) {
         errors.productUrl = 'Enter a valid http(s) URL'
+    }
+
+    if (requestType === 'headcount') {
+        if (values.role.trim().length < 2) errors.role = 'Role is required'
+        const headcount = Number(values.headcount)
+        if (!Number.isInteger(headcount) || headcount < 1) errors.headcount = 'Enter at least one person'
+        if (values.team.trim().length < 2) errors.team = 'Team is required'
+        if (!values.startDate) errors.startDate = 'Start date is required'
+        if (!['permanent', 'temporary'].includes(values.employmentType)) errors.employmentType = 'Select an employment type'
+    }
+
+    if (requestType === 'team_allocation') {
+        if (values.teamMember.trim().length < 2) errors.teamMember = 'Team member is required'
+        if (values.team.trim().length < 2) errors.team = 'Team is required'
+        if (!values.startDate) errors.startDate = 'Start date is required'
+        const allocation = Number(values.allocationPercentage)
+        if (!Number.isInteger(allocation) || allocation < 1 || allocation > 100) errors.allocationPercentage = 'Enter a percentage from 1 to 100'
     }
 
     return errors

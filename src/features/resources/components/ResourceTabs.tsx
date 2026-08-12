@@ -8,10 +8,10 @@ import { cn } from '@/lib/utils'
 const tabs = [
     { href: '/resources', label: 'Requests', icon: ClipboardList, exact: true },
     { href: '/resources/assets', label: 'Resources', icon: Package },
-    { href: '/resources/books', label: 'Books', icon: BookOpen },
     { href: '/resources/subscriptions', label: 'Subscriptions', icon: RefreshCw },
     { href: '/resources/bills', label: 'Bills', icon: ReceiptText },
     { href: '/resources/reimbursements', label: 'Reimbursements', icon: ReceiptText },
+    { href: '/resources/books', label: 'Books', icon: BookOpen },
     { href: '/resources/reports', label: 'Reports', icon: BarChart3 },
 ]
 

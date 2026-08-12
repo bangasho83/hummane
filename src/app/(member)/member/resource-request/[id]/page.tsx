@@ -10,6 +10,8 @@ import { ArrowLeft, Loader2 } from 'lucide-react'
 import { fetchResourceRequestApi } from '@/lib/api/client'
 import { ResourceRequestStatusBadge } from '@/features/member/components/ResourceRequestStatusBadge'
 
+const requestTypeLabel = (value: ResourceRequest['requestType']) => value === 'team_allocation' ? 'Team Allocation' : value === 'headcount' ? 'Headcount' : 'Resource'
+
 export default function MemberResourceRequestDetailPage() {
     const router = useRouter()
     const params = useParams<{ id: string }>()
@@ -98,6 +100,10 @@ export default function MemberResourceRequestDetailPage() {
                                 <p className="font-semibold text-slate-900">{request.category || '—'}</p>
                             </div>
                             <div>
+                                <p className="text-xs font-bold text-slate-400 uppercase tracking-widest">Request type</p>
+                                <p className="font-semibold text-slate-900">{requestTypeLabel(request.requestType)}</p>
+                            </div>
+                            <div>
                                 <p className="text-xs font-bold text-slate-400 uppercase tracking-widest">Priority</p>
                                 <p className="font-semibold text-slate-900 capitalize">{request.priority}</p>
                             </div>
@@ -118,6 +124,21 @@ export default function MemberResourceRequestDetailPage() {
                             <p className="text-xs font-bold text-slate-400 uppercase tracking-widest">Goal Alignment</p>
                             <p className="text-sm text-slate-700 whitespace-pre-wrap mt-1">{request.goalAlignment || '—'}</p>
                         </div>
+                        {request.requestType !== 'resource' && request.staffingDetails && (
+                            <div className="rounded-2xl bg-blue-50/60 p-5">
+                                <p className="text-xs font-bold text-blue-700 uppercase tracking-widest">Staffing details</p>
+                                <div className="mt-4 grid grid-cols-1 md:grid-cols-2 gap-4 text-sm">
+                                    <StaffingDetail label="Role" value={request.staffingDetails.role} />
+                                    <StaffingDetail label="People needed" value={request.staffingDetails.headcount?.toString()} />
+                                    <StaffingDetail label="Requested team member" value={request.staffingDetails.teamMember} />
+                                    <StaffingDetail label="Team / department" value={request.staffingDetails.team} />
+                                    <StaffingDetail label="Requested start" value={request.staffingDetails.startDate} />
+                                    <StaffingDetail label="Employment type" value={request.staffingDetails.employmentType} />
+                                    <StaffingDetail label="Allocation" value={request.staffingDetails.allocationPercentage ? `${request.staffingDetails.allocationPercentage}%` : undefined} />
+                                    <StaffingDetail label="Required skills" value={request.staffingDetails.skills} />
+                                </div>
+                            </div>
+                        )}
                         {request.productUrl && (
                             <div>
                                 <p className="text-xs font-bold text-slate-400 uppercase tracking-widest">Product URL</p>
@@ -135,4 +156,8 @@ export default function MemberResourceRequestDetailPage() {
             </Card>
         </div>
     )
+}
+
+function StaffingDetail({ label, value }: { label: string; value?: string }) {
+    return <div><p className="text-xs font-bold text-slate-400 uppercase tracking-widest">{label}</p><p className="mt-1 text-slate-700 whitespace-pre-wrap">{value || '—'}</p></div>
 }

@@ -12,6 +12,7 @@ import type {
     ResourceCostType,
     ResourceRequestPriority,
     ResourceRequestStatus,
+    ResourceRequestType,
     ResourceStatus,
     ResourceType
 } from './enums'
@@ -465,11 +466,24 @@ export interface ResourceRequest {
     priority: ResourceRequestPriority
     estimatedCost?: number
     productUrl?: string
+    requestType: ResourceRequestType
+    staffingDetails?: StaffingRequestDetails
     status: ResourceRequestStatus
     reviewerNote?: string | null
     statusHistory?: ResourceRequestStatusHistoryEntry[]
     createdAt: string
     updatedAt?: string
+}
+
+export interface StaffingRequestDetails {
+    role?: string
+    headcount?: number
+    skills?: string
+    team?: string
+    startDate?: string
+    employmentType?: 'permanent' | 'temporary'
+    teamMember?: string
+    allocationPercentage?: number
 }
 
 export interface EmployeeDocument {

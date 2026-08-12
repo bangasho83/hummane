@@ -30,6 +30,7 @@ import { toast } from '@/components/ui/toast'
 
 const formatDate = (value?: string) => value ? new Date(value).toLocaleString() : '—'
 const capitalize = (value: string) => value.charAt(0).toUpperCase() + value.slice(1)
+const requestTypeLabel = (value: ResourceRequest['requestType']) => value === 'team_allocation' ? 'Team Allocation' : value === 'headcount' ? 'Headcount' : 'Resource'
 
 export default function ResourceRequestDetailPage() {
     const router = useRouter()
@@ -141,11 +142,27 @@ export default function ResourceRequestDetailPage() {
                             <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-5">
                                 <Detail label="Requested by" value={request.employeeName || '—'} />
                                 <Detail label="Category" value={request.category || '—'} />
+                                <Detail label="Request type" value={requestTypeLabel(request.requestType)} />
                                 <Detail label="Priority" value={capitalize(request.priority)} />
                                 <Detail label="Estimated cost" value={request.estimatedCost != null ? Number(request.estimatedCost).toLocaleString() : '—'} />
                             </div>
                             <Detail label="Description" value={request.description || '—'} multiline />
                             <Detail label="Goal alignment" value={request.goalAlignment || '—'} multiline />
+                            {request.requestType !== 'resource' && request.staffingDetails && (
+                                <div className="rounded-2xl bg-blue-50/60 p-5">
+                                    <p className="text-xs font-bold text-blue-700 uppercase tracking-widest">Staffing details</p>
+                                    <div className="mt-4 grid grid-cols-1 sm:grid-cols-2 gap-5">
+                                        <Detail label="Role" value={request.staffingDetails.role || '—'} />
+                                        <Detail label="People needed" value={request.staffingDetails.headcount?.toString() || '—'} />
+                                        <Detail label="Requested team member" value={request.staffingDetails.teamMember || '—'} />
+                                        <Detail label="Team / department" value={request.staffingDetails.team || '—'} />
+                                        <Detail label="Requested start" value={request.staffingDetails.startDate || '—'} />
+                                        <Detail label="Employment type" value={request.staffingDetails.employmentType ? capitalize(request.staffingDetails.employmentType) : '—'} />
+                                        <Detail label="Allocation" value={request.staffingDetails.allocationPercentage ? `${request.staffingDetails.allocationPercentage}%` : '—'} />
+                                        <Detail label="Required skills" value={request.staffingDetails.skills || '—'} multiline />
+                                    </div>
+                                </div>
+                            )}
                             {request.productUrl && (
                                 <div>
                                     <p className="text-xs font-bold text-slate-400 uppercase tracking-widest">Product URL</p>

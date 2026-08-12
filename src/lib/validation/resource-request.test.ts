@@ -7,6 +7,7 @@ import {
 } from './resource-request'
 
 const validValues: ResourceRequestFormValues = {
+    ...emptyResourceRequestFormValues,
     title: 'Standing desk',
     categoryId: 'Hardware',
     description: 'A height adjustable standing desk for my home office.',
@@ -118,5 +119,33 @@ describe('validateResourceRequest', () => {
     it('trims whitespace-only fields as empty', () => {
         const errors = validateResourceRequest({ ...validValues, title: '   ' })
         expect(errors.title).toContain('required')
+    })
+
+    it('requires headcount-specific fields for a headcount request', () => {
+        const values = {
+            ...validValues,
+            requestType: 'headcount',
+            categoryId: '',
+            role: 'Backend Engineer',
+            headcount: '2',
+            team: 'Engineering',
+            startDate: '2026-09-01',
+            employmentType: 'permanent',
+        }
+        expect(validateResourceRequest(values)).toEqual({})
+    })
+
+    it('requires an allocated team member and valid percentage', () => {
+        const values = {
+            ...validValues,
+            requestType: 'team_allocation',
+            categoryId: '',
+            teamMember: 'Jane Doe',
+            team: 'Product Launch',
+            startDate: '2026-09-01',
+            allocationPercentage: '50',
+        }
+        expect(validateResourceRequest(values)).toEqual({})
+        expect(validateResourceRequest({ ...values, allocationPercentage: '101' }).allocationPercentage).toContain('1 to 100')
     })
 })

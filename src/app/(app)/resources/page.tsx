@@ -28,6 +28,7 @@ import {
 } from '@/components/ui/table'
 
 const capitalize = (value: string) => value.charAt(0).toUpperCase() + value.slice(1)
+const requestTypeLabel = (value: ResourceRequest['requestType']) => value === 'team_allocation' ? 'Team Allocation' : value === 'headcount' ? 'Headcount' : 'Resource'
 
 export default function ResourcesPage() {
     const { apiAccessToken, isHydrating } = useApp()
@@ -182,6 +183,7 @@ export default function ResourcesPage() {
                                     <TableHead className="pl-8 py-4 text-[10px] font-extrabold uppercase tracking-widest text-slate-400">Request</TableHead>
                                     <TableHead className="py-4 text-[10px] font-extrabold uppercase tracking-widest text-slate-400">Requested by</TableHead>
                                     <TableHead className="py-4 text-[10px] font-extrabold uppercase tracking-widest text-slate-400">Category</TableHead>
+                                    <TableHead className="py-4 text-[10px] font-extrabold uppercase tracking-widest text-slate-400">Type</TableHead>
                                     <TableHead className="py-4 text-[10px] font-extrabold uppercase tracking-widest text-slate-400">Priority</TableHead>
                                     <TableHead className="py-4 text-[10px] font-extrabold uppercase tracking-widest text-slate-400">Est. Cost</TableHead>
                                     <TableHead className="py-4 text-[10px] font-extrabold uppercase tracking-widest text-slate-400">Status</TableHead>
@@ -191,7 +193,7 @@ export default function ResourcesPage() {
                             <TableBody>
                                 {filteredRequests.length === 0 ? (
                                     <TableRow>
-                                        <TableCell colSpan={7} className="p-20 text-center">
+                                        <TableCell colSpan={8} className="p-20 text-center">
                                             <Package className="w-10 h-10 mx-auto mb-3 text-slate-300" />
                                             <p className="font-medium text-slate-500">
                                                 {hasActiveFilters
@@ -221,6 +223,7 @@ export default function ResourcesPage() {
                                         </TableCell>
                                         <TableCell className="py-5 text-sm text-slate-600">{request.employeeName || '—'}</TableCell>
                                         <TableCell className="py-5 text-sm text-slate-600">{request.category || '—'}</TableCell>
+                                        <TableCell className="py-5 text-sm text-slate-600">{requestTypeLabel(request.requestType)}</TableCell>
                                         <TableCell className="py-5 text-sm text-slate-600 capitalize">{request.priority}</TableCell>
                                         <TableCell className="py-5 text-sm text-slate-600">
                                             {request.estimatedCost != null

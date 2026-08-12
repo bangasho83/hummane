@@ -1433,6 +1433,17 @@ export type ResourceRequestPayload = {
   priority: string
   estimatedCost?: number
   productUrl?: string
+  requestType?: 'resource' | 'headcount' | 'team_allocation'
+  staffingDetails?: {
+    role?: string
+    headcount?: number
+    skills?: string
+    team?: string
+    startDate?: string
+    employmentType?: 'permanent' | 'temporary'
+    teamMember?: string
+    allocationPercentage?: number
+  }
   employeeId?: string
   companyId: string
 }

@@ -13,7 +13,7 @@ import {
     SelectValue,
 } from '@/components/ui/select'
 import { Loader2 } from 'lucide-react'
-import { RESOURCE_REQUEST_PRIORITIES, type ResourceCategory } from '@/types'
+import { RESOURCE_REQUEST_PRIORITIES, RESOURCE_REQUEST_TYPES, type ResourceCategory, type ResourceRequestType } from '@/types'
 import {
     validateResourceRequest,
     type ResourceRequestFormErrors,
@@ -65,23 +65,45 @@ export function ResourceRequestForm({
         onSubmit(values)
     }
 
+    const requestType = values.requestType as ResourceRequestType
+    const isStaffingRequest = requestType === 'headcount' || requestType === 'team_allocation'
+    const requestTypeLabel = requestType === 'headcount'
+        ? 'Headcount'
+        : requestType === 'team_allocation'
+            ? 'Team Allocation'
+            : 'Resource / Asset'
+
     return (
         <form onSubmit={handleSubmit} className="space-y-6">
             <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
                 <div className="md:col-span-2">
-                    <Label htmlFor="title">Title</Label>
+                    <Label htmlFor="requestType">Request type</Label>
+                    <Select value={values.requestType} onValueChange={(value) => setField('requestType', value)} disabled={submitting}>
+                        <SelectTrigger id="requestType" className="mt-2"><SelectValue /></SelectTrigger>
+                        <SelectContent>
+                            {RESOURCE_REQUEST_TYPES.map((type) => (
+                                <SelectItem key={type} value={type}>
+                                    {type === 'resource' ? 'Resource / Asset' : type === 'headcount' ? 'Headcount' : 'Team Allocation'}
+                                </SelectItem>
+                            ))}
+                        </SelectContent>
+                    </Select>
+                    {errors.requestType && <p className={fieldError}>{errors.requestType}</p>}
+                </div>
+                <div className="md:col-span-2">
+                    <Label htmlFor="title">{isStaffingRequest ? 'Request title' : 'Title'}</Label>
                     <Input
                         id="title"
                         value={values.title}
                         onChange={(e) => setField('title', e.target.value)}
-                        placeholder="e.g. Standing desk for home office"
+                        placeholder={isStaffingRequest ? `e.g. ${requestTypeLabel} for the Product team` : 'e.g. Standing desk for home office'}
                         className="mt-2"
                         disabled={submitting}
                     />
                     {errors.title && <p className={fieldError}>{errors.title}</p>}
                 </div>
 
-                <div>
+                {!isStaffingRequest && <div>
                     <Label htmlFor="category">Category</Label>
                     <Select
                         value={values.categoryId || 'none'}
@@ -95,7 +117,7 @@ export function ResourceRequestForm({
                         </SelectTrigger>
                         <SelectContent>
                             <SelectItem value="none" disabled>Select a category</SelectItem>
-                            {categories.map((c) => (
+                            {categories.filter((category) => category.name !== 'Staffing').map((c) => (
                                 <SelectItem key={c.name} value={c.name}>
                                     {c.name}
                                 </SelectItem>
@@ -103,7 +125,7 @@ export function ResourceRequestForm({
                         </SelectContent>
                     </Select>
                     {errors.categoryId && <p className={fieldError}>{errors.categoryId}</p>}
-                </div>
+                </div>}
 
                 <div>
                     <Label htmlFor="priority">Priority</Label>
@@ -127,7 +149,7 @@ export function ResourceRequestForm({
                     {errors.priority && <p className={fieldError}>{errors.priority}</p>}
                 </div>
 
-                <div>
+                {!isStaffingRequest && <div>
                     <Label htmlFor="estimatedCost">Estimated Cost (optional)</Label>
                     <Input
                         id="estimatedCost"
@@ -143,9 +165,9 @@ export function ResourceRequestForm({
                     {errors.estimatedCost && (
                         <p className={fieldError}>{errors.estimatedCost}</p>
                     )}
-                </div>
+                </div>}
 
-                <div>
+                {!isStaffingRequest && <div>
                     <Label htmlFor="productUrl">Product URL (optional)</Label>
                     <Input
                         id="productUrl"
@@ -156,7 +178,63 @@ export function ResourceRequestForm({
                         disabled={submitting}
                     />
                     {errors.productUrl && <p className={fieldError}>{errors.productUrl}</p>}
-                </div>
+                </div>}
+
+                {requestType === 'headcount' && <>
+                    <div>
+                        <Label htmlFor="role">Role / job title</Label>
+                        <Input id="role" value={values.role} onChange={(e) => setField('role', e.target.value)} placeholder="e.g. Senior Backend Engineer" className="mt-2" disabled={submitting} />
+                        {errors.role && <p className={fieldError}>{errors.role}</p>}
+                    </div>
+                    <div>
+                        <Label htmlFor="headcount">People needed</Label>
+                        <Input id="headcount" type="number" min="1" step="1" value={values.headcount} onChange={(e) => setField('headcount', e.target.value)} placeholder="1" className="mt-2" disabled={submitting} />
+                        {errors.headcount && <p className={fieldError}>{errors.headcount}</p>}
+                    </div>
+                    <div>
+                        <Label htmlFor="team">Team / department</Label>
+                        <Input id="team" value={values.team} onChange={(e) => setField('team', e.target.value)} placeholder="e.g. Engineering" className="mt-2" disabled={submitting} />
+                        {errors.team && <p className={fieldError}>{errors.team}</p>}
+                    </div>
+                    <div>
+                        <Label htmlFor="employmentType">Employment type</Label>
+                        <Select value={values.employmentType || 'none'} onValueChange={(value) => setField('employmentType', value)} disabled={submitting}>
+                            <SelectTrigger id="employmentType" className="mt-2"><SelectValue placeholder="Select employment type" /></SelectTrigger>
+                            <SelectContent><SelectItem value="none" disabled>Select employment type</SelectItem><SelectItem value="permanent">Permanent</SelectItem><SelectItem value="temporary">Temporary</SelectItem></SelectContent>
+                        </Select>
+                        {errors.employmentType && <p className={fieldError}>{errors.employmentType}</p>}
+                    </div>
+                </>}
+
+                {isStaffingRequest && <div>
+                    <Label htmlFor="startDate">Requested start date</Label>
+                    <Input id="startDate" type="date" value={values.startDate} onChange={(e) => setField('startDate', e.target.value)} className="mt-2" disabled={submitting} />
+                    {errors.startDate && <p className={fieldError}>{errors.startDate}</p>}
+                </div>}
+
+                {requestType === 'team_allocation' && <>
+                    <div>
+                        <Label htmlFor="teamMember">Requested team member</Label>
+                        <Input id="teamMember" value={values.teamMember} onChange={(e) => setField('teamMember', e.target.value)} placeholder="Name of the employee to allocate" className="mt-2" disabled={submitting} />
+                        {errors.teamMember && <p className={fieldError}>{errors.teamMember}</p>}
+                    </div>
+                    <div>
+                        <Label htmlFor="team">Team / project</Label>
+                        <Input id="team" value={values.team} onChange={(e) => setField('team', e.target.value)} placeholder="e.g. Product launch" className="mt-2" disabled={submitting} />
+                        {errors.team && <p className={fieldError}>{errors.team}</p>}
+                    </div>
+                    <div>
+                        <Label htmlFor="allocationPercentage">Allocation percentage</Label>
+                        <Input id="allocationPercentage" type="number" min="1" max="100" step="1" value={values.allocationPercentage} onChange={(e) => setField('allocationPercentage', e.target.value)} placeholder="e.g. 50" className="mt-2" disabled={submitting} />
+                        {errors.allocationPercentage && <p className={fieldError}>{errors.allocationPercentage}</p>}
+                    </div>
+                </>}
+
+                {isStaffingRequest && <div className="md:col-span-2">
+                    <Label htmlFor="skills">Required skills (optional)</Label>
+                    <Textarea id="skills" value={values.skills} onChange={(e) => setField('skills', e.target.value)} placeholder="List the skills, experience, or domain knowledge needed." className="mt-2 min-h-[90px]" disabled={submitting} />
+                    {errors.skills && <p className={fieldError}>{errors.skills}</p>}
+                </div>}
             </div>
 
             <div>
@@ -165,7 +243,7 @@ export function ResourceRequestForm({
                     id="description"
                     value={values.description}
                     onChange={(e) => setField('description', e.target.value)}
-                    placeholder="Describe what you need and why."
+                    placeholder={isStaffingRequest ? 'Describe the staffing need and why it is required.' : 'Describe what you need and why.'}
                     className="mt-2 min-h-[120px]"
                     disabled={submitting}
                 />

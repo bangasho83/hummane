@@ -18,6 +18,8 @@ import { Package, Loader2, Plus } from 'lucide-react'
 import { fetchResourceRequestsApi } from '@/lib/api/client'
 import { ResourceRequestStatusBadge } from '@/features/member/components/ResourceRequestStatusBadge'
 
+const requestTypeLabel = (value: ResourceRequest['requestType']) => value === 'team_allocation' ? 'Team Allocation' : value === 'headcount' ? 'Headcount' : 'Resource'
+
 export default function MemberResourceRequestPage() {
     const { employees, meProfile, isHydrating, apiAccessToken } = useApp()
     const [requests, setRequests] = useState<ResourceRequest[]>([])
@@ -124,6 +126,7 @@ export default function MemberResourceRequestPage() {
                                 <TableRow className="hover:bg-transparent border-slate-100">
                                     <TableHead className="pl-8 py-4 text-[10px] font-extrabold uppercase tracking-widest text-slate-400">Title</TableHead>
                                     <TableHead className="py-4 text-[10px] font-extrabold uppercase tracking-widest text-slate-400">Category</TableHead>
+                                    <TableHead className="py-4 text-[10px] font-extrabold uppercase tracking-widest text-slate-400">Type</TableHead>
                                     <TableHead className="py-4 text-[10px] font-extrabold uppercase tracking-widest text-slate-400">Priority</TableHead>
                                     <TableHead className="py-4 text-[10px] font-extrabold uppercase tracking-widest text-slate-400">Est. Cost</TableHead>
                                     <TableHead className="py-4 text-[10px] font-extrabold uppercase tracking-widest text-slate-400">Status</TableHead>
@@ -133,7 +136,7 @@ export default function MemberResourceRequestPage() {
                             <TableBody>
                                 {requests.length === 0 ? (
                                     <TableRow>
-                                        <TableCell colSpan={6} className="py-12 text-center text-slate-500">
+                                        <TableCell colSpan={7} className="py-12 text-center text-slate-500">
                                             No resource requests yet. Create your first one.
                                         </TableCell>
                                     </TableRow>
@@ -149,6 +152,7 @@ export default function MemberResourceRequestPage() {
                                                 </Link>
                                             </TableCell>
                                             <TableCell className="py-5 text-sm text-slate-600">{request.category || '—'}</TableCell>
+                                            <TableCell className="py-5 text-sm text-slate-600">{requestTypeLabel(request.requestType)}</TableCell>
                                             <TableCell className="py-5 text-sm text-slate-600 capitalize">{request.priority}</TableCell>
                                             <TableCell className="py-5 text-sm text-slate-600">
                                                 {request.estimatedCost != null

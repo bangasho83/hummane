@@ -33,6 +33,9 @@ export type FeedbackSubject = typeof FEEDBACK_SUBJECTS[number]
 export const RESOURCE_REQUEST_PRIORITIES = ['low', 'normal', 'high', 'urgent'] as const
 export type ResourceRequestPriority = typeof RESOURCE_REQUEST_PRIORITIES[number]
 
+export const RESOURCE_REQUEST_TYPES = ['resource', 'headcount', 'team_allocation'] as const
+export type ResourceRequestType = typeof RESOURCE_REQUEST_TYPES[number]
+
 export const RESOURCE_REQUEST_STATUSES = ['pending', 'approved', 'rejected', 'fulfilled', 'cancelled'] as const
 export type ResourceRequestStatus = typeof RESOURCE_REQUEST_STATUSES[number]
 export const RESOURCE_REQUEST_ADMIN_STATUSES = ['approved', 'rejected', 'fulfilled', 'cancelled'] as const

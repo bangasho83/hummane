@@ -61,15 +61,35 @@ export default function MemberNewResourceRequestPage() {
         setSubmitting(true)
         try {
             const estimatedCostRaw = values.estimatedCost.trim()
+            const isStaffingRequest = values.requestType === 'headcount' || values.requestType === 'team_allocation'
             await createResourceRequestApi(
                 {
                     title: values.title.trim(),
-                    category: values.categoryId,
+                    category: isStaffingRequest ? 'Staffing' : values.categoryId,
                     description: values.description.trim(),
                     goalAlignment: values.goalAlignment.trim() || undefined,
                     priority: values.priority,
                     estimatedCost: estimatedCostRaw ? Number(estimatedCostRaw) : undefined,
                     productUrl: values.productUrl.trim() || undefined,
+                    requestType: values.requestType as 'resource' | 'headcount' | 'team_allocation',
+                    staffingDetails: values.requestType === 'headcount'
+                        ? {
+                            role: values.role.trim(),
+                            headcount: Number(values.headcount),
+                            skills: values.skills.trim() || undefined,
+                            team: values.team.trim(),
+                            startDate: values.startDate,
+                            employmentType: values.employmentType as 'permanent' | 'temporary',
+                        }
+                        : values.requestType === 'team_allocation'
+                            ? {
+                                skills: values.skills.trim() || undefined,
+                                team: values.team.trim(),
+                                startDate: values.startDate,
+                                teamMember: values.teamMember.trim(),
+                                allocationPercentage: Number(values.allocationPercentage),
+                            }
+                            : undefined,
                     employeeId,
                     companyId,
                 },
