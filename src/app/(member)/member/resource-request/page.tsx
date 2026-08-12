@@ -17,6 +17,7 @@ import {
 import { Package, Loader2, Plus } from 'lucide-react'
 import { fetchResourceRequestsApi } from '@/lib/api/client'
 import { ResourceRequestStatusBadge } from '@/features/member/components/ResourceRequestStatusBadge'
+import { MemberResourceTabs } from '@/features/member/components/MemberResourceTabs'
 
 const requestTypeLabel = (value: ResourceRequest['requestType']) => value === 'team_allocation' ? 'Team Allocation' : value === 'headcount' ? 'Headcount' : 'Resource'
 
@@ -89,6 +90,7 @@ export default function MemberResourceRequestPage() {
 
     return (
         <div className="animate-in fade-in duration-500 slide-in-from-bottom-4 space-y-6">
+            <MemberResourceTabs />
             <div className="flex items-end justify-between gap-4">
                 <div>
                     <h1 className="text-3xl font-extrabold text-slate-900 tracking-tight">Resource Request</h1>
