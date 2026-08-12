@@ -49,7 +49,7 @@ import {
     textValue,
 } from '@/features/resources/resource-ui'
 
-interface ResourceDetailProps { id: string; mode?: 'resource' | 'book' }
+interface ResourceDetailProps { id: string; mode?: 'resource' | 'book' | 'subscription' }
 
 export function ResourceDetail({ id, mode = 'resource' }: ResourceDetailProps) {
     const router = useRouter()
@@ -60,7 +60,7 @@ export function ResourceDetail({ id, mode = 'resource' }: ResourceDetailProps) {
     const [vendors, setVendors] = useState<Vendor[]>([])
     const [assignmentOpen, setAssignmentOpen] = useState(false)
     const [retiring, setRetiring] = useState(false)
-    const listPath = mode === 'book' ? '/resources/books' : '/resources/assets'
+    const listPath = mode === 'book' ? '/resources/books' : mode === 'subscription' ? '/resources/subscriptions' : '/resources/assets'
 
     const load = useCallback(async () => {
         if (!apiAccessToken || !id) { setLoading(false); return }
@@ -71,8 +71,8 @@ export function ResourceDetail({ id, mode = 'resource' }: ResourceDetailProps) {
                 fetchResourceApi(id, apiAccessToken),
                 fetchVendorsApi(apiAccessToken).catch(() => [] as Vendor[]),
             ])
-            const expected = mode === 'book' ? resourceType(item) === 'book' : !['book', 'expense', 'reimbursement'].includes(resourceType(item))
-            if (!expected) throw new Error(mode === 'book' ? 'Book not found' : 'Resource not found')
+            const expected = mode === 'book' ? resourceType(item) === 'book' : mode === 'subscription' ? resourceType(item) === 'subscription' : !['book', 'expense', 'reimbursement', 'subscription'].includes(resourceType(item))
+            if (!expected) throw new Error(mode === 'book' ? 'Book not found' : mode === 'subscription' ? 'Subscription not found' : 'Resource not found')
             setResource(item)
             setVendors(vendorItems)
         }
