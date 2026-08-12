@@ -3,7 +3,7 @@
 import { useEffect, useMemo, useState } from 'react'
 import { useRouter } from 'next/navigation'
 import { Loader2, Paperclip, Save } from 'lucide-react'
-import type { Resource, ResourceCategory, ResourceTemplate, Vendor } from '@/types'
+import type { Resource, ResourceCategory, ResourceTemplate, ResourceType, Vendor } from '@/types'
 import {
     RESOURCE_ASSIGNMENT_TYPES,
     RESOURCE_COST_TYPES,
@@ -48,6 +48,11 @@ import {
 interface ResourceFormProps {
     mode: 'resource' | 'bill'
     resource?: Resource | null
+    initialResourceType?: ResourceType
+    resourceLabel?: string
+    resourceListPath?: string
+    initialPaidByEmployeeId?: string
+    hideAssignment?: boolean
 }
 
 type FormState = ResourceFormValues & Record<string, unknown>
@@ -106,12 +111,16 @@ const toFormState = (mode: 'resource' | 'bill', resource?: Resource | null): For
     } as FormState
 }
 
-export function ResourceForm({ mode, resource }: ResourceFormProps) {
+export function ResourceForm({ mode, resource, initialResourceType, resourceLabel, resourceListPath, initialPaidByEmployeeId, hideAssignment = false }: ResourceFormProps) {
     const router = useRouter()
     const { apiAccessToken, employees } = useApp()
     const editing = !!resource
-    const listPath = mode === 'bill' ? '/resources/bills' : '/resources/assets'
-    const [values, setValues] = useState<FormState>(() => toFormState(mode, resource))
+    const listPath = resourceListPath || (mode === 'bill' ? '/resources/bills' : '/resources/assets')
+    const [values, setValues] = useState<FormState>(() => ({
+        ...toFormState(mode, resource),
+        ...(!resource && initialResourceType ? { resourceType: initialResourceType } : {}),
+        ...(!resource && initialPaidByEmployeeId ? { paidByEmployeeId: initialPaidByEmployeeId } : {}),
+    }))
     const [errors, setErrors] = useState<FormErrors>({})
     const [categories, setCategories] = useState<ResourceCategory[]>([])
     const [vendors, setVendors] = useState<Vendor[]>([])
@@ -120,7 +129,11 @@ export function ResourceForm({ mode, resource }: ResourceFormProps) {
     const [optionsLoading, setOptionsLoading] = useState(true)
     const [saving, setSaving] = useState(false)
 
-    useEffect(() => setValues(toFormState(mode, resource)), [mode, resource])
+    useEffect(() => setValues({
+        ...toFormState(mode, resource),
+        ...(!resource && initialResourceType ? { resourceType: initialResourceType } : {}),
+        ...(!resource && initialPaidByEmployeeId ? { paidByEmployeeId: initialPaidByEmployeeId } : {}),
+    }), [initialPaidByEmployeeId, initialResourceType, mode, resource])
 
     useEffect(() => {
         let active = true
@@ -252,10 +265,10 @@ export function ResourceForm({ mode, resource }: ResourceFormProps) {
             const payload = buildPayload()
             if (editing && resource) {
                 await updateResourceApi(resourceId(resource), payload, apiAccessToken)
-                toast(mode === 'bill' ? 'Bill updated.' : 'Resource updated.', 'success')
+                toast(`${resourceLabel || (mode === 'bill' ? 'Bill' : 'Resource')} updated.`, 'success')
             } else {
                 await createResourceApi(payload, apiAccessToken)
-                toast(mode === 'bill' ? 'Bill created.' : 'Resource created.', 'success')
+                toast(`${resourceLabel || (mode === 'bill' ? 'Bill' : 'Resource')} created.`, 'success')
             }
             router.push(listPath)
             router.refresh()
@@ -316,7 +329,7 @@ export function ResourceForm({ mode, resource }: ResourceFormProps) {
                 </CardContent>
             </Card>
 
-            <AdaptiveDetails type={type} values={values} errors={errors} setField={setField} employees={employeeOptions.map(asRecord)} disabled={saving} />
+            <AdaptiveDetails type={type} values={values} errors={errors} setField={setField} employees={employeeOptions.map(asRecord)} disabled={saving} fixedEmployeeId={initialPaidByEmployeeId} />
 
             <Card className="rounded-3xl border-slate-100 bg-white shadow-premium">
                 <CardHeader className="px-8 pt-8"><CardTitle className="text-lg">Cost &amp; attachments</CardTitle></CardHeader>
@@ -345,7 +358,7 @@ export function ResourceForm({ mode, resource }: ResourceFormProps) {
                 </CardContent>
             </Card>
 
-            {!editing && mode === 'resource' && (
+            {!editing && mode === 'resource' && !hideAssignment && (
                 <Card className="rounded-3xl border-slate-100 bg-white shadow-premium">
                     <CardHeader className="px-8 pt-8"><CardTitle className="text-lg">Initial assignment <span className="font-normal text-slate-400">(optional)</span></CardTitle></CardHeader>
                     <CardContent className="grid grid-cols-1 gap-6 p-8 pt-2 md:grid-cols-2">
@@ -383,14 +396,14 @@ export function ResourceForm({ mode, resource }: ResourceFormProps) {
                 <Button type="button" variant="outline" className="rounded-xl border-slate-200" onClick={() => router.push(listPath)} disabled={saving}>Cancel</Button>
                 <Button type="submit" className="rounded-xl bg-blue-600 text-white hover:bg-blue-700" disabled={saving}>
                     {saving ? <Loader2 className="h-4 w-4 animate-spin" /> : <Save className="h-4 w-4" />}
-                    {editing ? 'Save changes' : mode === 'bill' ? 'Add bill' : 'Add resource'}
+                    {editing ? 'Save changes' : mode === 'bill' ? 'Add bill' : `Add ${resourceLabel || 'resource'}`}
                 </Button>
             </div>
         </form>
     )
 }
 
-function AdaptiveDetails({ type, values, errors, setField, employees, disabled }: { type: string; values: FormState; errors: FormErrors; setField: (key: string, value: unknown) => void; employees: Array<Record<string, unknown>>; disabled: boolean }) {
+function AdaptiveDetails({ type, values, errors, setField, employees, disabled, fixedEmployeeId }: { type: string; values: FormState; errors: FormErrors; setField: (key: string, value: unknown) => void; employees: Array<Record<string, unknown>>; disabled: boolean; fixedEmployeeId?: string }) {
     const definitions: Record<string, Array<{ key: string; label: string; kind?: string }>> = {
         physical_asset: [
             { key: 'brand', label: 'Brand' }, { key: 'model', label: 'Model' },
@@ -420,10 +433,14 @@ function AdaptiveDetails({ type, values, errors, setField, employees, disabled }
                 )}
                 {type === 'reimbursement' && (
                     <Field label="Paid by employee" error={errors.paidByEmployeeId} required>
-                        <Select value={textValue(values.paidByEmployeeId)} onValueChange={(value) => setField('paidByEmployeeId', value)} disabled={disabled}>
-                            <SelectTrigger className={fieldClass}><SelectValue placeholder="Select employee" /></SelectTrigger>
-                            <SelectContent>{employees.map((employee) => <SelectItem key={textValue(employee.id)} value={textValue(employee.id)}>{employeeDisplayName(employee)}</SelectItem>)}</SelectContent>
-                        </Select>
+                        {fixedEmployeeId ? (
+                            <Input value="You" readOnly className={`${fieldClass} bg-slate-50 text-slate-500`} />
+                        ) : (
+                            <Select value={textValue(values.paidByEmployeeId)} onValueChange={(value) => setField('paidByEmployeeId', value)} disabled={disabled}>
+                                <SelectTrigger className={fieldClass}><SelectValue placeholder="Select employee" /></SelectTrigger>
+                                <SelectContent>{employees.map((employee) => <SelectItem key={textValue(employee.id)} value={textValue(employee.id)}>{employeeDisplayName(employee)}</SelectItem>)}</SelectContent>
+                            </Select>
+                        )}
                     </Field>
                 )}
                 {fields.map((field) => (

@@ -44,7 +44,7 @@ export default function MemberResourcesPage() {
         <div className="space-y-6">
             <div>
                 <p className="mb-2 text-xs font-extrabold uppercase tracking-[0.2em] text-blue-600">Employee Portal</p>
-                <h1 className="text-3xl font-extrabold tracking-tight text-slate-900">My Resources</h1>
+                <h1 className="text-3xl font-extrabold tracking-tight text-slate-900">Library</h1>
                 <p className="font-medium text-slate-500">Resources currently assigned to you.</p>
             </div>
             <Card className="overflow-hidden rounded-3xl border-slate-100 bg-white shadow-premium">
