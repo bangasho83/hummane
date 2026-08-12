@@ -40,6 +40,7 @@ export type ResourceRequestAdminStatus = typeof RESOURCE_REQUEST_ADMIN_STATUSES[
 
 export const RESOURCE_TYPES = [
   'physical_asset',
+  'book',
   'subscription',
   'service',
   'expense',

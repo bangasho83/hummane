@@ -52,7 +52,7 @@ describe('validateResource', () => {
 
     it('accepts valid common fields and every resource type', () => {
         for (const resourceType of [
-            'physical_asset', 'subscription', 'service', 'expense', 'event', 'reimbursement',
+            'physical_asset', 'book', 'subscription', 'service', 'expense', 'event', 'reimbursement',
         ]) {
             const values = validValues()
             values.resourceType = resourceType

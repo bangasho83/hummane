@@ -2,12 +2,13 @@
 
 import Link from 'next/link'
 import { usePathname } from 'next/navigation'
-import { BarChart3, BookOpen, ClipboardList, ReceiptText, Shapes } from 'lucide-react'
+import { BarChart3, BookOpen, ClipboardList, Package, ReceiptText, Shapes } from 'lucide-react'
 import { cn } from '@/lib/utils'
 
 const tabs = [
     { href: '/resources', label: 'Requests', icon: ClipboardList, exact: true },
-    { href: '/resources/assets', label: 'Library', icon: BookOpen },
+    { href: '/resources/assets', label: 'Resources', icon: Package },
+    { href: '/resources/books', label: 'Books', icon: BookOpen },
     { href: '/resources/bills', label: 'Bills', icon: ReceiptText },
     { href: '/resources/reimbursements', label: 'Reimbursements', icon: ReceiptText },
     { href: '/resources/templates', label: 'Templates', icon: Shapes },
@@ -20,7 +21,7 @@ export function ResourceTabs() {
         <div className="flex flex-wrap gap-2">
             {tabs.map((tab) => {
                 const active = tab.exact
-                    ? pathname === tab.href || (pathname.startsWith('/resources/') && !pathname.startsWith('/resources/assets') && !pathname.startsWith('/resources/bills') && !pathname.startsWith('/resources/reimbursements') && !pathname.startsWith('/resources/templates') && !pathname.startsWith('/resources/reports'))
+                    ? pathname === tab.href || (pathname.startsWith('/resources/') && !pathname.startsWith('/resources/assets') && !pathname.startsWith('/resources/books') && !pathname.startsWith('/resources/bills') && !pathname.startsWith('/resources/reimbursements') && !pathname.startsWith('/resources/templates') && !pathname.startsWith('/resources/reports'))
                     : pathname.startsWith(tab.href)
                 const Icon = tab.icon
                 return (

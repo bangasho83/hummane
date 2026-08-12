@@ -64,7 +64,7 @@ export function AssetList() {
                 fetchResourcesApi(apiAccessToken, { limit: 100 }),
                 fetchVendorsApi(apiAccessToken).catch(() => [] as Vendor[]),
             ])
-            setResources(items.filter((item) => resourceType(item) !== 'expense'))
+            setResources(items.filter((item) => !['book', 'expense', 'reimbursement'].includes(resourceType(item))))
             setVendors(vendorItems)
         } catch (loadError) {
             setResources([])
@@ -136,7 +136,7 @@ export function AssetList() {
                 <CardContent className="p-0">
                     <div className="flex flex-wrap items-center gap-3 border-b border-slate-100 p-5 sm:p-8">
                         <div className="relative min-w-[240px] flex-1"><Search className="absolute left-4 top-1/2 h-4 w-4 -translate-y-1/2 text-slate-400" /><Input value={search} onChange={(event) => setSearch(event.target.value)} placeholder="Search resources…" className="h-12 rounded-2xl border-slate-100 bg-slate-50 pl-11" /></div>
-                        <Filter value={typeFilter} setValue={setTypeFilter} label="All types" options={(RESOURCE_TYPES as readonly string[]).filter((item) => item !== 'expense')} />
+                        <Filter value={typeFilter} setValue={setTypeFilter} label="All types" options={(RESOURCE_TYPES as readonly string[]).filter((item) => !['book', 'expense', 'reimbursement'].includes(item))} />
                         <Filter value={statusFilter} setValue={setStatusFilter} label="All statuses" options={RESOURCE_STATUSES as readonly string[]} />
                         <Filter value={categoryFilter} setValue={setCategoryFilter} label="All categories" options={categories} rawLabels />
                         <Filter value={assignmentFilter} setValue={setAssignmentFilter} label="All assignments" options={RESOURCE_ASSIGNMENT_TYPES as readonly string[]} />

@@ -38,6 +38,11 @@ export interface ResourceFormValues {
     renewalDate: string
     affectedResourceId: string
     invoiceNumber: string
+    author: string
+    publisher: string
+    edition: string
+    publicationYear: string
+    condition: string
     assignmentNote: string
 }
 
@@ -70,6 +75,11 @@ export const emptyResourceFormValues = (mode: ResourceFormMode): ResourceFormVal
     renewalDate: '',
     affectedResourceId: '',
     invoiceNumber: '',
+    author: '',
+    publisher: '',
+    edition: '',
+    publicationYear: '',
+    condition: '',
     assignmentNote: '',
 })
 

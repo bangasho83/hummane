@@ -53,6 +53,8 @@ interface ResourceFormProps {
     resourceListPath?: string
     initialPaidByEmployeeId?: string
     hideAssignment?: boolean
+    lockedResourceType?: ResourceType
+    initialCategory?: string
 }
 
 type FormState = ResourceFormValues & Record<string, unknown>
@@ -111,14 +113,15 @@ const toFormState = (mode: 'resource' | 'bill', resource?: Resource | null): For
     } as FormState
 }
 
-export function ResourceForm({ mode, resource, initialResourceType, resourceLabel, resourceListPath, initialPaidByEmployeeId, hideAssignment = false }: ResourceFormProps) {
+export function ResourceForm({ mode, resource, initialResourceType, resourceLabel, resourceListPath, initialPaidByEmployeeId, hideAssignment = false, lockedResourceType, initialCategory }: ResourceFormProps) {
     const router = useRouter()
     const { apiAccessToken, employees } = useApp()
     const editing = !!resource
     const listPath = resourceListPath || (mode === 'bill' ? '/resources/bills' : '/resources/assets')
     const [values, setValues] = useState<FormState>(() => ({
         ...toFormState(mode, resource),
-        ...(!resource && initialResourceType ? { resourceType: initialResourceType } : {}),
+        ...(!resource && (lockedResourceType || initialResourceType) ? { resourceType: lockedResourceType || initialResourceType } : {}),
+        ...(!resource && initialCategory ? { category: initialCategory } : {}),
         ...(!resource && initialPaidByEmployeeId ? { paidByEmployeeId: initialPaidByEmployeeId } : {}),
     }))
     const [errors, setErrors] = useState<FormErrors>({})
@@ -131,9 +134,10 @@ export function ResourceForm({ mode, resource, initialResourceType, resourceLabe
 
     useEffect(() => setValues({
         ...toFormState(mode, resource),
-        ...(!resource && initialResourceType ? { resourceType: initialResourceType } : {}),
+        ...(!resource && (lockedResourceType || initialResourceType) ? { resourceType: lockedResourceType || initialResourceType } : {}),
+        ...(!resource && initialCategory ? { category: initialCategory } : {}),
         ...(!resource && initialPaidByEmployeeId ? { paidByEmployeeId: initialPaidByEmployeeId } : {}),
-    }), [initialPaidByEmployeeId, initialResourceType, mode, resource])
+    }), [initialCategory, initialPaidByEmployeeId, initialResourceType, lockedResourceType, mode, resource])
 
     useEffect(() => {
         let active = true
@@ -163,7 +167,7 @@ export function ResourceForm({ mode, resource, initialResourceType, resourceLabe
         return () => { active = false }
     }, [apiAccessToken])
 
-    const type = mode === 'bill' ? 'expense' : textValue(values.resourceType)
+    const type = mode === 'bill' ? 'expense' : lockedResourceType || textValue(values.resourceType)
     const assignmentType = mode === 'bill' ? 'company' : textValue(values.assignmentType)
     const employeeOptions = useMemo(
         () => [...employees].sort((a, b) => a.name.localeCompare(b.name)),
@@ -192,7 +196,7 @@ export function ResourceForm({ mode, resource, initialResourceType, resourceLabe
         setValues((current) => ({
             ...current,
             resourceTemplateId: template.id,
-            resourceType: template.resourceType,
+            resourceType: lockedResourceType || template.resourceType,
             name: template.name,
             category: template.category,
             vendorId: template.vendorId || '',
@@ -210,6 +214,7 @@ export function ResourceForm({ mode, resource, initialResourceType, resourceLabe
             event: [],
             reimbursement: ['invoiceNumber'],
             expense: ['invoiceNumber'],
+            book: ['author', 'publisher', 'edition', 'publicationYear', 'condition'],
         }
         const numeric = new Set(['numberOfSeats'])
         return compact(Object.fromEntries((fields[type] || []).map((key) => [
@@ -284,15 +289,15 @@ export function ResourceForm({ mode, resource, initialResourceType, resourceLabe
             <Card className="rounded-3xl border-slate-100 bg-white shadow-premium">
                 <CardHeader className="px-8 pt-8"><CardTitle className="text-lg">General information</CardTitle></CardHeader>
                 <CardContent className="grid grid-cols-1 gap-6 p-8 pt-2 md:grid-cols-2">
-                    <Field label={mode === 'bill' ? 'Bill name' : 'Resource name'} error={errorFor('name')} required>
-                        <Input value={textValue(values.name)} onChange={(event) => setField('name', event.target.value)} className={fieldClass} placeholder={mode === 'bill' ? 'e.g. June cloud hosting' : 'e.g. Design team MacBook'} disabled={saving} />
+                    <Field label={mode === 'bill' ? 'Bill name' : type === 'book' ? 'Book title' : 'Resource name'} error={errorFor('name')} required>
+                        <Input value={textValue(values.name)} onChange={(event) => setField('name', event.target.value)} className={fieldClass} placeholder={mode === 'bill' ? 'e.g. June cloud hosting' : type === 'book' ? 'e.g. The Pragmatic Programmer' : 'e.g. Design team MacBook'} disabled={saving} />
                     </Field>
-                    {mode === 'resource' ? (
+                    {mode === 'resource' && !lockedResourceType ? (
                         <Field label="Type" error={errorFor('resourceType')} required>
                             <OptionSelect value={type} onChange={(value) => setField('resourceType', value)} options={resourceTypes} placeholder="Select a type" disabled={saving} />
                         </Field>
                     ) : (
-                        <Field label="Type"><Input value="Expense · Company" readOnly className={`${fieldClass} bg-slate-50 text-slate-500`} /></Field>
+                        <Field label="Type"><Input value={mode === 'bill' ? 'Expense · Company' : labelize(type)} readOnly className={`${fieldClass} bg-slate-50 text-slate-500`} /></Field>
                     )}
                     {mode === 'resource' && (
                         <Field label="Template" error={errorFor('resourceTemplateId')}>
@@ -300,7 +305,7 @@ export function ResourceForm({ mode, resource, initialResourceType, resourceLabe
                                 <SelectTrigger className={fieldClass}><SelectValue placeholder={optionsLoading ? 'Loading templates…' : 'Start from a template (optional)'} /></SelectTrigger>
                                 <SelectContent>
                                     <SelectItem value="none">No template</SelectItem>
-                                    {templates.map((template) => <SelectItem key={template.id} value={template.id}>{template.name}</SelectItem>)}
+                                    {templates.filter((template) => !lockedResourceType || template.resourceType === lockedResourceType).map((template) => <SelectItem key={template.id} value={template.id}>{template.name}</SelectItem>)}
                                 </SelectContent>
                             </Select>
                         </Field>
@@ -340,8 +345,8 @@ export function ResourceForm({ mode, resource, initialResourceType, resourceLabe
                     <Field label="Cost type" error={errorFor('costType')}>
                         <OptionSelect value={textValue(values.costType)} onChange={(value) => setField('costType', value)} options={RESOURCE_COST_TYPES as readonly string[]} placeholder="Select cost type" disabled={saving} />
                     </Field>
-                    <Field label="Identifier" error={errorFor('identifier')}>
-                        <Input value={textValue(values.identifier)} onChange={(event) => setField('identifier', event.target.value)} className={fieldClass} placeholder="Asset tag or reference" disabled={saving} />
+                    <Field label={type === 'book' ? 'ISBN or accession number' : 'Identifier'} error={errorFor('identifier')}>
+                        <Input value={textValue(values.identifier)} onChange={(event) => setField('identifier', event.target.value)} className={fieldClass} placeholder={type === 'book' ? 'e.g. 978-0132350884' : 'Asset tag or reference'} disabled={saving} />
                     </Field>
                     <Field label="Attachment URLs" error={errorFor('attachmentUrls')} className="md:col-span-3">
                         <div className="relative">
@@ -418,6 +423,11 @@ function AdaptiveDetails({ type, values, errors, setField, employees, disabled, 
         event: [],
         reimbursement: [{ key: 'invoiceNumber', label: 'Invoice number' }],
         expense: [{ key: 'invoiceNumber', label: 'Invoice number' }],
+        book: [
+            { key: 'author', label: 'Author' }, { key: 'publisher', label: 'Publisher' },
+            { key: 'edition', label: 'Edition' }, { key: 'publicationYear', label: 'Publication year', kind: 'number' },
+            { key: 'condition', label: 'Condition' },
+        ],
     }
     const fields = definitions[type] || []
     const needsExpenseDate = type === 'expense' || type === 'reimbursement' || type === 'event'

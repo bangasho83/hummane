@@ -49,9 +49,9 @@ import {
     textValue,
 } from '@/features/resources/resource-ui'
 
-interface ResourceDetailProps { id: string }
+interface ResourceDetailProps { id: string; mode?: 'resource' | 'book' }
 
-export function ResourceDetail({ id }: ResourceDetailProps) {
+export function ResourceDetail({ id, mode = 'resource' }: ResourceDetailProps) {
     const router = useRouter()
     const { apiAccessToken, currentCompany, employees, isHydrating } = useApp()
     const [resource, setResource] = useState<Resource | null>(null)
@@ -60,6 +60,7 @@ export function ResourceDetail({ id }: ResourceDetailProps) {
     const [vendors, setVendors] = useState<Vendor[]>([])
     const [assignmentOpen, setAssignmentOpen] = useState(false)
     const [retiring, setRetiring] = useState(false)
+    const listPath = mode === 'book' ? '/resources/books' : '/resources/assets'
 
     const load = useCallback(async () => {
         if (!apiAccessToken || !id) { setLoading(false); return }
@@ -70,13 +71,14 @@ export function ResourceDetail({ id }: ResourceDetailProps) {
                 fetchResourceApi(id, apiAccessToken),
                 fetchVendorsApi(apiAccessToken).catch(() => [] as Vendor[]),
             ])
-            if (resourceType(item) === 'expense') throw new Error('Resource not found')
+            const expected = mode === 'book' ? resourceType(item) === 'book' : !['book', 'expense', 'reimbursement'].includes(resourceType(item))
+            if (!expected) throw new Error(mode === 'book' ? 'Book not found' : 'Resource not found')
             setResource(item)
             setVendors(vendorItems)
         }
         catch (loadError) { setResource(null); setError(loadError instanceof Error ? loadError.message : 'Resource not found') }
         finally { setLoading(false) }
-    }, [apiAccessToken, id])
+    }, [apiAccessToken, id, mode])
 
     useEffect(() => { if (!isHydrating) void load() }, [isHydrating, load])
 
@@ -94,7 +96,7 @@ export function ResourceDetail({ id }: ResourceDetailProps) {
         try {
             await deleteResourceApi(id, apiAccessToken)
             toast('Resource permanently deleted.', 'success')
-            router.push('/resources/assets')
+            router.push(listPath)
         } catch (deleteError) {
             toast(deleteError instanceof Error ? deleteError.message : 'Failed to delete resource', 'error')
             throw deleteError
@@ -114,7 +116,7 @@ export function ResourceDetail({ id }: ResourceDetailProps) {
     }
 
     if (isHydrating || loading) return <div className="flex justify-center p-20"><Loader2 className="h-8 w-8 animate-spin text-blue-600" /></div>
-    if (error || !resource) return <div className="space-y-6"><Button variant="ghost" size="icon" className="rounded-xl" onClick={() => router.push('/resources/assets')}><ArrowLeft /></Button><Card className="border-red-100 bg-red-50/50"><CardContent className="space-y-4 p-8 text-center"><p className="text-sm font-medium text-red-700">{error || 'Resource not found'}</p><Button variant="outline" className="rounded-xl" onClick={() => void load()}>Try again</Button></CardContent></Card></div>
+    if (error || !resource) return <div className="space-y-6"><Button variant="ghost" size="icon" className="rounded-xl" onClick={() => router.push(listPath)}><ArrowLeft /></Button><Card className="border-red-100 bg-red-50/50"><CardContent className="space-y-4 p-8 text-center"><p className="text-sm font-medium text-red-700">{error || 'Resource not found'}</p><Button variant="outline" className="rounded-xl" onClick={() => void load()}>Try again</Button></CardContent></Card></div>
 
     const item = resourceRecord(resource)
     const details = resourceDetails(resource)
@@ -136,8 +138,8 @@ export function ResourceDetail({ id }: ResourceDetailProps) {
     return (
         <div className="animate-in fade-in slide-in-from-bottom-4 space-y-6 duration-500">
             <div className="flex flex-col justify-between gap-4 sm:flex-row sm:items-center">
-                <div className="flex items-center gap-4"><Button variant="ghost" size="icon" className="rounded-xl" onClick={() => router.push('/resources/assets')}><ArrowLeft /></Button><div><p className="text-xs font-bold uppercase tracking-widest text-slate-400">{labelize(resourceType(resource))}</p><h1 className="text-3xl font-extrabold tracking-tight text-slate-900">{resourceName(resource)}</h1></div></div>
-                <div className="flex flex-wrap items-center gap-2"><ResourceBadge value={resourceStatus(resource)} /><Button asChild variant="outline" className="rounded-xl border-slate-200"><Link href={`/resources/assets/${id}/edit`}><Pencil />Edit</Link></Button></div>
+                <div className="flex items-center gap-4"><Button variant="ghost" size="icon" className="rounded-xl" onClick={() => router.push(listPath)}><ArrowLeft /></Button><div><p className="text-xs font-bold uppercase tracking-widest text-slate-400">{labelize(resourceType(resource))}</p><h1 className="text-3xl font-extrabold tracking-tight text-slate-900">{resourceName(resource)}</h1></div></div>
+                <div className="flex flex-wrap items-center gap-2"><ResourceBadge value={resourceStatus(resource)} /><Button asChild variant="outline" className="rounded-xl border-slate-200"><Link href={`${listPath}/${id}/edit`}><Pencil />Edit</Link></Button></div>
             </div>
 
             <div className="grid grid-cols-1 items-start gap-6 xl:grid-cols-[minmax(0,2fr)_minmax(310px,1fr)]">
