@@ -11,6 +11,7 @@ import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@
 import { Button } from '@/components/ui/button'
 import { toast } from '@/components/ui/toast'
 import { ArrowLeft, Trash2 } from 'lucide-react'
+import { EmployeeProfileTabs } from '@/features/employees/components/EmployeeProfileTabs'
 
 const API_BASE_URL = 'https://api.hummane.com'
 
@@ -139,29 +140,7 @@ export default function EmployeeFeedbackPage() {
                 <Badge className="bg-blue-50 text-blue-700 border-blue-100">{employee.employmentType}</Badge>
             </div>
 
-            <div className="flex gap-2">
-                <Button
-                    asChild
-                    variant="outline"
-                    className="border-slate-200 text-slate-600"
-                >
-                    <Link href={`/team/${employee.id}`}>General Info</Link>
-                </Button>
-                <Button
-                    asChild
-                    variant="outline"
-                    className="border-slate-200 text-slate-600"
-                >
-                    <Link href={`/team/${employee.id}/attendance`}>Attendance</Link>
-                </Button>
-                <Button
-                    asChild
-                    variant="default"
-                    className="bg-slate-900 text-white border-slate-900"
-                >
-                    <Link href={`/team/${employee.id}/feedback`}>Feedback</Link>
-                </Button>
-            </div>
+            <EmployeeProfileTabs employeeId={employee.id} active="feedback" />
 
             <Card className="border border-slate-100 shadow-premium rounded-3xl bg-white">
                 <CardContent className="p-0">

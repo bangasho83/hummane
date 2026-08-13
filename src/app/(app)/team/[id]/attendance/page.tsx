@@ -2,7 +2,6 @@
 
 import { useEffect, useState, useCallback } from 'react'
 import { useParams, useRouter } from 'next/navigation'
-import Link from 'next/link'
 import { useApp } from '@/lib/context/AppContext'
 import type { Employee, LeaveRecord } from '@/types'
 import { Card, CardContent } from '@/components/ui/card'
@@ -12,6 +11,7 @@ import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@
 import { Button } from '@/components/ui/button'
 import { toast } from '@/components/ui/toast'
 import { ArrowLeft, FileText, Trash2 } from 'lucide-react'
+import { EmployeeProfileTabs } from '@/features/employees/components/EmployeeProfileTabs'
 
 const API_BASE_URL = 'https://api.hummane.com'
 
@@ -119,29 +119,7 @@ export default function EmployeeAttendancePage() {
                 <Badge className="bg-blue-50 text-blue-700 border-blue-100">{employee.employmentType}</Badge>
             </div>
 
-            <div className="flex gap-2">
-                <Button
-                    asChild
-                    variant="outline"
-                    className="border-slate-200 text-slate-600"
-                >
-                    <Link href={`/team/${employee.id}`}>General Info</Link>
-                </Button>
-                <Button
-                    asChild
-                    variant="default"
-                    className="bg-slate-900 text-white border-slate-900"
-                >
-                    <Link href={`/team/${employee.id}/attendance`}>Attendance</Link>
-                </Button>
-                <Button
-                    asChild
-                    variant="outline"
-                    className="border-slate-200 text-slate-600"
-                >
-                    <Link href={`/team/${employee.id}/feedback`}>Feedback</Link>
-                </Button>
-            </div>
+            <EmployeeProfileTabs employeeId={employee.id} active="attendance" />
 
             {/* Leave Summary */}
             {leaveSummary.length > 0 && (

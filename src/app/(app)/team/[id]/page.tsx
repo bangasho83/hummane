@@ -17,6 +17,7 @@ import { toast } from '@/components/ui/toast'
 import { ArrowLeft, Pencil, Trash2 } from 'lucide-react'
 import Link from 'next/link'
 import { uploadFileToStorage, uploadProfilePicture } from '@/lib/firebase/storage'
+import { EmployeeProfileTabs } from '@/features/employees/components/EmployeeProfileTabs'
 
 const API_URL = 'https://hummane-api.vercel.app'
 
@@ -335,29 +336,7 @@ export default function EmployeeProfilePage() {
                 </Button>
             </div>
 
-            <div className="flex gap-2">
-                <Button
-                    asChild
-                    variant="default"
-                    className="bg-slate-900 text-white border-slate-900"
-                >
-                    <Link href={`/team/${employee.id}`}>General Info</Link>
-                </Button>
-                <Button
-                    asChild
-                    variant="outline"
-                    className="border-slate-200 text-slate-600"
-                >
-                    <Link href={`/team/${employee.id}/attendance`}>Attendance</Link>
-                </Button>
-                <Button
-                    asChild
-                    variant="outline"
-                    className="border-slate-200 text-slate-600"
-                >
-                    <Link href={`/team/${employee.id}/feedback`}>Feedback</Link>
-                </Button>
-            </div>
+            <EmployeeProfileTabs employeeId={employee.id} active="general" />
 
             <div className="grid grid-cols-1 xl:grid-cols-[1fr_380px] gap-6">
                 {/* Left Column - Information Sections */}
