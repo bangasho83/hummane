@@ -227,11 +227,11 @@ export interface OkrObjective {
     employeeRole?: string | null
     headline: string
     description?: string | null
-    currentValue: number
-    targetValue: number
-    unit: string
-    dueDate: string
-    status: OkrObjectiveStatus
+    currentValue?: number | null
+    targetValue?: number | null
+    unit?: string | null
+    dueDate?: string | null
+    status?: OkrObjectiveStatus | null
     progress: number
     progressHistory: OkrProgressEntry[]
     updatedByName?: string | null
