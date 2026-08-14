@@ -185,6 +185,72 @@ export interface Department {
     createdAt: string
 }
 
+export type OkrCycleStatus = 'draft' | 'active' | 'archived'
+export type OkrObjectiveLevel = 'team' | 'individual'
+export type OkrObjectiveStatus = 'upcoming' | 'in_progress' | 'completed'
+
+export interface OkrCycle {
+    id: string
+    companyId: string
+    headline: string
+    description?: string | null
+    targetValue: number
+    unit: string
+    targetDate: string
+    status: OkrCycleStatus
+    progress?: number
+    createdByUserId?: string | null
+    updatedByUserId?: string | null
+    createdAt: string
+    updatedAt: string
+}
+
+export interface OkrProgressEntry {
+    recordedAt: string
+    currentValue: number
+    status: OkrObjectiveStatus
+    note?: string | null
+    updatedByUserId: string
+}
+
+export interface OkrObjective {
+    id: string
+    companyId: string
+    cycleId: string
+    level: OkrObjectiveLevel
+    parentObjectiveId?: string | null
+    departmentId?: string | null
+    departmentName?: string | null
+    employeeId?: string | null
+    employeeName?: string | null
+    employeePhotoUrl?: string | null
+    employeeRole?: string | null
+    headline: string
+    description?: string | null
+    currentValue: number
+    targetValue: number
+    unit: string
+    dueDate: string
+    status: OkrObjectiveStatus
+    progress: number
+    progressHistory: OkrProgressEntry[]
+    updatedByName?: string | null
+    createdAt: string
+    updatedAt: string
+}
+
+export interface OkrBoardDepartment {
+    id: string
+    name: string
+    teamObjective: OkrObjective
+    individuals: OkrObjective[]
+}
+
+export interface OkrBoard {
+    cycle: OkrCycle
+    departments: OkrBoardDepartment[]
+}
+
 export interface LeaveRecord {
     id: string
     companyId: string

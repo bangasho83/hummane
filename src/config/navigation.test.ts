@@ -2,6 +2,12 @@ import { describe, expect, it } from 'vitest'
 import { navigationSections } from './navigation'
 
 describe('admin navigation', () => {
+    it('includes the OKR visual under Team', () => {
+        const teamItems = navigationSections.find((section) => section.label === 'Team')?.items
+        expect(teamItems).toContainEqual(expect.objectContaining({ name: 'OKRs', href: '/team/okrs' }))
+    })
+
+
     it('places Resources immediately after Team', () => {
         const teamItems = navigationSections.find((section) => section.label === 'Team')?.items
         const teamIndex = teamItems?.findIndex((item) => item.name === 'Team') ?? -1

@@ -2,6 +2,7 @@ import type { LucideIcon } from 'lucide-react'
 import {
   Building2,
   Calendar,
+  Goal,
   ClipboardList,
   FileText,
   HelpCircle,
@@ -27,6 +28,7 @@ const dashboardItems: NavItem[] = [
 const teamItems: NavItem[] = [
   { name: 'Team', href: '/team', icon: Users },
   { name: 'Resources', href: '/resources', icon: Package },
+  { name: 'OKRs', href: '/team/okrs', icon: Goal },
   { name: 'Attendance', href: '/attendance', icon: Calendar },
   { name: 'Payroll', href: '/payroll', icon: Wallet },
   { name: 'Organization', href: '/organization', icon: Building2 },

@@ -10,6 +10,12 @@ import type {
   FeedbackEntry,
   Holiday,
   Job,
+  OkrBoard,
+  OkrCycle,
+  OkrCycleStatus,
+  OkrObjective,
+  OkrObjectiveLevel,
+  OkrObjectiveStatus,
   LeaveRecord,
   LeaveType,
   Resource,
@@ -65,6 +71,7 @@ const RESOURCE_REQUESTS_PATH = `${API_BASE_URL}/resource-requests`
 const RESOURCES_PATH = `${API_BASE_URL}/resources`
 const RESOURCE_TEMPLATES_PATH = `${API_BASE_URL}/resource-templates`
 const VENDORS_PATH = `${API_BASE_URL}/vendors`
+const OKRS_PATH = `${API_BASE_URL}/okrs`
 const ACCESS_TOKEN_KEY = 'hummaneApiAccessToken'
 const API_USER_KEY = 'hummaneApiUser'
 const COMPANY_ID_KEY = 'hummaneCompanyId'
@@ -208,6 +215,72 @@ export type MeResponse = {
   employeeId?: string
   createdAt?: string
 }
+
+export type OkrCyclePayload = {
+  headline?: string
+  description?: string | null
+  targetValue?: number
+  unit?: string
+  targetDate?: string
+  status?: OkrCycleStatus
+}
+
+export type OkrObjectivePayload = {
+  cycleId?: string
+  level?: OkrObjectiveLevel
+  parentObjectiveId?: string | null
+  departmentId?: string | null
+  employeeId?: string | null
+  headline?: string
+  description?: string | null
+  currentValue?: number
+  targetValue?: number
+  unit?: string
+  dueDate?: string
+  status?: OkrObjectiveStatus
+  note?: string
+}
+
+const okrRequest = async <T>(path: string, accessToken: string, init: RequestInit = {}): Promise<T> => {
+  let response: Response
+  try {
+    response = await fetch(`${OKRS_PATH}${path}`, {
+      ...init,
+      headers: {
+        ...(init.body ? { 'Content-Type': 'application/json' } : {}),
+        Authorization: `Bearer ${accessToken}`,
+        ...init.headers,
+      },
+    })
+  } catch {
+    throw new Error('Network error while contacting the OKR API')
+  }
+  if (!response.ok) {
+    const message = await response.text()
+    throw new Error(message || 'OKR request failed')
+  }
+  if (response.status === 204) return undefined as T
+  const data = await response.json().catch(() => null)
+  return (data?.data || data) as T
+}
+
+export const fetchActiveOkrBoardApi = (accessToken: string): Promise<OkrBoard | null> =>
+  okrRequest<OkrBoard | null>('/active/board', accessToken)
+
+export const createOkrCycleApi = (payload: OkrCyclePayload, accessToken: string): Promise<OkrCycle> =>
+  okrRequest<OkrCycle>('/cycles', accessToken, { method: 'POST', body: JSON.stringify(payload) })
+
+export const updateOkrCycleApi = (cycleId: string, payload: OkrCyclePayload, accessToken: string): Promise<OkrCycle> =>
+  okrRequest<OkrCycle>(`/cycles/${encodeURIComponent(cycleId)}`, accessToken, { method: 'PUT', body: JSON.stringify(payload) })
+
+export const createOkrObjectiveApi = (payload: OkrObjectivePayload, accessToken: string): Promise<OkrObjective> =>
+  okrRequest<OkrObjective>('/objectives', accessToken, { method: 'POST', body: JSON.stringify(payload) })
+
+export const updateOkrObjectiveApi = (objectiveId: string, payload: OkrObjectivePayload, accessToken: string): Promise<OkrObjective> =>
+  okrRequest<OkrObjective>(`/objectives/${encodeURIComponent(objectiveId)}`, accessToken, { method: 'PUT', body: JSON.stringify(payload) })
+
+export const deleteOkrObjectiveApi = (objectiveId: string, accessToken: string): Promise<void> =>
+  okrRequest<void>(`/objectives/${encodeURIComponent(objectiveId)}`, accessToken, { method: 'DELETE' })
 
 export const fetchMeApi = async (accessToken: string): Promise<MeResponse> => {
   const USERS_ME_PATH = `${API_BASE_URL}/users/me`
