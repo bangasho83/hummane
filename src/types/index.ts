@@ -213,6 +213,18 @@ export interface OkrProgressEntry {
     updatedByUserId: string
 }
 
+export interface OkrKeyResult {
+    id: string
+    title: string
+    description?: string | null
+    unit: string
+    startValue: number
+    currentValue: number
+    targetValue: number
+    dueDate: string
+    status: OkrObjectiveStatus
+}
+
 export interface OkrObjective {
     id: string
     companyId: string
@@ -233,6 +245,7 @@ export interface OkrObjective {
     dueDate?: string | null
     status?: OkrObjectiveStatus | null
     progress: number
+    keyResults: OkrKeyResult[]
     progressHistory: OkrProgressEntry[]
     updatedByName?: string | null
     createdAt: string

@@ -13,6 +13,7 @@ import type {
   OkrBoard,
   OkrCycle,
   OkrCycleStatus,
+  OkrKeyResult,
   OkrObjective,
   OkrObjectiveLevel,
   OkrObjectiveStatus,
@@ -238,6 +239,7 @@ export type OkrObjectivePayload = {
   unit?: string
   dueDate?: string
   status?: OkrObjectiveStatus
+  keyResults?: OkrKeyResult[]
   note?: string
 }
 
