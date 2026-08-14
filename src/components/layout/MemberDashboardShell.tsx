@@ -2,6 +2,7 @@
 
 import { MemberSidebar } from './MemberSidebar'
 import { Bell, ChevronDown } from 'lucide-react'
+import { usePathname } from 'next/navigation'
 import { useApp } from '@/lib/context/AppContext'
 
 interface MemberDashboardShellProps {
@@ -10,6 +11,8 @@ interface MemberDashboardShellProps {
 
 export function MemberDashboardShell({ children }: MemberDashboardShellProps) {
     const { currentUser } = useApp()
+    const pathname = usePathname()
+    const isOkrBoard = pathname.endsWith('/okrs')
 
     return (
         <div className="flex min-h-screen bg-slate-50/50">
@@ -44,8 +47,8 @@ export function MemberDashboardShell({ children }: MemberDashboardShellProps) {
                 </header>
 
                 {/* Content */}
-                <main className="flex-1 p-8 overflow-auto">
-                    <div className="max-w-7xl mx-auto space-y-8">
+                <main className={`flex-1 overflow-auto ${isOkrBoard ? '' : 'p-8'}`}>
+                    <div className={isOkrBoard ? 'min-h-full' : 'mx-auto max-w-7xl space-y-8'}>
                         {children}
                     </div>
                 </main>
