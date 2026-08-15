@@ -133,15 +133,15 @@ export function OkrBoard({ adminView = false }: { adminView?: boolean }) {
   const [objectiveDialog, setObjectiveDialog] = useState<{ objective?: OkrObjective; level: OkrObjectiveLevel; departmentId?: string; parentObjectiveId?: string; employeeId?: string } | null>(null)
   const [cycleForm, setCycleForm] = useState<OkrCyclePayload>({ headline: '', description: '', targetValue: 0, unit: '', targetDate: addYear(), status: 'active' })
 
-  const refresh = useCallback(async () => {
+  const refresh = useCallback(async (showInitialLoader = false) => {
     if (!apiAccessToken) return
-    setLoading(true)
+    if (showInitialLoader) setLoading(true)
     try { const value = await fetchActiveOkrBoardApi(apiAccessToken); setBoard(value); if (value) setCycleForm({ headline: value.cycle.headline, description: value.cycle.description, targetValue: value.cycle.targetValue, unit: value.cycle.unit, targetDate: value.cycle.targetDate, status: value.cycle.status }) }
     catch (error) { toast(error instanceof Error ? error.message : 'Could not load OKRs', 'error') }
-    finally { setLoading(false) }
+    finally { if (showInitialLoader) setLoading(false) }
   }, [apiAccessToken])
 
-  useEffect(() => { if (!isHydrating) void refresh() }, [isHydrating, refresh])
+  useEffect(() => { if (!isHydrating) void refresh(true) }, [isHydrating, refresh])
   useEffect(() => { if (board && !lanesInitialized.current) { setExpanded(new Set(departments.map(department => department.id))); lanesInitialized.current = true } }, [board, departments])
 
   const saveCycle = async (event: React.FormEvent) => {
