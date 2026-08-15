@@ -24,7 +24,14 @@ import type { OkrBoard, OkrKeyResult, OkrObjective, OkrObjectiveLevel, OkrObject
 
 const dateKey = (date: Date) => date.toISOString().slice(0, 10)
 const addYear = () => { const date = new Date(); date.setFullYear(date.getFullYear() + 1); return dateKey(date) }
-const parseDate = (value?: string | null) => value && /^\d{4}-\d{2}-\d{2}$/.test(value) && !Number.isNaN(new Date(`${value}T12:00:00`).getTime()) ? new Date(`${value}T12:00:00`) : null
+// PostgreSQL drivers may serialize a `date` column as either YYYY-MM-DD or an ISO timestamp.
+// HTML date inputs and all board calendar math require the date-only representation.
+const dateInputValue = (value?: string | null) => value?.match(/^\d{4}-\d{2}-\d{2}/)?.[0] ?? ''
+const parseDate = (value?: string | null) => {
+  const dateOnly = dateInputValue(value)
+  const parsed = dateOnly ? new Date(`${dateOnly}T12:00:00`) : null
+  return parsed && !Number.isNaN(parsed.getTime()) ? parsed : null
+}
 const quarterStart = (date: Date) => new Date(date.getFullYear(), Math.floor(date.getMonth() / 3) * 3, 1)
 const quarterId = (date: Date) => `${date.getFullYear()}-Q${Math.floor(date.getMonth() / 3) + 1}`
 const quarterLabel = (id: string) => { const [year, quarter] = id.split('-'); return `${quarter} ${year}` }
@@ -130,9 +137,9 @@ function OkrRailCanvas({ board, departments, employees, accessToken, adminView, 
   const [quick, setQuick] = useState<QuickKeyResult | null>(null)
   const [teamDialog, setTeamDialog] = useState<{ objective?: OkrObjective; departmentId: string } | null>(null)
   const [cycleDialog, setCycleDialog] = useState(false)
-  const [cycleForm, setCycleForm] = useState<OkrCyclePayload>({ headline: board.cycle.headline, description: board.cycle.description, targetValue: board.cycle.targetValue, unit: board.cycle.unit, targetDate: board.cycle.targetDate, status: board.cycle.status })
+  const [cycleForm, setCycleForm] = useState<OkrCyclePayload>({ headline: board.cycle.headline, description: board.cycle.description, targetValue: board.cycle.targetValue, unit: board.cycle.unit, targetDate: dateInputValue(board.cycle.targetDate), status: board.cycle.status })
   useEffect(() => {
-    setCycleForm({ headline: board.cycle.headline, description: board.cycle.description, targetValue: board.cycle.targetValue, unit: board.cycle.unit, targetDate: board.cycle.targetDate, status: board.cycle.status })
+    setCycleForm({ headline: board.cycle.headline, description: board.cycle.description, targetValue: board.cycle.targetValue, unit: board.cycle.unit, targetDate: dateInputValue(board.cycle.targetDate), status: board.cycle.status })
   }, [board.cycle.headline, board.cycle.description, board.cycle.targetValue, board.cycle.unit, board.cycle.targetDate, board.cycle.status])
   const today = atMidday(new Date())
   const targetDate = parseDate(board.cycle.targetDate)
@@ -163,7 +170,7 @@ function OkrRailCanvas({ board, departments, employees, accessToken, adminView, 
     event.preventDefault()
     try {
       const savedCycle = await updateOkrCycleApi(board.cycle.id, cycleForm, accessToken)
-      setCycleForm({ headline: savedCycle.headline, description: savedCycle.description, targetValue: savedCycle.targetValue, unit: savedCycle.unit, targetDate: savedCycle.targetDate, status: savedCycle.status })
+      setCycleForm({ headline: savedCycle.headline, description: savedCycle.description, targetValue: savedCycle.targetValue, unit: savedCycle.unit, targetDate: dateInputValue(savedCycle.targetDate), status: savedCycle.status })
       const savedTargetDate = parseDate(savedCycle.targetDate)
       if (savedTargetDate) {
         const finalQuarter = quarterStart(savedTargetDate)
@@ -227,7 +234,7 @@ export function OkrBoard({ adminView = false }: { adminView?: boolean }) {
   const refresh = useCallback(async (showInitialLoader = false) => {
     if (!apiAccessToken) return
     if (showInitialLoader) setLoading(true)
-    try { const value = await fetchActiveOkrBoardApi(apiAccessToken); setBoard(value); if (value) setCycleForm({ headline: value.cycle.headline, description: value.cycle.description, targetValue: value.cycle.targetValue, unit: value.cycle.unit, targetDate: value.cycle.targetDate, status: value.cycle.status }) }
+    try { const value = await fetchActiveOkrBoardApi(apiAccessToken); setBoard(value); if (value) setCycleForm({ headline: value.cycle.headline, description: value.cycle.description, targetValue: value.cycle.targetValue, unit: value.cycle.unit, targetDate: dateInputValue(value.cycle.targetDate), status: value.cycle.status }) }
     catch (error) { toast(error instanceof Error ? error.message : 'Could not load OKRs', 'error') }
     finally { if (showInitialLoader) setLoading(false) }
   }, [apiAccessToken])
