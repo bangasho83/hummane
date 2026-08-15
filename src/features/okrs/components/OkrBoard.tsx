@@ -131,6 +131,9 @@ function OkrRailCanvas({ board, departments, employees, accessToken, adminView, 
   const [teamDialog, setTeamDialog] = useState<{ objective?: OkrObjective; departmentId: string } | null>(null)
   const [cycleDialog, setCycleDialog] = useState(false)
   const [cycleForm, setCycleForm] = useState<OkrCyclePayload>({ headline: board.cycle.headline, description: board.cycle.description, targetValue: board.cycle.targetValue, unit: board.cycle.unit, targetDate: board.cycle.targetDate, status: board.cycle.status })
+  useEffect(() => {
+    setCycleForm({ headline: board.cycle.headline, description: board.cycle.description, targetValue: board.cycle.targetValue, unit: board.cycle.unit, targetDate: board.cycle.targetDate, status: board.cycle.status })
+  }, [board.cycle.headline, board.cycle.description, board.cycle.targetValue, board.cycle.unit, board.cycle.targetDate, board.cycle.status])
   const today = atMidday(new Date())
   const targetDate = parseDate(board.cycle.targetDate)
   const boundDate = targetDate && targetDate > today ? targetDate : today
@@ -156,7 +159,24 @@ function OkrRailCanvas({ board, departments, employees, accessToken, adminView, 
   const saveQuick = async (item: OkrKeyResult) => { if (!quick) return; const previous = quick.individual?.keyResults ?? []; const keyResults = quick.item ? previous.map(keyResult => keyResult.id === item.id ? item : keyResult) : [...previous, item]; const payload: OkrObjectivePayload = quick.individual ? { cycleId: board.cycle.id, level: 'individual', departmentId: quick.individual.departmentId ?? quick.employee.departmentId, parentObjectiveId: quick.individual.parentObjectiveId ?? quick.parentObjectiveId, employeeId: quick.employee.id, headline: quick.individual.headline, description: quick.individual.description, keyResults } : { cycleId: board.cycle.id, level: 'individual', departmentId: quick.employee.departmentId, parentObjectiveId: quick.parentObjectiveId, employeeId: quick.employee.id, headline: `${quick.employee.name}'s objective`, description: '', keyResults: [item] }; if (quick.individual) await updateOkrObjectiveApi(quick.individual.id, payload, accessToken); else await createOkrObjectiveApi(payload, accessToken); await refresh(); toast('Key result attached', 'success') }
   const removeQuick = async () => { if (!quick?.individual || !quick.item) return; const keyResults = quick.individual.keyResults.filter(item => item.id !== quick.item?.id); await updateOkrObjectiveApi(quick.individual.id, { cycleId: board.cycle.id, level: 'individual', departmentId: quick.individual.departmentId, parentObjectiveId: quick.individual.parentObjectiveId, employeeId: quick.individual.employeeId, headline: quick.individual.headline, description: quick.individual.description, keyResults }, accessToken); setQuick(null); await refresh(); toast('Key result removed', 'success') }
   const saveTeam = async (payload: OkrObjectivePayload) => { if (teamDialog?.objective) await updateOkrObjectiveApi(teamDialog.objective.id, payload, accessToken); else await createOkrObjectiveApi(payload, accessToken); setTeamDialog(null); await refresh(); toast('Team objective saved', 'success') }
-  const saveCycle = async (event: React.FormEvent) => { event.preventDefault(); await updateOkrCycleApi(board.cycle.id, cycleForm, accessToken); setCycleDialog(false); await refresh(); toast('Company objective saved', 'success') }
+  const saveCycle = async (event: React.FormEvent) => {
+    event.preventDefault()
+    try {
+      const savedCycle = await updateOkrCycleApi(board.cycle.id, cycleForm, accessToken)
+      setCycleForm({ headline: savedCycle.headline, description: savedCycle.description, targetValue: savedCycle.targetValue, unit: savedCycle.unit, targetDate: savedCycle.targetDate, status: savedCycle.status })
+      const savedTargetDate = parseDate(savedCycle.targetDate)
+      if (savedTargetDate) {
+        const finalQuarter = quarterStart(savedTargetDate)
+        const priorQuarter = new Date(finalQuarter.getFullYear(), finalQuarter.getMonth() - 3, 1)
+        setSelectedQuarterIds([quarterId(priorQuarter), quarterId(finalQuarter)])
+      }
+      setCycleDialog(false)
+      await refresh()
+      toast('Company objective and timeline updated', 'success')
+    } catch (error) {
+      toast(error instanceof Error ? error.message : 'Could not save company objective', 'error')
+    }
+  }
   const quarterText = () => { const ids = selectedQuarterIds; if (ids.length === 1) return quarterLabel(ids[0]); const indexes = ids.map(id => generatedQuarters.findIndex(quarter => quarterId(quarter) === id)).sort((a, b) => a - b); const contiguous = indexes.every((index, position) => position === 0 || index === indexes[position - 1] + 1); return contiguous && ids.length ? `${quarterLabel(ids[0]).replace(/ Q\d$/, '')}–${quarterLabel(ids.at(-1)!).replace(/^Q/, 'Q')}` : ids.map(quarterLabel).join(', ') }
   const toggleDepartment = (id: string) => setOpenDepartments(previous => { const next = new Set(previous); next.has(id) ? next.delete(id) : next.add(id); return next })
   const togglePerson = (id: string) => setOpenPeople(previous => { const next = new Set(previous); next.has(id) ? next.delete(id) : next.add(id); return next })
