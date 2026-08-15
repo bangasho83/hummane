@@ -157,8 +157,7 @@ function FlowOverlay({ rootRef, connections }: { rootRef: React.RefObject<HTMLDi
   return <svg aria-label="OKR contribution flow" className="pointer-events-none absolute inset-0 z-[5] overflow-visible" height="100%" width="100%">
     <defs><marker id="okr-flow-arrow" markerHeight="7" markerWidth="7" orient="auto" refX="6" refY="3.5"><path d="M 0 0 L 7 3.5 L 0 7 z" fill="currentColor" /></marker></defs>
     {paths.map(path => <g key={`${path.from}-${path.to}`} color={path.color}>
-      <path d={path.d} fill="none" opacity=".16" stroke="currentColor" strokeWidth="5" />
-      <path d={path.d} fill="none" markerEnd="url(#okr-flow-arrow)" opacity=".78" stroke="currentColor" strokeLinecap="round" strokeWidth="1.5" />
+      <path d={path.d} fill="none" markerEnd="url(#okr-flow-arrow)" stroke="currentColor" strokeLinecap="round" strokeWidth="2" />
       <circle cx={path.d.startsWith('M ') ? Number(path.d.split(' ')[1]) : 0} cy={path.d.startsWith('M ') ? Number(path.d.split(' ')[2]) : 0} fill="white" r="3" stroke="currentColor" strokeWidth="1.5" />
       {path.label && <g transform={`translate(${path.labelX}, ${path.labelY})`}><rect fill="white" height="16" opacity=".92" rx="8" width={path.label.length * 5.2 + 12} x={-(path.label.length * 5.2 + 12) / 2} y="-11" /><text fill="currentColor" fontSize="9" fontWeight="700" textAnchor="middle">{path.label}</text></g>}
     </g>)}
