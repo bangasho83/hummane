@@ -258,7 +258,12 @@ const okrRequest = async <T>(path: string, accessToken: string, init: RequestIni
     throw new Error('Network error while contacting the OKR API')
   }
   if (!response.ok) {
-    const message = await response.text()
+    const text = await response.text()
+    let message = text
+    try {
+      const body = JSON.parse(text) as { message?: string | string[]; error?: string }
+      message = Array.isArray(body.message) ? body.message.join(', ') : body.message || body.error || text
+    } catch {}
     throw new Error(message || 'OKR request failed')
   }
   if (response.status === 204) return undefined as T
