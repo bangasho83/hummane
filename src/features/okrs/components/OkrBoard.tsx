@@ -197,11 +197,14 @@ function OkrRailCanvas({ board, departments, employees, accessToken, adminView, 
   const naturalEnd = new Date(lastQuarter.getFullYear(), lastQuarter.getMonth() + 3, 0, 12)
   const rangeEnd = naturalEnd > boundDate ? boundDate : naturalEnd
   const dayCount = Math.max(1, Math.round((atMidday(rangeEnd).getTime() - atMidday(rangeStart).getTime()) / DAY_MS) + 1)
-  const pixelsPerDay = zoom === 'day' ? 36 : zoom === 'week' ? 40 / 7 : 130 / 30.44
+  const basePixelsPerDay = zoom === 'day' ? 36 : zoom === 'week' ? 40 / 7 : 130 / 30.44
   // Preserve date density when a range needs scrolling, but let the calendar absorb spare desktop width.
   const fixedRailWidth = 236 + 52 + 292 + 64 + 240
-  const naturalTimelineWidth = Math.max(620, Math.round(dayCount * pixelsPerDay))
+  const naturalTimelineWidth = Math.max(620, Math.round(dayCount * basePixelsPerDay))
   const timelineWidth = Math.max(naturalTimelineWidth, viewportWidth ? viewportWidth - fixedRailWidth : 0)
+  // Every visible calendar primitive must use the expanded width—not the base zoom density—so month bands,
+  // week labels, background divisions, and positioned milestones all reach the selected range's final date.
+  const pixelsPerDay = timelineWidth / dayCount
   const timelineDuration = Math.max(1, atMidday(rangeEnd).getTime() - atMidday(rangeStart).getTime())
   const dateToX = (value?: string | null) => { const date = parseDate(value); return date ? Math.max(0, Math.min(timelineWidth, ((atMidday(date).getTime() - atMidday(rangeStart).getTime()) / timelineDuration) * timelineWidth)) : 0 }
   const xToDate = (x: number) => { const raw = new Date(atMidday(rangeStart).getTime() + Math.max(0, Math.min(timelineWidth, x)) / timelineWidth * timelineDuration); if (zoom === 'week') { const offset = Math.round((atMidday(raw).getTime() - atMidday(rangeStart).getTime()) / DAY_MS / 7) * 7; raw.setTime(atMidday(rangeStart).getTime() + offset * DAY_MS) } if (zoom === 'month') raw.setMonth(raw.getMonth() + 1, 0); return dateKey(raw) }
