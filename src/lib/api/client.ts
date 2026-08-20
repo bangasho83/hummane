@@ -1976,9 +1976,14 @@ export const fetchResourceApi = async (
   accessToken: string
 ): Promise<Resource> => resourceRequest<Resource>(`/${encodeURIComponent(resourceId)}`, accessToken)
 
-export type ResourceCostReportRow = {
+export type ResourceTemplateCostReportRow = {
   templateId?: string | null
   templateName: string
+  totalCost: number
+  resourceCount: number
+}
+
+export type ResourceEmployeeCostReportRow = {
   employeeId?: string | null
   employeeName?: string
   totalCost: number
@@ -1988,8 +1993,8 @@ export type ResourceCostReportRow = {
 export type ResourceCostReport = {
   totalCost: number
   resourceCount: number
-  byTemplate: ResourceCostReportRow[]
-  byEmployee: ResourceCostReportRow[]
+  byTemplate: ResourceTemplateCostReportRow[]
+  byEmployee: ResourceEmployeeCostReportRow[]
 }
 
 export const fetchResourceCostReportApi = async (
