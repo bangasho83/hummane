@@ -27,6 +27,7 @@ export interface ResourceFormValues {
     costType: string
     expenseDate: string
     paidByEmployeeId: string
+    associatedEmployeeId: string
     isSettled: boolean
     attachmentUrls: string[]
     brand: string
@@ -64,6 +65,7 @@ export const emptyResourceFormValues = (mode: ResourceFormMode): ResourceFormVal
     costType: 'one_time',
     expenseDate: '',
     paidByEmployeeId: '',
+    associatedEmployeeId: '',
     isSettled: false,
     attachmentUrls: [],
     brand: '',

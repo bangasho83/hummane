@@ -100,6 +100,7 @@ const toFormState = (mode: 'resource' | 'bill', resource?: Resource | null): For
         costType: textValue(item.costType) || textValue(asRecord(item.cost).type),
         expenseDate: dateInputValue(item.expenseDate),
         paidByEmployeeId: textValue(item.paidByEmployeeId),
+        associatedEmployeeId: textValue(details.associatedEmployeeId),
         isSettled: item.isSettled === true,
         attachmentUrls: resourceAttachmentUrls(resource),
         assignmentType: textValue(assignment.assignmentType || assignment.type),
@@ -248,7 +249,10 @@ export function ResourceForm({ mode, resource, initialResourceType, resourceLabe
             costType: textValue(values.costType).trim() || undefined,
             expenseDate: textValue(values.expenseDate).trim() || undefined,
             paidByEmployeeId: type === 'reimbursement' ? textValue(values.paidByEmployeeId).trim() || undefined : undefined,
-            details: buildDetails(),
+            details: compact({
+                ...buildDetails(),
+                associatedEmployeeId: mode === 'bill' ? textValue(values.associatedEmployeeId).trim() || undefined : undefined,
+            }),
             attachments: attachmentUrls.length || editing ? { files: attachmentUrls } : undefined,
             isSettled: mode === 'bill' || type === 'reimbursement' ? values.isSettled === true : undefined,
         })
@@ -350,6 +354,18 @@ export function ResourceForm({ mode, resource, initialResourceType, resourceLabe
                     <Field label={type === 'book' ? 'ISBN or accession number' : 'Identifier'} error={errorFor('identifier')}>
                         <Input value={textValue(values.identifier)} onChange={(event) => setField('identifier', event.target.value)} className={fieldClass} placeholder={type === 'book' ? 'e.g. 978-0132350884' : 'Asset tag or reference'} disabled={saving} />
                     </Field>
+                    {mode === 'bill' && (
+                        <Field label="Associated employee" error={errorFor('associatedEmployeeId')}>
+                            <Select value={textValue(values.associatedEmployeeId) || 'none'} onValueChange={(value) => setField('associatedEmployeeId', value === 'none' ? '' : value)} disabled={saving}>
+                                <SelectTrigger className={fieldClass}><SelectValue placeholder="Company bill (no employee)" /></SelectTrigger>
+                                <SelectContent>
+                                    <SelectItem value="none">No associated employee</SelectItem>
+                                    {employeeOptions.map((employee) => <SelectItem key={employee.id} value={employee.id}>{employeeDisplayName(asRecord(employee))}</SelectItem>)}
+                                </SelectContent>
+                            </Select>
+                            <p className="px-1 text-xs text-slate-500">Optional. Use this when a company-paid bill relates to one employee.</p>
+                        </Field>
+                    )}
                     <Field label="Attachment URLs" error={errorFor('attachmentUrls')} className="md:col-span-3">
                         <div className="relative">
                             <Paperclip className="absolute left-4 top-4 h-4 w-4 text-slate-400" />

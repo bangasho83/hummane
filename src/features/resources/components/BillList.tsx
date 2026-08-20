@@ -16,11 +16,14 @@ import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@
 import { DeleteResourceDialog } from './DeleteResourceDialog'
 import { ResourceBadge } from './ResourceBadge'
 import {
+    asRecord,
+    employeeDisplayName,
     formatResourceDate,
     resourceAttachmentUrls,
     resourceCategory,
     resourceCost,
     resourceDate,
+    resourceDetails,
     resourceId,
     resourceInvoice,
     resourceIsSettled,
@@ -30,7 +33,7 @@ import {
 } from '@/features/resources/resource-ui'
 
 export function BillList() {
-    const { apiAccessToken, currentCompany, isHydrating } = useApp()
+    const { apiAccessToken, currentCompany, employees, isHydrating } = useApp()
     const [bills, setBills] = useState<Resource[]>([])
     const [loading, setLoading] = useState(true)
     const [error, setError] = useState<string | null>(null)
@@ -60,18 +63,20 @@ export function BillList() {
     useEffect(() => { if (!isHydrating) void load() }, [isHydrating, load])
 
     const vendorNames = useMemo(() => new Map(vendorItems.map((vendor) => [vendor.id, vendor.name])), [vendorItems])
+    const employeeNames = useMemo(() => new Map(employees.map((employee) => [employee.id, employeeDisplayName(asRecord(employee))])), [employees])
+    const associatedEmployeeName = useCallback((bill: Resource) => employeeNames.get(String(resourceDetails(bill).associatedEmployeeId || '')) || '', [employeeNames])
     const vendors = useMemo(() => [...new Set(bills.map((bill) => resourceVendor(bill, vendorNames)).filter(Boolean))].sort(), [bills, vendorNames])
     const filtered = useMemo(() => {
         const term = search.trim().toLowerCase()
         return bills.filter((bill) => {
             const settled = resourceIsSettled(bill)
             const vendor = resourceVendor(bill, vendorNames)
-            const searchable = [resourceName(bill), vendor, resourceInvoice(bill), resourceCategory(bill)].join(' ').toLowerCase()
+            const searchable = [resourceName(bill), vendor, resourceInvoice(bill), resourceCategory(bill), associatedEmployeeName(bill)].join(' ').toLowerCase()
             return (!term || searchable.includes(term))
                 && (vendorFilter === 'all' || vendor === vendorFilter)
                 && (paymentFilter === 'all' || (paymentFilter === 'paid' ? settled : !settled))
         })
-    }, [bills, search, vendorFilter, paymentFilter, vendorNames])
+    }, [associatedEmployeeName, bills, search, vendorFilter, paymentFilter, vendorNames])
 
     const markPaid = async (bill: Resource) => {
         if (!apiAccessToken || resourceIsSettled(bill)) return
@@ -116,7 +121,7 @@ export function BillList() {
                     </div>
                     {isHydrating || loading ? <div className="flex justify-center p-20"><Loader2 className="h-8 w-8 animate-spin text-blue-600" /></div> : error ? <div className="space-y-4 p-20 text-center"><p className="text-sm font-medium text-red-700">{error}</p><Button variant="outline" className="rounded-xl" onClick={() => void load()}>Try again</Button></div> : filtered.length === 0 ? <div className="p-20 text-center"><FileText className="mx-auto mb-4 h-10 w-10 text-slate-300" /><p className="font-medium text-slate-500">{hasFilters ? 'No bills match your filters.' : 'No bills yet.'}</p></div> : (
                         <div className="overflow-x-auto"><Table className="min-w-[1100px]">
-                            <TableHeader className="bg-slate-50/50"><TableRow className="border-slate-100 hover:bg-transparent"><Head className="pl-8">Bill</Head><Head>Vendor</Head><Head>Invoice</Head><Head>Category</Head><Head>Date</Head><Head>Amount</Head><Head>Payment</Head><Head>Attachments</Head><Head className="pr-8 text-right">Actions</Head></TableRow></TableHeader>
+                            <TableHeader className="bg-slate-50/50"><TableRow className="border-slate-100 hover:bg-transparent"><Head className="pl-8">Bill</Head><Head>Vendor</Head><Head>Associated employee</Head><Head>Invoice</Head><Head>Category</Head><Head>Date</Head><Head>Amount</Head><Head>Payment</Head><Head>Attachments</Head><Head className="pr-8 text-right">Actions</Head></TableRow></TableHeader>
                             <TableBody>{filtered.map((bill) => {
                                 const id = resourceId(bill)
                                 const settled = resourceIsSettled(bill)
@@ -125,6 +130,7 @@ export function BillList() {
                                 return <TableRow key={id} className="border-slate-50 hover:bg-slate-50/50">
                                     <TableCell className="py-5 pl-8 font-bold text-slate-900">{resourceName(bill)}</TableCell>
                                     <TableCell className="py-5 text-sm text-slate-600">{resourceVendor(bill, vendorNames) || '—'}</TableCell>
+                                    <TableCell className="py-5 text-sm text-slate-600">{associatedEmployeeName(bill) || '—'}</TableCell>
                                     <TableCell className="py-5 text-sm text-slate-600">{resourceInvoice(bill) || '—'}</TableCell>
                                     <TableCell className="py-5 text-sm text-slate-600">{resourceCategory(bill) || '—'}</TableCell>
                                     <TableCell className="py-5 text-sm text-slate-600">{formatResourceDate(resourceDate(bill))}</TableCell>
