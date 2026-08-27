@@ -105,6 +105,18 @@ export function ResourceCostReport() {
         return [...groups.entries()].sort((a, b) => b[1].total - a[1].total)
     }, [filtered, vendorNames])
 
+    const groupedRecords = useMemo(() => {
+        const groups = new Map<string, { name: string; type: string; count: number; total: number }>()
+        filtered.forEach((item) => {
+            const name = resourceName(item)
+            const type = resourceType(item)
+            const key = `${type}:${name}`
+            const current = groups.get(key) || { name, type, count: 0, total: 0 }
+            groups.set(key, { ...current, count: current.count + 1, total: current.total + (resourceCost(item) || 0) })
+        })
+        return [...groups.values()].sort((a, b) => b.total - a.total || b.count - a.count || a.name.localeCompare(b.name))
+    }, [filtered])
+
     const title = tab === 'subscriptions' ? 'Subscription reports' : tab === 'bills' ? 'Bills & expenses reports' : 'Resource reports'
     const description = tab === 'subscriptions' ? 'Review recurring software and service costs.' : tab === 'bills' ? 'Review bills, reimbursements, and company expenses.' : 'See a combined view of company resources and costs.'
 
@@ -121,7 +133,7 @@ export function ResourceCostReport() {
         </CardContent></Card>
         {isHydrating || loading ? <div className="flex justify-center p-20"><Loader2 className="h-8 w-8 animate-spin text-blue-600" /></div> : <>
             <div className="grid grid-cols-1 gap-5 sm:grid-cols-2 lg:grid-cols-4"><Metric label="Total cost" value={formatCurrency(aggregate.totalCost, currentCompany?.currency)} /><Metric label="Records" value={String(aggregate.resourceCount)} /><Metric label="Recurring cost" value={formatCurrency(aggregate.recurringCost, currentCompany?.currency)} /><Metric label="Unsettled" value={formatCurrency(aggregate.unsettledCost, currentCompany?.currency)} /></div>
-            <div className="grid grid-cols-1 gap-6 xl:grid-cols-2"><ReportCard title="Cost by vendor / category"><div className="divide-y divide-slate-100">{grouped.length ? grouped.map(([name, value]) => <div key={name} className="flex items-center justify-between gap-4 p-4"><div><p className="font-bold text-slate-900">{name}</p><p className="text-xs text-slate-400">{value.count} record{value.count === 1 ? '' : 's'}</p></div><p className="font-bold text-slate-800">{formatCurrency(value.total, currentCompany?.currency)}</p></div>) : <Empty />}</div></ReportCard><ReportCard title="Records in this view"><div className="divide-y divide-slate-100">{filtered.length ? filtered.slice(0, 10).map((item) => <div key={item.id} className="flex items-center justify-between gap-4 p-4"><div><p className="font-bold text-slate-900">{resourceName(item)}</p><p className="text-xs capitalize text-slate-400">{resourceType(item).replace('_', ' ')} · {resourceDate(item) ? new Date(resourceDate(item)).toLocaleDateString() : 'No date'}</p></div><p className="font-bold text-slate-800">{resourceCost(item) == null ? '—' : formatCurrency(resourceCost(item) || 0, currentCompany?.currency)}</p></div>) : <Empty />}</div>{filtered.length > 10 && <p className="border-t border-slate-100 p-4 text-center text-xs font-bold uppercase tracking-widest text-slate-400">Showing 10 of {filtered.length} records</p>}</ReportCard></div>
+            <div className="grid grid-cols-1 gap-6 xl:grid-cols-2"><ReportCard title="Cost by vendor / category"><div className="divide-y divide-slate-100">{grouped.length ? grouped.map(([name, value]) => <div key={name} className="flex items-center justify-between gap-4 p-4"><div><p className="font-bold text-slate-900">{name}</p><p className="text-xs text-slate-400">{value.count} record{value.count === 1 ? '' : 's'}</p></div><p className="font-bold text-slate-800">{formatCurrency(value.total, currentCompany?.currency)}</p></div>) : <Empty />}</div></ReportCard><ReportCard title="Grouped records in this view"><div className="divide-y divide-slate-100">{groupedRecords.length ? groupedRecords.slice(0, 10).map((group) => <div key={`${group.type}:${group.name}`} className="flex items-center justify-between gap-4 p-4"><div><p className="font-bold text-slate-900">{group.name}</p><p className="text-xs capitalize text-slate-400">{group.type.replace('_', ' ')} · {group.count} record{group.count === 1 ? '' : 's'}</p></div><p className="font-bold text-slate-800">{formatCurrency(group.total, currentCompany?.currency)}</p></div>) : <Empty />}</div>{groupedRecords.length > 10 && <p className="border-t border-slate-100 p-4 text-center text-xs font-bold uppercase tracking-widest text-slate-400">Showing 10 of {groupedRecords.length} groups</p>}</ReportCard></div>
         </>}
     </div>
 }
