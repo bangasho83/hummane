@@ -2,8 +2,8 @@
 
 import { useCallback, useEffect, useMemo, useState } from 'react'
 import { BarChart3, Loader2, Search } from 'lucide-react'
-import type { Resource, Vendor } from '@/types'
-import { fetchResourcesApi, fetchVendorsApi } from '@/lib/api/client'
+import type { Resource, ResourceStatus, ResourceType, Vendor } from '@/types'
+import { fetchResourceCostReportApi, fetchResourcesApi, fetchVendorsApi, type ResourceCostReport } from '@/lib/api/client'
 import { useApp } from '@/lib/context/AppContext'
 import { formatCurrency } from '@/lib/utils'
 import { toast } from '@/components/ui/toast'
@@ -16,6 +16,7 @@ import { asRecord, employeeDisplayName, resourceCost, resourceDate, resourceDeta
 
 const BILL_TYPES = new Set(['expense', 'reimbursement', 'event'])
 const STATUS_OPTIONS = ['active', 'inactive', 'maintenance', 'lost', 'retired']
+const emptyReport: ResourceCostReport = { totalCost: 0, resourceCount: 0, recurringCost: 0, unsettledCost: 0, byTemplate: [], byEmployee: [] }
 
 type ReportTab = 'overview' | 'subscriptions' | 'bills'
 
@@ -29,28 +30,48 @@ export function ResourceCostReport() {
     const [vendor, setVendor] = useState('all')
     const [employee, setEmployee] = useState('all')
     const [settlement, setSettlement] = useState('all')
+    const [month, setMonth] = useState('')
+    const [aggregate, setAggregate] = useState<ResourceCostReport>(emptyReport)
     const [loading, setLoading] = useState(true)
 
     const load = useCallback(async () => {
         if (!apiAccessToken) { setLoading(false); return }
         setLoading(true)
         try {
-            const [items, vendorItems] = await Promise.all([
+            const reportFilters = {
+                status: status === 'all' ? undefined : status as ResourceStatus,
+                employeeId: employee === 'all' ? undefined : employee,
+                vendorId: vendor === 'all' ? undefined : vendor,
+                isSettled: settlement === 'all' ? undefined : settlement === 'settled',
+                month: month || undefined,
+                search: search.trim() || undefined,
+            }
+            const reportTypes: Array<ResourceType | undefined> = tab === 'subscriptions' ? ['subscription'] : tab === 'bills' ? ['expense', 'reimbursement', 'event'] : [undefined]
+            const [items, vendorItems, reports] = await Promise.all([
                 fetchResourcesApi(apiAccessToken, { limit: 100 }),
                 fetchVendorsApi(apiAccessToken).catch(() => [] as Vendor[]),
+                Promise.all(reportTypes.map((resourceType) => fetchResourceCostReportApi(apiAccessToken, { ...reportFilters, resourceType }))),
             ])
             setResources(items)
             setVendors(vendorItems)
+            setAggregate(reports.reduce((sum, report) => ({
+                ...sum,
+                totalCost: sum.totalCost + report.totalCost,
+                resourceCount: sum.resourceCount + report.resourceCount,
+                recurringCost: sum.recurringCost + report.recurringCost,
+                unsettledCost: sum.unsettledCost + report.unsettledCost,
+            }), emptyReport))
         } catch (error) {
             setResources([])
+            setAggregate(emptyReport)
             toast(error instanceof Error ? error.message : 'Failed to load resource reports', 'error')
         } finally { setLoading(false) }
-    }, [apiAccessToken])
+    }, [apiAccessToken, employee, month, search, settlement, status, tab, vendor])
 
     useEffect(() => { if (!isHydrating) void load() }, [isHydrating, load])
 
     const vendorNames = useMemo(() => new Map(vendors.map((item) => [item.id, item.name])), [vendors])
-    const vendorOptions = useMemo(() => [...new Set(resources.map((item) => resourceVendor(item, vendorNames)).filter(Boolean))].sort(), [resources, vendorNames])
+    const vendorOptions = useMemo(() => [...vendors].sort((a, b) => a.name.localeCompare(b.name)), [vendors])
     const employeeOptions = useMemo(() => [...employees].sort((a, b) => a.name.localeCompare(b.name)), [employees])
 
     const filtered = useMemo(() => {
@@ -63,18 +84,16 @@ export function ResourceCostReport() {
             const tabMatch = tab === 'overview' || (tab === 'subscriptions' ? type === 'subscription' : BILL_TYPES.has(type))
             return tabMatch
                 && (!term || searchable.includes(term))
+                && (!month || resourceDate(item).startsWith(month))
                 && (status === 'all' || item.status === status)
-                && (vendor === 'all' || itemVendor === vendor)
+                && (vendor === 'all' || item.vendorId === vendor)
                 && (employee === 'all' || itemEmployee === employee)
                 && (settlement === 'all' || (settlement === 'settled' ? item.isSettled !== false : item.isSettled === false))
         })
-    }, [employee, resources, search, settlement, status, tab, vendor, vendorNames])
+    }, [employee, month, resources, search, settlement, status, tab, vendor, vendorNames])
 
-    const totalCost = filtered.reduce((sum, item) => sum + (resourceCost(item) || 0), 0)
-    const recurringCost = filtered.filter((item) => textValue(item.costType) === 'recurring').reduce((sum, item) => sum + (resourceCost(item) || 0), 0)
-    const unsettled = filtered.filter((item) => item.isSettled === false)
-    const hasFilters = !!search || status !== 'all' || vendor !== 'all' || employee !== 'all' || settlement !== 'all'
-    const clearFilters = () => { setSearch(''); setStatus('all'); setVendor('all'); setEmployee('all'); setSettlement('all') }
+    const hasFilters = !!search || !!month || status !== 'all' || vendor !== 'all' || employee !== 'all' || settlement !== 'all'
+    const clearFilters = () => { setSearch(''); setMonth(''); setStatus('all'); setVendor('all'); setEmployee('all'); setSettlement('all') }
 
     const grouped = useMemo(() => {
         const groups = new Map<string, { count: number; total: number }>()
@@ -95,13 +114,13 @@ export function ResourceCostReport() {
         <Card className="rounded-3xl border-slate-100 bg-white shadow-premium"><CardContent className="flex flex-wrap items-center gap-3 p-5 sm:p-7">
             <div className="relative min-w-[240px] flex-1"><Search className="absolute left-4 top-1/2 h-4 w-4 -translate-y-1/2 text-slate-400" /><Input value={search} onChange={(event) => setSearch(event.target.value)} placeholder="Search resources, vendors, invoices…" className="h-12 rounded-2xl border-slate-100 bg-slate-50 pl-11" /></div>
             <Select value={status} onValueChange={setStatus}><SelectTrigger className="h-12 w-[155px] rounded-2xl border-slate-100 bg-slate-50"><SelectValue /></SelectTrigger><SelectContent><SelectItem value="all">All statuses</SelectItem>{STATUS_OPTIONS.map((item) => <SelectItem key={item} value={item}>{item.replace('_', ' ')}</SelectItem>)}</SelectContent></Select>
-            <Select value={vendor} onValueChange={setVendor}><SelectTrigger className="h-12 w-[180px] rounded-2xl border-slate-100 bg-slate-50"><SelectValue /></SelectTrigger><SelectContent><SelectItem value="all">All vendors</SelectItem>{vendorOptions.map((item) => <SelectItem key={item} value={item}>{item}</SelectItem>)}</SelectContent></Select>
+            <Select value={vendor} onValueChange={setVendor}><SelectTrigger className="h-12 w-[180px] rounded-2xl border-slate-100 bg-slate-50"><SelectValue /></SelectTrigger><SelectContent><SelectItem value="all">All vendors</SelectItem>{vendorOptions.map((item) => <SelectItem key={item.id} value={item.id}>{item.name}</SelectItem>)}</SelectContent></Select>
             <Select value={employee} onValueChange={setEmployee}><SelectTrigger className="h-12 w-[180px] rounded-2xl border-slate-100 bg-slate-50"><SelectValue /></SelectTrigger><SelectContent><SelectItem value="all">All employees</SelectItem>{employeeOptions.map((item) => <SelectItem key={item.id} value={item.id}>{employeeDisplayName(asRecord(item))}</SelectItem>)}</SelectContent></Select>
-            <Select value={settlement} onValueChange={setSettlement}><SelectTrigger className="h-12 w-[160px] rounded-2xl border-slate-100 bg-slate-50"><SelectValue /></SelectTrigger><SelectContent><SelectItem value="all">All settlement</SelectItem><SelectItem value="settled">Settled</SelectItem><SelectItem value="unsettled">Unsettled</SelectItem></SelectContent></Select>
+            <Select value={settlement} onValueChange={setSettlement}><SelectTrigger className="h-12 w-[160px] rounded-2xl border-slate-100 bg-slate-50"><SelectValue /></SelectTrigger><SelectContent><SelectItem value="all">All settlement</SelectItem><SelectItem value="settled">Settled</SelectItem><SelectItem value="unsettled">Unsettled</SelectItem></SelectContent></Select><Input type="month" value={month} onChange={(event) => setMonth(event.target.value)} className="h-12 w-[170px] rounded-2xl border-slate-100 bg-slate-50" aria-label="Filter by month" />
             {hasFilters && <Button variant="ghost" onClick={clearFilters} className="font-semibold text-slate-500 hover:text-red-600">Reset</Button>}
         </CardContent></Card>
         {isHydrating || loading ? <div className="flex justify-center p-20"><Loader2 className="h-8 w-8 animate-spin text-blue-600" /></div> : <>
-            <div className="grid grid-cols-1 gap-5 sm:grid-cols-2 lg:grid-cols-4"><Metric label="Total cost" value={formatCurrency(totalCost, currentCompany?.currency)} /><Metric label="Records" value={String(filtered.length)} /><Metric label="Recurring cost" value={formatCurrency(recurringCost, currentCompany?.currency)} /><Metric label="Unsettled" value={formatCurrency(unsettled.reduce((sum, item) => sum + (resourceCost(item) || 0), 0), currentCompany?.currency)} /></div>
+            <div className="grid grid-cols-1 gap-5 sm:grid-cols-2 lg:grid-cols-4"><Metric label="Total cost" value={formatCurrency(aggregate.totalCost, currentCompany?.currency)} /><Metric label="Records" value={String(aggregate.resourceCount)} /><Metric label="Recurring cost" value={formatCurrency(aggregate.recurringCost, currentCompany?.currency)} /><Metric label="Unsettled" value={formatCurrency(aggregate.unsettledCost, currentCompany?.currency)} /></div>
             <div className="grid grid-cols-1 gap-6 xl:grid-cols-2"><ReportCard title="Cost by vendor / category"><div className="divide-y divide-slate-100">{grouped.length ? grouped.map(([name, value]) => <div key={name} className="flex items-center justify-between gap-4 p-4"><div><p className="font-bold text-slate-900">{name}</p><p className="text-xs text-slate-400">{value.count} record{value.count === 1 ? '' : 's'}</p></div><p className="font-bold text-slate-800">{formatCurrency(value.total, currentCompany?.currency)}</p></div>) : <Empty />}</div></ReportCard><ReportCard title="Records in this view"><div className="divide-y divide-slate-100">{filtered.length ? filtered.slice(0, 10).map((item) => <div key={item.id} className="flex items-center justify-between gap-4 p-4"><div><p className="font-bold text-slate-900">{resourceName(item)}</p><p className="text-xs capitalize text-slate-400">{resourceType(item).replace('_', ' ')} · {resourceDate(item) ? new Date(resourceDate(item)).toLocaleDateString() : 'No date'}</p></div><p className="font-bold text-slate-800">{resourceCost(item) == null ? '—' : formatCurrency(resourceCost(item) || 0, currentCompany?.currency)}</p></div>) : <Empty />}</div>{filtered.length > 10 && <p className="border-t border-slate-100 p-4 text-center text-xs font-bold uppercase tracking-widest text-slate-400">Showing 10 of {filtered.length} records</p>}</ReportCard></div>
         </>}
     </div>

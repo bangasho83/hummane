@@ -1993,23 +1993,31 @@ export type ResourceEmployeeCostReportRow = {
 export type ResourceCostReport = {
   totalCost: number
   resourceCount: number
+  recurringCost: number
+  unsettledCost: number
   byTemplate: ResourceTemplateCostReportRow[]
   byEmployee: ResourceEmployeeCostReportRow[]
 }
 
 export const fetchResourceCostReportApi = async (
   accessToken: string,
-  filters: { resourceType?: ResourceType; status?: ResourceStatus; employeeId?: string; resourceTemplateId?: string } = {}
+  filters: { resourceType?: ResourceType; status?: ResourceStatus; employeeId?: string; resourceTemplateId?: string; vendorId?: string; isSettled?: boolean; month?: string; search?: string } = {}
 ): Promise<ResourceCostReport> => {
   const query = new URLSearchParams()
   if (filters.resourceType) query.set('resourceType', filters.resourceType)
   if (filters.status) query.set('status', filters.status)
   if (filters.employeeId) query.set('employeeId', filters.employeeId)
   if (filters.resourceTemplateId) query.set('resourceTemplateId', filters.resourceTemplateId)
+  if (filters.vendorId) query.set('vendorId', filters.vendorId)
+  if (filters.isSettled !== undefined) query.set('isSettled', String(filters.isSettled))
+  if (filters.month) query.set('month', filters.month)
+  if (filters.search) query.set('search', filters.search)
   const result = await resourceRequest<ResourceCostReport>(`/reports/costs?${query.toString()}`, accessToken)
   return {
     totalCost: Number(result?.totalCost || 0),
     resourceCount: Number(result?.resourceCount || 0),
+    recurringCost: Number(result?.recurringCost || 0),
+    unsettledCost: Number(result?.unsettledCost || 0),
     byTemplate: Array.isArray(result?.byTemplate) ? result.byTemplate : [],
     byEmployee: Array.isArray(result?.byEmployee) ? result.byEmployee : [],
   }
