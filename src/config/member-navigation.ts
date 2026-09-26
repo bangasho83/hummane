@@ -2,6 +2,7 @@ import type { LucideIcon } from 'lucide-react'
 import {
   Calendar,
   CalendarDays,
+  CheckSquare,
   Goal,
   LayoutDashboard,
   MessageSquare,
@@ -20,6 +21,7 @@ export type MemberNavItem = {
 export const memberNavigationItems: MemberNavItem[] = [
   { name: 'Dashboard', href: '/member', icon: LayoutDashboard, exact: true },
   { name: 'OKRs', href: '/member/okrs', icon: Goal },
+  { name: 'Tasks', href: '/member/tasks', icon: CheckSquare },
   { name: 'Applicants', href: '/member/applicants', icon: Users },
   { name: 'Feedback', href: '/member/feedback', icon: MessageSquare },
   { name: 'Resources', href: '/member/resources', icon: Package },
