@@ -116,6 +116,7 @@ export function TaskWorkspace() {
     const [search, setSearch] = useState('')
     const [selectedTaskId, setSelectedTaskId] = useState<string | null>(null)
     const [showCreate, setShowCreate] = useState(false)
+    const [showMobileFilters, setShowMobileFilters] = useState(false)
 
     useEffect(() => {
         try {
@@ -193,20 +194,20 @@ export function TaskWorkspace() {
                 <Button className="h-12 rounded-2xl px-5 shadow-sm" onClick={() => setShowCreate(true)}><Plus className="h-4 w-4" /> Add task</Button>
             </header>
 
-            <div className="grid gap-3 sm:grid-cols-3">
-                <SummaryCard label="Open tasks" value={openTasks} icon={<Circle className="h-5 w-5 text-blue-600" />} detail="Across your projects" />
-                <SummaryCard label="Due soon" value={tasks.filter(task => task.status !== 'done' && task.dueDate >= '2026-09-26' && task.dueDate <= '2026-10-03').length} icon={<Clock3 className="h-5 w-5 text-amber-600" />} detail="The next 7 days" />
-                <SummaryCard label="Completed" value={completedTasks} icon={<CheckCircle2 className="h-5 w-5 text-emerald-600" />} detail={`${overdueTasks} overdue task${overdueTasks === 1 ? '' : 's'} to look at`} />
+            <div className="grid grid-cols-3 gap-2 sm:gap-3">
+                <SummaryCard label="Open" value={openTasks} icon={<Circle className="h-4 w-4 text-blue-600 sm:h-5 sm:w-5" />} detail="Across projects" />
+                <SummaryCard label="Due soon" value={tasks.filter(task => task.status !== 'done' && task.dueDate >= '2026-09-26' && task.dueDate <= '2026-10-03').length} icon={<Clock3 className="h-4 w-4 text-amber-600 sm:h-5 sm:w-5" />} detail="Next 7 days" />
+                <SummaryCard label="Done" value={completedTasks} icon={<CheckCircle2 className="h-4 w-4 text-emerald-600 sm:h-5 sm:w-5" />} detail={`${overdueTasks} overdue`} />
             </div>
 
             <Card className="overflow-hidden rounded-3xl border-slate-200/80 shadow-sm">
                 <div className="border-b border-slate-100 bg-white px-5 py-4 sm:px-6">
                     <div className="flex flex-col gap-4 xl:flex-row xl:items-center xl:justify-between">
-                        <Tabs value={view} onValueChange={value => setView(value as TaskView)}><TabsList><TabsTrigger value="my">My tasks</TabsTrigger><TabsTrigger value="projects">All projects</TabsTrigger><TabsTrigger value="board">Board</TabsTrigger></TabsList></Tabs>
+                        <Tabs value={view} onValueChange={value => setView(value as TaskView)}><TabsList className="w-full sm:w-auto"><TabsTrigger className="flex-1 whitespace-nowrap px-2 text-xs sm:px-4 sm:text-sm" value="my">My tasks</TabsTrigger><TabsTrigger className="flex-1 whitespace-nowrap px-2 text-xs sm:px-4 sm:text-sm" value="projects">All projects</TabsTrigger><TabsTrigger className="flex-1 whitespace-nowrap px-2 text-xs sm:px-4 sm:text-sm" value="board">Board</TabsTrigger></TabsList></Tabs>
                         <div className="flex flex-wrap items-center gap-2">
-                            <div className="relative"><Search className="pointer-events-none absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-slate-400" /><Input value={search} onChange={event => setSearch(event.target.value)} className="h-10 w-full rounded-xl pl-9 sm:w-56" placeholder="Search tasks" /></div>
-                            <Select value={projectId} onValueChange={setProjectId}><SelectTrigger className="h-10 w-[170px] rounded-xl"><SelectValue placeholder="Project" /></SelectTrigger><SelectContent><SelectItem value="all">All projects</SelectItem>{projects.map(project => <SelectItem key={project.id} value={project.id}>{project.name}</SelectItem>)}</SelectContent></Select>
-                            <Select value={statusFilter} onValueChange={setStatusFilter}><SelectTrigger className="h-10 w-[145px] rounded-xl"><Filter className="mr-2 h-3.5 w-3.5" /><SelectValue /></SelectTrigger><SelectContent><SelectItem value="all">All statuses</SelectItem>{Object.entries(statusMeta).map(([value, meta]) => <SelectItem key={value} value={value}>{meta.label}</SelectItem>)}</SelectContent></Select>
+                            <div className="relative min-w-0 flex-1 sm:flex-none"><Search className="pointer-events-none absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-slate-400" /><Input value={search} onChange={event => setSearch(event.target.value)} className="h-10 w-full rounded-xl pl-9 sm:w-56" placeholder="Search tasks" /></div>
+                            <Button variant="outline" className="h-10 rounded-xl px-3 sm:hidden" onClick={() => setShowMobileFilters(previous => !previous)}><Filter className="h-4 w-4" />{(projectId !== 'all' || statusFilter !== 'all') && <span className="flex h-4 w-4 items-center justify-center rounded-full bg-blue-600 text-[10px] text-white">{Number(projectId !== 'all') + Number(statusFilter !== 'all')}</span>}</Button>
+                            <div className={cn('w-full flex-wrap items-center gap-2', showMobileFilters ? 'flex' : 'hidden', 'sm:flex sm:w-auto')}><Select value={projectId} onValueChange={setProjectId}><SelectTrigger className="h-10 min-w-0 flex-1 rounded-xl sm:w-[170px] sm:flex-none"><SelectValue placeholder="Project" /></SelectTrigger><SelectContent><SelectItem value="all">All projects</SelectItem>{projects.map(project => <SelectItem key={project.id} value={project.id}>{project.name}</SelectItem>)}</SelectContent></Select><Select value={statusFilter} onValueChange={setStatusFilter}><SelectTrigger className="h-10 min-w-0 flex-1 rounded-xl sm:w-[145px] sm:flex-none"><Filter className="mr-2 h-3.5 w-3.5" /><SelectValue /></SelectTrigger><SelectContent><SelectItem value="all">All statuses</SelectItem>{Object.entries(statusMeta).map(([value, meta]) => <SelectItem key={value} value={value}>{meta.label}</SelectItem>)}</SelectContent></Select></div>
                             <div className="hidden rounded-xl border border-slate-200 p-1 sm:flex"><Button size="icon" variant={layout === 'list' ? 'secondary' : 'ghost'} className="h-8 w-8 rounded-lg" onClick={() => setLayout('list')}><List className="h-4 w-4" /></Button><Button size="icon" variant={layout === 'board' ? 'secondary' : 'ghost'} className="h-8 w-8 rounded-lg" onClick={() => setLayout('board')}><LayoutGrid className="h-4 w-4" /></Button></div>
                         </div>
                     </div>
@@ -221,7 +222,7 @@ export function TaskWorkspace() {
 }
 
 function SummaryCard({ label, value, icon, detail }: { label: string; value: number; icon: ReactNode; detail: string }) {
-    return <Card className="rounded-3xl border-slate-200/80 bg-white shadow-sm"><CardContent className="flex items-start justify-between p-5"><div><p className="text-xs font-bold uppercase tracking-wider text-slate-400">{label}</p><p className="mt-2 text-3xl font-extrabold tracking-tight text-slate-950">{value}</p><p className="mt-1 text-xs text-slate-500">{detail}</p></div><div className="rounded-2xl bg-slate-50 p-3">{icon}</div></CardContent></Card>
+    return <Card className="rounded-2xl border-slate-200/80 bg-white shadow-sm sm:rounded-3xl"><CardContent className="flex min-h-[92px] items-start justify-between gap-1 p-3 sm:min-h-0 sm:p-5"><div className="min-w-0"><p className="truncate text-[10px] font-bold uppercase tracking-wider text-slate-400 sm:text-xs">{label}</p><p className="mt-1 text-2xl font-extrabold tracking-tight text-slate-950 sm:mt-2 sm:text-3xl">{value}</p><p className="mt-0.5 hidden truncate text-xs text-slate-500 sm:mt-1 sm:block">{detail}</p></div><div className="rounded-xl bg-slate-50 p-2 sm:rounded-2xl sm:p-3">{icon}</div></CardContent></Card>
 }
 
 function TaskList({ tasks, onSelect, onStatusChange }: { tasks: MockTask[]; onSelect: (id: string) => void; onStatusChange: (id: string, status: TaskStatus) => void }) {
