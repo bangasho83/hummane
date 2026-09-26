@@ -10,6 +10,7 @@ import {
     Circle,
     Clock3,
     Filter,
+    GanttChart,
     LayoutGrid,
     List,
     MessageSquare,
@@ -32,7 +33,8 @@ import { cn } from '@/lib/utils'
 
 type TaskStatus = 'todo' | 'in_progress' | 'blocked' | 'done'
 type TaskPriority = 'low' | 'normal' | 'high' | 'urgent'
-type TaskView = 'my' | 'projects' | 'board'
+type TaskScope = 'my' | 'all'
+type TaskLayout = 'list' | 'board' | 'gantt'
 
 type MockProject = {
     id: string
@@ -109,8 +111,8 @@ function isOverdue(task: MockTask) {
 export function TaskWorkspace() {
     const [tasks, setTasks] = useState<MockTask[]>(initialTasks)
     const [hydrated, setHydrated] = useState(false)
-    const [view, setView] = useState<TaskView>('my')
-    const [layout, setLayout] = useState<'list' | 'board'>('list')
+    const [scope, setScope] = useState<TaskScope>('my')
+    const [layout, setLayout] = useState<TaskLayout>('list')
     const [projectId, setProjectId] = useState('all')
     const [statusFilter, setStatusFilter] = useState('all')
     const [search, setSearch] = useState('')
@@ -136,11 +138,11 @@ export function TaskWorkspace() {
     const filteredTasks = useMemo(() => tasks.filter(task => {
         const matchesProject = projectId === 'all' || task.projectId === projectId
         const matchesStatus = statusFilter === 'all' || task.status === statusFilter
-        const matchesView = view !== 'my' || task.assignee === currentPerson
+        const matchesView = scope !== 'my' || task.assignee === currentPerson
         const query = search.trim().toLowerCase()
         const matchesSearch = !query || `${task.title} ${task.description} ${task.labels.join(' ')}`.toLowerCase().includes(query)
         return matchesProject && matchesStatus && matchesView && matchesSearch
-    }), [projectId, search, statusFilter, tasks, view])
+    }), [projectId, search, statusFilter, tasks, scope])
 
     const selectedTask = tasks.find(task => task.id === selectedTaskId) || null
     const openTasks = tasks.filter(task => task.status !== 'done').length
@@ -203,16 +205,16 @@ export function TaskWorkspace() {
             <Card className="overflow-hidden rounded-3xl border-slate-200/80 shadow-sm">
                 <div className="border-b border-slate-100 bg-white px-5 py-4 sm:px-6">
                     <div className="flex flex-col gap-4 xl:flex-row xl:items-center xl:justify-between">
-                        <Tabs value={view} onValueChange={value => setView(value as TaskView)}><TabsList className="w-full sm:w-auto"><TabsTrigger className="flex-1 whitespace-nowrap px-2 text-xs sm:px-4 sm:text-sm" value="my">My tasks</TabsTrigger><TabsTrigger className="flex-1 whitespace-nowrap px-2 text-xs sm:px-4 sm:text-sm" value="projects">All projects</TabsTrigger><TabsTrigger className="flex-1 whitespace-nowrap px-2 text-xs sm:px-4 sm:text-sm" value="board">Board</TabsTrigger></TabsList></Tabs>
+                        <Tabs value={scope} onValueChange={value => setScope(value as TaskScope)}><TabsList className="w-full sm:w-auto"><TabsTrigger className="flex-1 whitespace-nowrap px-3 text-xs sm:flex-none sm:px-4 sm:text-sm" value="my">My tasks</TabsTrigger><TabsTrigger className="flex-1 whitespace-nowrap px-3 text-xs sm:flex-none sm:px-4 sm:text-sm" value="all">All tasks</TabsTrigger></TabsList></Tabs>
                         <div className="flex flex-wrap items-center gap-2">
                             <div className="relative min-w-0 flex-1 sm:flex-none"><Search className="pointer-events-none absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-slate-400" /><Input value={search} onChange={event => setSearch(event.target.value)} className="h-10 w-full rounded-xl pl-9 sm:w-56" placeholder="Search tasks" /></div>
                             <Button variant="outline" className="h-10 rounded-xl px-3 sm:hidden" onClick={() => setShowMobileFilters(previous => !previous)}><Filter className="h-4 w-4" />{(projectId !== 'all' || statusFilter !== 'all') && <span className="flex h-4 w-4 items-center justify-center rounded-full bg-blue-600 text-[10px] text-white">{Number(projectId !== 'all') + Number(statusFilter !== 'all')}</span>}</Button>
                             <div className={cn('w-full flex-wrap items-center gap-2', showMobileFilters ? 'flex' : 'hidden', 'sm:flex sm:w-auto')}><Select value={projectId} onValueChange={setProjectId}><SelectTrigger className="h-10 min-w-0 flex-1 rounded-xl sm:w-[170px] sm:flex-none"><SelectValue placeholder="Project" /></SelectTrigger><SelectContent><SelectItem value="all">All projects</SelectItem>{projects.map(project => <SelectItem key={project.id} value={project.id}>{project.name}</SelectItem>)}</SelectContent></Select><Select value={statusFilter} onValueChange={setStatusFilter}><SelectTrigger className="h-10 min-w-0 flex-1 rounded-xl sm:w-[145px] sm:flex-none"><Filter className="mr-2 h-3.5 w-3.5" /><SelectValue /></SelectTrigger><SelectContent><SelectItem value="all">All statuses</SelectItem>{Object.entries(statusMeta).map(([value, meta]) => <SelectItem key={value} value={value}>{meta.label}</SelectItem>)}</SelectContent></Select></div>
-                            <div className="hidden rounded-xl border border-slate-200 p-1 sm:flex"><Button size="icon" variant={layout === 'list' ? 'secondary' : 'ghost'} className="h-8 w-8 rounded-lg" onClick={() => setLayout('list')}><List className="h-4 w-4" /></Button><Button size="icon" variant={layout === 'board' ? 'secondary' : 'ghost'} className="h-8 w-8 rounded-lg" onClick={() => setLayout('board')}><LayoutGrid className="h-4 w-4" /></Button></div>
+                            <div className="flex rounded-xl border border-slate-200 p-1"><Button title="List view" aria-label="List view" size="icon" variant={layout === 'list' ? 'secondary' : 'ghost'} className="h-8 w-8 rounded-lg" onClick={() => setLayout('list')}><List className="h-4 w-4" /></Button><Button title="Board view" aria-label="Board view" size="icon" variant={layout === 'board' ? 'secondary' : 'ghost'} className="h-8 w-8 rounded-lg" onClick={() => setLayout('board')}><LayoutGrid className="h-4 w-4" /></Button><Button title="Gantt view" aria-label="Gantt view" size="icon" variant={layout === 'gantt' ? 'secondary' : 'ghost'} className="h-8 w-8 rounded-lg" onClick={() => setLayout('gantt')}><GanttChart className="h-4 w-4" /></Button></div>
                         </div>
                     </div>
                 </div>
-                {view === 'projects' ? <ProjectGrid tasks={tasks} onSelect={id => { setProjectId(id); setView('my') }} /> : layout === 'board' || view === 'board' ? <BoardView tasks={filteredTasks} onSelect={setSelectedTaskId} /> : <TaskList tasks={filteredTasks} onSelect={setSelectedTaskId} onStatusChange={(id, status) => updateTask(id, { status })} />}
+                {layout === 'board' ? <BoardView tasks={filteredTasks} onSelect={setSelectedTaskId} /> : layout === 'gantt' ? <GanttView tasks={filteredTasks} onSelect={setSelectedTaskId} /> : <TaskList tasks={filteredTasks} onSelect={setSelectedTaskId} onStatusChange={(id, status) => updateTask(id, { status })} />}
             </Card>
         </div>
 
@@ -243,12 +245,16 @@ function TaskRow({ task, onSelect, onStatusChange }: { task: MockTask; onSelect:
     </button>
 }
 
-function BoardView({ tasks, onSelect }: { tasks: MockTask[]; onSelect: (id: string) => void }) {
-    return <div className="grid gap-4 overflow-x-auto bg-slate-50/60 p-4 md:grid-cols-4">{(Object.keys(statusMeta) as TaskStatus[]).map(status => <div className="min-w-[240px]" key={status}><div className="mb-3 flex items-center justify-between px-1"><span className="flex items-center gap-2 text-xs font-extrabold uppercase tracking-wider text-slate-500"><span className={cn('h-2 w-2 rounded-full', statusMeta[status].color)} />{statusMeta[status].label}</span><span className="rounded-full bg-white px-2 py-0.5 text-xs font-bold text-slate-400">{tasks.filter(task => task.status === status).length}</span></div><div className="space-y-3">{tasks.filter(task => task.status === status).map(task => <button className="w-full rounded-2xl border border-slate-200 bg-white p-4 text-left shadow-sm transition-all hover:-translate-y-0.5 hover:border-blue-200 hover:shadow-md" key={task.id} onClick={() => onSelect(task.id)}><div className="mb-3 flex items-start justify-between gap-2"><span className={cn('rounded-full px-2 py-1 text-[10px] font-bold uppercase tracking-wide', priorityMeta[task.priority].className, 'bg-slate-50')}>{priorityMeta[task.priority].label}</span><MoreHorizontal className="h-4 w-4 text-slate-300" /></div><p className="text-sm font-bold leading-5 text-slate-900">{task.title}</p><p className="mt-2 line-clamp-2 text-xs leading-5 text-slate-500">{task.description}</p><div className="mt-4 flex items-center justify-between border-t border-slate-100 pt-3 text-xs text-slate-400"><span className={cn(isOverdue(task) && 'font-bold text-rose-600')}><CalendarDays className="mr-1 inline h-3.5 w-3.5" />{formatDueDate(task.dueDate)}</span><span className="flex h-6 w-6 items-center justify-center rounded-full bg-blue-100 text-[10px] font-bold text-blue-700">{task.assignee === currentPerson ? 'Y' : task.assignee.slice(0, 1)}</span></div></button>)}</div></div>)}</div>
+function GanttView({ tasks, onSelect }: { tasks: MockTask[]; onSelect: (id: string) => void }) {
+    const timelineStart = new Date('2026-09-26T12:00:00')
+    const days = Array.from({ length: 14 }, (_, index) => { const date = new Date(timelineStart); date.setDate(date.getDate() + index); return date })
+    const dayOffset = (date: string) => Math.max(0, Math.min(13, Math.round((new Date(`${date}T12:00:00`).getTime() - timelineStart.getTime()) / 86400000)))
+
+    return <div className="overflow-x-auto bg-white"><div className="min-w-[760px] p-4 sm:p-6"><div className="grid grid-cols-[220px_repeat(14,minmax(36px,1fr))] border-b border-slate-100 text-[10px] font-bold uppercase tracking-wider text-slate-400"><div className="pb-3">Task</div>{days.map(day => <div className="border-l border-slate-100 pb-3 text-center" key={day.toISOString()}>{day.toLocaleDateString(undefined, { weekday: 'narrow', day: 'numeric' })}</div>)}</div><div className="divide-y divide-slate-100">{tasks.length ? tasks.map(task => { const start = dayOffset(task.createdAt); const end = Math.max(start + 1, dayOffset(task.dueDate)); const span = end - start + 1; return <button className="grid w-full grid-cols-[220px_repeat(14,minmax(36px,1fr))] items-center py-3 text-left hover:bg-slate-50" key={task.id} onClick={() => onSelect(task.id)}><span className="truncate pr-4 text-xs font-bold text-slate-700">{task.title}</span><span className="col-span-14 grid grid-cols-subgrid"><span className="h-7 self-center rounded-lg px-2 py-1 text-[10px] font-bold text-white" style={{ gridColumn: `${start + 1} / span ${span}`, backgroundColor: projectFor(task.projectId).color }}>{statusMeta[task.status].label}</span></span></button> }) : <EmptyState />}</div></div></div>
 }
 
-function ProjectGrid({ tasks, onSelect }: { tasks: MockTask[]; onSelect: (id: string) => void }) {
-    return <div className="grid gap-4 bg-slate-50/50 p-5 sm:grid-cols-2 xl:grid-cols-3">{projects.map(project => { const projectTasks = tasks.filter(task => task.projectId === project.id); const done = projectTasks.filter(task => task.status === 'done').length; return <button className="rounded-3xl border border-slate-200 bg-white p-5 text-left shadow-sm transition-all hover:-translate-y-0.5 hover:border-blue-200 hover:shadow-md" key={project.id} onClick={() => onSelect(project.id)}><div className="flex items-start justify-between"><span className="flex h-11 w-11 items-center justify-center rounded-2xl text-sm font-extrabold text-white" style={{ backgroundColor: project.color }}>{project.name.slice(0, 1)}</span><MoreHorizontal className="h-5 w-5 text-slate-300" /></div><h3 className="mt-5 text-lg font-extrabold text-slate-900">{project.name}</h3><p className="mt-1 line-clamp-2 min-h-10 text-sm leading-5 text-slate-500">{project.description}</p><div className="mt-5 flex items-center justify-between text-xs font-semibold text-slate-500"><span>{done}/{projectTasks.length} complete</span><span>{project.owner} · owner</span></div><div className="mt-3 h-2 overflow-hidden rounded-full bg-slate-100"><div className="h-full rounded-full" style={{ width: `${projectTasks.length ? done / projectTasks.length * 100 : 0}%`, backgroundColor: project.color }} /></div></button> })}</div>
+function BoardView({ tasks, onSelect }: { tasks: MockTask[]; onSelect: (id: string) => void }) {
+    return <div className="grid gap-4 overflow-x-auto bg-slate-50/60 p-4 md:grid-cols-4">{(Object.keys(statusMeta) as TaskStatus[]).map(status => <div className="min-w-[240px]" key={status}><div className="mb-3 flex items-center justify-between px-1"><span className="flex items-center gap-2 text-xs font-extrabold uppercase tracking-wider text-slate-500"><span className={cn('h-2 w-2 rounded-full', statusMeta[status].color)} />{statusMeta[status].label}</span><span className="rounded-full bg-white px-2 py-0.5 text-xs font-bold text-slate-400">{tasks.filter(task => task.status === status).length}</span></div><div className="space-y-3">{tasks.filter(task => task.status === status).map(task => <button className="w-full rounded-2xl border border-slate-200 bg-white p-4 text-left shadow-sm transition-all hover:-translate-y-0.5 hover:border-blue-200 hover:shadow-md" key={task.id} onClick={() => onSelect(task.id)}><div className="mb-3 flex items-start justify-between gap-2"><span className={cn('rounded-full px-2 py-1 text-[10px] font-bold uppercase tracking-wide', priorityMeta[task.priority].className, 'bg-slate-50')}>{priorityMeta[task.priority].label}</span><MoreHorizontal className="h-4 w-4 text-slate-300" /></div><p className="text-sm font-bold leading-5 text-slate-900">{task.title}</p><p className="mt-2 line-clamp-2 text-xs leading-5 text-slate-500">{task.description}</p><div className="mt-4 flex items-center justify-between border-t border-slate-100 pt-3 text-xs text-slate-400"><span className={cn(isOverdue(task) && 'font-bold text-rose-600')}><CalendarDays className="mr-1 inline h-3.5 w-3.5" />{formatDueDate(task.dueDate)}</span><span className="flex h-6 w-6 items-center justify-center rounded-full bg-blue-100 text-[10px] font-bold text-blue-700">{task.assignee === currentPerson ? 'Y' : task.assignee.slice(0, 1)}</span></div></button>)}</div></div>)}</div>
 }
 
 function TaskDetailDialog({ task, onClose, onUpdate, onToggleSubtask, onAddComment }: { task: MockTask | null; onClose: () => void; onUpdate: (id: string, changes: Partial<MockTask>) => void; onToggleSubtask: (taskId: string, subtaskId: string) => void; onAddComment: (taskId: string, body: string) => void }) {
