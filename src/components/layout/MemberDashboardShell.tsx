@@ -1,7 +1,8 @@
 'use client'
 
+import { useState } from 'react'
 import { MemberSidebar } from './MemberSidebar'
-import { Bell, ChevronDown } from 'lucide-react'
+import { Bell, ChevronDown, Menu } from 'lucide-react'
 import { usePathname } from 'next/navigation'
 import { useApp } from '@/lib/context/AppContext'
 
@@ -13,14 +14,18 @@ export function MemberDashboardShell({ children }: MemberDashboardShellProps) {
     const { currentUser } = useApp()
     const pathname = usePathname()
     const isOkrBoard = pathname.endsWith('/okrs')
+    const [sidebarOpen, setSidebarOpen] = useState(false)
 
     return (
         <div className="flex min-h-screen bg-slate-50/50">
-            <MemberSidebar />
+            <MemberSidebar open={sidebarOpen} onClose={() => setSidebarOpen(false)} />
 
-            <div className="flex-1 flex flex-col min-w-0">
+            <div className="flex min-w-0 flex-1 flex-col">
                 {/* Topbar */}
-                <header className="h-16 bg-white/80 backdrop-blur-md border-b border-slate-200 sticky top-0 z-30 flex items-center justify-end px-8">
+                <header className="sticky top-0 z-30 flex h-16 items-center justify-between border-b border-slate-200 bg-white/90 px-4 backdrop-blur-md sm:px-6 lg:justify-end lg:px-8">
+                    <button aria-label="Open navigation" className="rounded-xl p-2 text-slate-500 hover:bg-slate-100 lg:hidden" onClick={() => setSidebarOpen(true)}>
+                        <Menu className="h-5 w-5" />
+                    </button>
                     <div className="flex items-center gap-4">
                         <button className="p-2 text-slate-400 hover:text-slate-600 hover:bg-slate-50 rounded-full transition-all relative">
                             <Bell className="w-5 h-5" />
@@ -47,8 +52,8 @@ export function MemberDashboardShell({ children }: MemberDashboardShellProps) {
                 </header>
 
                 {/* Content */}
-                <main className={`flex-1 overflow-auto ${isOkrBoard ? '' : 'p-8'}`}>
-                    <div className={isOkrBoard ? 'min-h-full' : 'mx-auto max-w-7xl space-y-8'}>
+                <main className={`min-w-0 flex-1 overflow-x-hidden overflow-y-auto ${isOkrBoard ? '' : 'p-4 sm:p-6 lg:p-8'}`}>
+                    <div className={isOkrBoard ? 'min-h-full' : 'mx-auto max-w-7xl space-y-6 sm:space-y-8'}>
                         {children}
                     </div>
                 </main>

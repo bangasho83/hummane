@@ -8,7 +8,12 @@ import { cn } from '@/lib/utils'
 import { memberNavigationItems, type MemberNavItem } from '@/config/member-navigation'
 import { toast } from '@/components/ui/toast'
 
-export function MemberSidebar() {
+interface MemberSidebarProps {
+    open?: boolean
+    onClose?: () => void
+}
+
+export function MemberSidebar({ open = false, onClose }: MemberSidebarProps) {
     const pathname = usePathname()
     const router = useRouter()
     const { logout, currentCompany } = useApp()
@@ -21,6 +26,7 @@ export function MemberSidebar() {
         return (
             <Link
                 href={item.href}
+                onClick={onClose}
                 className={cn(
                     "flex items-center gap-3 px-3 py-2.5 rounded-xl text-sm font-bold transition-all group mb-1",
                     isActive
@@ -41,7 +47,12 @@ export function MemberSidebar() {
     }
 
     return (
-        <aside className="w-64 h-screen bg-white border-r border-slate-200 flex flex-col sticky top-0 z-50">
+        <>
+            {open && <button aria-label="Close navigation" className="fixed inset-0 z-40 bg-slate-950/30 backdrop-blur-[2px] lg:hidden" onClick={onClose} />}
+            <aside className={cn(
+                'fixed inset-y-0 left-0 z-50 flex h-screen w-72 flex-col border-r border-slate-200 bg-white transition-transform duration-200 lg:sticky lg:top-0 lg:z-50 lg:w-64 lg:translate-x-0',
+                open ? 'translate-x-0' : '-translate-x-full lg:translate-x-0'
+            )}>
             <div className="p-6 flex-1 overflow-y-auto">
                 <div className="flex items-center gap-2 mb-8 px-2">
                     <div className="w-9 h-9 bg-blue-600 rounded-2xl flex items-center justify-center shadow-lg shadow-blue-500/30">
@@ -70,7 +81,7 @@ export function MemberSidebar() {
                         try {
                             await logout()
                             router.push('/login')
-                        } catch (error) {
+                        } catch {
                             toast('Failed to logout. Please try again.', 'error')
                         }
                     }}
@@ -96,7 +107,8 @@ export function MemberSidebar() {
                     </div>
                 )}
             </div>
-        </aside>
+            </aside>
+        </>
     )
 }
 
