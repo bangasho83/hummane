@@ -19,6 +19,7 @@ import {
     Search,
     Sparkles,
     UserRound,
+    UsersRound,
     X,
 } from 'lucide-react'
 import { Badge } from '@/components/ui/badge'
@@ -27,7 +28,6 @@ import { Card, CardContent } from '@/components/ui/card'
 import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle } from '@/components/ui/dialog'
 import { Input } from '@/components/ui/input'
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select'
-import { Tabs, TabsList, TabsTrigger } from '@/components/ui/tabs'
 import { Textarea } from '@/components/ui/textarea'
 import { cn } from '@/lib/utils'
 
@@ -206,7 +206,7 @@ export function TaskWorkspace() {
             <Card className="overflow-hidden rounded-3xl border-slate-200/80 shadow-sm">
                 <div className="border-b border-slate-100 bg-white px-5 py-4 sm:px-6">
                     <div className="flex flex-col gap-4 xl:flex-row xl:items-center xl:justify-between">
-                        <Tabs value={scope} onValueChange={value => setScope(value as TaskScope)}><TabsList className="w-full sm:w-auto"><TabsTrigger className="flex-1 whitespace-nowrap px-3 text-xs sm:flex-none sm:px-4 sm:text-sm" value="my">My tasks</TabsTrigger><TabsTrigger className="flex-1 whitespace-nowrap px-3 text-xs sm:flex-none sm:px-4 sm:text-sm" value="all">All tasks</TabsTrigger></TabsList></Tabs>
+                        <div className="flex rounded-xl border border-slate-200 p-1"><Button title="My tasks" aria-label="Show my tasks" size="icon" variant={scope === 'my' ? 'secondary' : 'ghost'} className="h-8 w-8 rounded-lg" onClick={() => setScope('my')}><UserRound className="h-4 w-4" /></Button><Button title="All tasks" aria-label="Show all tasks" size="icon" variant={scope === 'all' ? 'secondary' : 'ghost'} className="h-8 w-8 rounded-lg" onClick={() => setScope('all')}><UsersRound className="h-4 w-4" /></Button></div>
                         <div className="flex flex-wrap items-center gap-2">
                             <div className="relative hidden min-w-0 flex-1 sm:block sm:flex-none"><Search className="pointer-events-none absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-slate-400" /><Input value={search} onChange={event => setSearch(event.target.value)} className="h-10 w-full rounded-xl pl-9 sm:w-56" placeholder="Search tasks" /></div>
                             <Button title="Search tasks" aria-label="Search tasks" variant={showMobileSearch ? 'secondary' : 'outline'} className="h-10 rounded-xl px-3 sm:hidden" onClick={() => setShowMobileSearch(previous => !previous)}><Search className="h-4 w-4" /></Button>
