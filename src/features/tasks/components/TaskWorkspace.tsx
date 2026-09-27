@@ -1,6 +1,7 @@
 'use client'
 
 import { useEffect, useMemo, useState } from 'react'
+import { useRouter } from 'next/navigation'
 import type { FormEvent, ReactNode } from 'react'
 import {
     CalendarDays,
@@ -108,6 +109,7 @@ function isOverdue(task: MockTask) {
 }
 
 export function TaskWorkspace() {
+    const router = useRouter()
     const [tasks, setTasks] = useState<MockTask[]>(initialTasks)
     const [hydrated, setHydrated] = useState(false)
     const [scope, setScope] = useState<TaskScope>('my')
@@ -179,8 +181,9 @@ export function TaskWorkspace() {
             createdAt: new Date().toISOString().slice(0, 10),
         }
         setTasks(previous => [task, ...previous])
+        window.localStorage.setItem(STORAGE_KEY, JSON.stringify([task, ...tasks]))
         setShowCreate(false)
-        setSelectedTaskId(task.id)
+        router.push(`/member/tasks/${task.id}`)
     }
 
     return <div className="min-h-[calc(100vh-4rem)] bg-slate-50/70">
@@ -205,7 +208,7 @@ export function TaskWorkspace() {
                         </div>
                     </div>
                 </div>
-                {layout === 'board' ? <BoardView tasks={filteredTasks} onSelect={setSelectedTaskId} /> : layout === 'gantt' ? <GanttView tasks={filteredTasks} onSelect={setSelectedTaskId} /> : <TaskList tasks={filteredTasks} onSelect={setSelectedTaskId} onStatusChange={(id, status) => updateTask(id, { status })} />}
+                {layout === 'board' ? <BoardView tasks={filteredTasks} onSelect={taskId => router.push(`/member/tasks/${taskId}`)} /> : layout === 'gantt' ? <GanttView tasks={filteredTasks} onSelect={taskId => router.push(`/member/tasks/${taskId}`)} /> : <TaskList tasks={filteredTasks} onSelect={taskId => router.push(`/member/tasks/${taskId}`)} onStatusChange={(id, status) => updateTask(id, { status })} />}
             </Card>
         </div>
 
