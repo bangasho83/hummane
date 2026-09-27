@@ -186,10 +186,10 @@ export function TaskWorkspace() {
     }
 
     return <div className="min-h-[calc(100vh-4rem)] bg-slate-50/70">
-        <div className="mx-auto max-w-[1500px] space-y-6 p-5 sm:p-8">
+        <div className="space-y-6">
             <header className="flex items-center justify-between gap-4">
                 <div className="min-w-0"><h1 className="text-2xl font-extrabold tracking-tight text-slate-950 sm:text-3xl">Tasks</h1><p className="mt-1 truncate text-sm text-slate-500">See what needs attention and what comes next.</p></div>
-                <Button className="h-10 shrink-0 rounded-xl px-3 shadow-sm sm:px-5" onClick={() => setShowCreate(true)}><Plus className="h-4 w-4" /><span className="hidden sm:inline">Add task</span><span className="sm:hidden">Add</span></Button>
+                <Button className="h-10 shrink-0 rounded-xl bg-blue-600 px-3 text-white shadow-sm hover:bg-blue-700 sm:px-5" onClick={() => setShowCreate(true)}><Plus className="h-4 w-4" /><span className="hidden sm:inline">Add task</span><span className="sm:hidden">Add</span></Button>
             </header>
 
             <div className="grid grid-cols-3 gap-2 sm:gap-3">
