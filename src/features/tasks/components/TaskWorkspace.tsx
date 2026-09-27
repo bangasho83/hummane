@@ -2,7 +2,7 @@
 
 import { useEffect, useMemo, useState } from 'react'
 import { useRouter } from 'next/navigation'
-import type { FormEvent, ReactNode } from 'react'
+import type { ReactNode } from 'react'
 import {
     CalendarDays,
     Check,
@@ -28,8 +28,8 @@ import { Card, CardContent } from '@/components/ui/card'
 import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle } from '@/components/ui/dialog'
 import { Input } from '@/components/ui/input'
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select'
-import { Textarea } from '@/components/ui/textarea'
 import { cn } from '@/lib/utils'
+import { TaskCreateDialog, type TaskCreateValues } from '@/features/tasks/components/TaskCreateDialog'
 
 type TaskStatus = 'todo' | 'in_progress' | 'blocked' | 'done'
 type TaskPriority = 'low' | 'normal' | 'high' | 'urgent'
@@ -161,25 +161,8 @@ export function TaskWorkspace() {
         setTasks(previous => previous.map(task => task.id === taskId ? { ...task, comments: [...task.comments, { id: `comment-${Date.now()}`, author: currentPerson, body, createdAt: 'Just now' }] } : task))
     }
 
-    function createTask(event: FormEvent<HTMLFormElement>) {
-        event.preventDefault()
-        const form = new FormData(event.currentTarget)
-        const title = String(form.get('title') || '').trim()
-        if (!title) return
-        const task: MockTask = {
-            id: `task-${Date.now()}`,
-            projectId: String(form.get('projectId') || projects[0].id),
-            title,
-            description: String(form.get('description') || ''),
-            status: 'todo',
-            priority: String(form.get('priority') || 'normal') as TaskPriority,
-            assignee: currentPerson,
-            dueDate: String(form.get('dueDate') || ''),
-            labels: [],
-            subtasks: [],
-            comments: [],
-            createdAt: new Date().toISOString().slice(0, 10),
-        }
+    function createTask(values: TaskCreateValues) {
+        const task: MockTask = { id: `task-${Date.now()}`, projectId: values.projectId, title: values.title, description: values.description, status: 'todo', priority: values.priority, assignee: currentPerson, dueDate: values.dueDate, labels: [], subtasks: [], comments: [], createdAt: new Date().toISOString().slice(0, 10) }
         setTasks(previous => [task, ...previous])
         window.localStorage.setItem(STORAGE_KEY, JSON.stringify([task, ...tasks]))
         setShowCreate(false)
@@ -213,7 +196,7 @@ export function TaskWorkspace() {
         </div>
 
         <TaskDetailDialog task={selectedTask} onClose={() => setSelectedTaskId(null)} onUpdate={updateTask} onToggleSubtask={toggleSubtask} onAddComment={addComment} />
-        <CreateTaskDialog open={showCreate} onClose={() => setShowCreate(false)} onSubmit={createTask} />
+        <TaskCreateDialog open={showCreate} onClose={() => setShowCreate(false)} onSubmit={createTask} />
         <SearchFilterDialog open={showSearchFilters} onClose={() => setShowSearchFilters(false)} search={search} onSearchChange={setSearch} projectId={projectId} onProjectChange={setProjectId} statusFilter={statusFilter} onStatusChange={setStatusFilter} onClear={() => { setSearch(''); setProjectId('all'); setStatusFilter('all') }} />
     </div>
 }
@@ -266,10 +249,6 @@ function DetailSelect({ label, value, options, onChange }: { label: string; valu
 function SearchFilterDialog({ open, onClose, search, onSearchChange, projectId, onProjectChange, statusFilter, onStatusChange, onClear }: { open: boolean; onClose: () => void; search: string; onSearchChange: (value: string) => void; projectId: string; onProjectChange: (value: string) => void; statusFilter: string; onStatusChange: (value: string) => void; onClear: () => void }) {
     const activeFilters = Number(Boolean(search)) + Number(projectId !== 'all') + Number(statusFilter !== 'all')
     return <Dialog open={open} onOpenChange={value => !value && onClose()}><DialogContent className="rounded-3xl sm:max-w-lg"><DialogHeader><DialogTitle className="text-2xl font-extrabold">Search and filter tasks</DialogTitle><DialogDescription>Find the work you want to focus on.</DialogDescription></DialogHeader><div className="space-y-4"><div className="relative"><Search className="pointer-events-none absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-slate-400" /><Input autoFocus value={search} onChange={event => onSearchChange(event.target.value)} className="h-12 rounded-xl pl-9" placeholder="Search tasks" /></div><div className="grid gap-3 sm:grid-cols-2"><div><p className="mb-2 text-[11px] font-bold uppercase tracking-wider text-slate-400">Project</p><Select value={projectId} onValueChange={onProjectChange}><SelectTrigger className="h-11 rounded-xl"><SelectValue placeholder="All projects" /></SelectTrigger><SelectContent><SelectItem value="all">All projects</SelectItem>{projects.map(project => <SelectItem key={project.id} value={project.id}>{project.name}</SelectItem>)}</SelectContent></Select></div><div><p className="mb-2 text-[11px] font-bold uppercase tracking-wider text-slate-400">Status</p><Select value={statusFilter} onValueChange={onStatusChange}><SelectTrigger className="h-11 rounded-xl"><SelectValue placeholder="All statuses" /></SelectTrigger><SelectContent><SelectItem value="all">All statuses</SelectItem>{Object.entries(statusMeta).map(([value, meta]) => <SelectItem key={value} value={value}>{meta.label}</SelectItem>)}</SelectContent></Select></div></div></div><DialogFooter className="flex-row justify-between sm:justify-between"><Button type="button" variant="ghost" className="rounded-xl text-slate-500" disabled={!activeFilters} onClick={onClear}>Clear all</Button><Button type="button" className="rounded-xl bg-blue-600 text-white hover:bg-blue-700" onClick={onClose}>Show tasks</Button></DialogFooter></DialogContent></Dialog>
-}
-
-function CreateTaskDialog({ open, onClose, onSubmit }: { open: boolean; onClose: () => void; onSubmit: (event: FormEvent<HTMLFormElement>) => void }) {
-    return <Dialog open={open} onOpenChange={value => !value && onClose()}><DialogContent className="rounded-3xl sm:max-w-lg"><DialogHeader><DialogTitle className="text-2xl font-extrabold">Add a task</DialogTitle><DialogDescription>Give the work enough context for someone to pick it up with confidence.</DialogDescription></DialogHeader><form className="space-y-4" onSubmit={onSubmit}><div><label className="mb-2 block text-xs font-bold uppercase tracking-wider text-slate-400" htmlFor="task-title">Task title</label><Input id="task-title" name="title" autoFocus required placeholder="What needs to be done?" className="h-12 rounded-xl" /></div><div><label className="mb-2 block text-xs font-bold uppercase tracking-wider text-slate-400" htmlFor="task-description">Description</label><Textarea id="task-description" name="description" placeholder="Add useful context..." className="min-h-24 rounded-xl" /></div><div className="grid gap-3 sm:grid-cols-2"><div><label className="mb-2 block text-xs font-bold uppercase tracking-wider text-slate-400" htmlFor="task-project">Project</label><select id="task-project" name="projectId" defaultValue={projects[0].id} className="h-10 w-full rounded-xl border border-slate-200 bg-white px-3 text-sm"><option value="website">Website refresh</option><option value="onboarding">New team onboarding</option><option value="office">Office setup</option></select></div><div><label className="mb-2 block text-xs font-bold uppercase tracking-wider text-slate-400" htmlFor="task-priority">Priority</label><select id="task-priority" name="priority" defaultValue="normal" className="h-10 w-full rounded-xl border border-slate-200 bg-white px-3 text-sm"><option value="low">Low</option><option value="normal">Normal</option><option value="high">High</option><option value="urgent">Urgent</option></select></div></div><div><label className="mb-2 block text-xs font-bold uppercase tracking-wider text-slate-400" htmlFor="task-due-date">Due date</label><Input id="task-due-date" name="dueDate" type="date" className="h-10 rounded-xl" /></div><DialogFooter className="pt-3"><Button type="button" variant="outline" className="rounded-xl" onClick={onClose}>Cancel</Button><Button type="submit" className="rounded-xl"><Plus className="h-4 w-4" />Create task</Button></DialogFooter></form></DialogContent></Dialog>
 }
 
 function EmptyState() {
