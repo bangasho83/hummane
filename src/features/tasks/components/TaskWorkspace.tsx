@@ -17,7 +17,6 @@ import {
     MoreHorizontal,
     Plus,
     Search,
-    Sparkles,
     UserRound,
     UsersRound,
     X,
@@ -188,13 +187,9 @@ export function TaskWorkspace() {
 
     return <div className="min-h-[calc(100vh-4rem)] bg-slate-50/70">
         <div className="mx-auto max-w-[1500px] space-y-6 p-5 sm:p-8">
-            <header className="flex flex-col gap-5 lg:flex-row lg:items-end lg:justify-between">
-                <div>
-                    <div className="mb-3 flex items-center gap-2 text-xs font-bold uppercase tracking-[0.18em] text-blue-600"><Sparkles className="h-3.5 w-3.5" /> Shared work</div>
-                    <h1 className="text-3xl font-extrabold tracking-tight text-slate-950 sm:text-4xl">Tasks that keep everyone in the loop.</h1>
-                    <p className="mt-2 max-w-2xl text-sm leading-6 text-slate-500">A calm place to see what matters, take ownership, and help each other move work forward.</p>
-                </div>
-                <Button className="h-12 rounded-2xl px-5 shadow-sm" onClick={() => setShowCreate(true)}><Plus className="h-4 w-4" /> Add task</Button>
+            <header className="flex items-center justify-between gap-4">
+                <div className="min-w-0"><h1 className="text-2xl font-extrabold tracking-tight text-slate-950 sm:text-3xl">Tasks</h1><p className="mt-1 truncate text-sm text-slate-500">See what needs attention and what comes next.</p></div>
+                <Button className="h-10 shrink-0 rounded-xl px-3 shadow-sm sm:px-5" onClick={() => setShowCreate(true)}><Plus className="h-4 w-4" /><span className="hidden sm:inline">Add task</span><span className="sm:hidden">Add</span></Button>
             </header>
 
             <div className="grid grid-cols-3 gap-2 sm:gap-3">
@@ -227,7 +222,7 @@ export function TaskWorkspace() {
 }
 
 function SummaryCard({ label, value, icon, detail }: { label: string; value: number; icon: ReactNode; detail: string }) {
-    return <Card className="rounded-2xl border-slate-200/80 bg-white shadow-sm sm:rounded-3xl"><CardContent className="flex min-h-[92px] items-start justify-between gap-1 p-3 sm:min-h-0 sm:p-5"><div className="min-w-0"><p className="truncate text-[10px] font-bold uppercase tracking-wider text-slate-400 sm:text-xs">{label}</p><p className="mt-1 text-2xl font-extrabold tracking-tight text-slate-950 sm:mt-2 sm:text-3xl">{value}</p><p className="mt-0.5 hidden truncate text-xs text-slate-500 sm:mt-1 sm:block">{detail}</p></div><div className="rounded-xl bg-slate-50 p-2 sm:rounded-2xl sm:p-3">{icon}</div></CardContent></Card>
+    return <Card className="rounded-2xl border-slate-200/80 bg-white shadow-sm"><CardContent className="flex h-[68px] items-center justify-between gap-1 px-3 py-2.5 sm:h-[76px] sm:px-4"><div className="min-w-0"><p className="truncate text-[10px] font-bold uppercase tracking-wider text-slate-400 sm:text-xs">{label}</p><p className="text-xl font-extrabold tracking-tight text-slate-950 sm:text-2xl">{value}</p><span className="sr-only">{detail}</span></div><div className="rounded-xl bg-slate-50 p-2">{icon}</div></CardContent></Card>
 }
 
 function TaskList({ tasks, onSelect, onStatusChange }: { tasks: MockTask[]; onSelect: (id: string) => void; onStatusChange: (id: string, status: TaskStatus) => void }) {
