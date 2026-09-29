@@ -127,7 +127,7 @@ export function TaskWorkspace() {
     const [tasks, setTasks] = useState<MockTask[]>([])
     const [projectOptions, setProjectOptions] = useState<MockProject[]>(projects)
     const [loading, setLoading] = useState(true)
-    const [scope, setScope] = useState<TaskScope>('my')
+    const [scope, setScope] = useState<TaskScope>('all')
     const [layout, setLayout] = useState<TaskLayout>('list')
     const [projectId, setProjectId] = useState('all')
     const [statusFilter, setStatusFilter] = useState('all')
