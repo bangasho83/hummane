@@ -99,18 +99,31 @@ function mapTask(task: TaskApi): MockTask {
     return { id: task.id, projectId: task.projectId, projectName: task.projectName, projectColor: task.projectColor, parentTaskId: task.parentTaskId || undefined, title: task.title, description: task.description || '', status: task.status, priority: task.priority, assignee: task.assignee || 'Unassigned', assigneeId: task.assigneeId || undefined, dueDate: task.dueDate || '', labels: task.labels || [], subtasks: task.subtasks || [], comments: (task.comments || []).map(comment => ({ id: comment.id, author: comment.authorName || comment.authorId || 'Team member', body: comment.body, createdAt: comment.createdAt })), createdAt: task.createdAt }
 }
 
+function dateKey(date: Date) {
+    const year = date.getFullYear()
+    const month = String(date.getMonth() + 1).padStart(2, '0')
+    const day = String(date.getDate()).padStart(2, '0')
+    return `${year}-${month}-${day}`
+}
+
+function parseDate(value: string) {
+    if (!value) return null
+    const parsed = new Date(value.length === 10 ? `${value}T12:00:00` : value)
+    return Number.isNaN(parsed.getTime()) ? null : parsed
+}
+
 function formatDueDate(date: string) {
-    if (!date) return 'No due date'
-    return new Date(`${date}T12:00:00`).toLocaleDateString(undefined, { month: 'short', day: 'numeric' })
+    const parsed = parseDate(date)
+    return parsed ? parsed.toLocaleDateString(undefined, { month: 'short', day: 'numeric' }) : 'No due date'
 }
 
 function isOverdue(task: MockTask) {
-    return task.status !== 'done' && task.dueDate < '2026-09-26'
+    return task.status !== 'done' && Boolean(task.dueDate) && task.dueDate < dateKey(new Date())
 }
 
 export function TaskWorkspace() {
     const router = useRouter()
-    const { apiAccessToken, meProfile, isHydrating } = useApp()
+    const { apiAccessToken, employees, meProfile, isHydrating } = useApp()
     const [tasks, setTasks] = useState<MockTask[]>([])
     const [projectOptions, setProjectOptions] = useState<MockProject[]>(projects)
     const [loading, setLoading] = useState(true)
@@ -173,7 +186,7 @@ export function TaskWorkspace() {
 
     async function createTask(values: TaskCreateValues) {
         if (!apiAccessToken) return
-        const created = await createTaskApi({ projectId: values.projectId, title: values.title, description: values.description, priority: values.priority, dueDate: values.dueDate || null, assigneeId: meProfile?.employeeId || null }, apiAccessToken)
+        const created = await createTaskApi({ projectId: values.projectId, title: values.title, description: values.description, priority: values.priority, dueDate: values.dueDate || null, assigneeId: values.assigneeId || meProfile?.employeeId || null }, apiAccessToken)
         setTasks(previous => [mapTask(created), ...previous])
         setShowCreate(false)
         router.push(`/member/tasks/${created.id}`)
@@ -194,7 +207,7 @@ export function TaskWorkspace() {
 
             <div className="grid grid-cols-2 gap-2 sm:max-w-md sm:gap-3">
                 <SummaryCard label="Open" value={openTasks} icon={<Circle className="h-4 w-4 text-blue-600 sm:h-5 sm:w-5" />} detail="Across projects" />
-                <SummaryCard label="Due soon" value={tasks.filter(task => task.status !== 'done' && task.dueDate >= '2026-09-26' && task.dueDate <= '2026-10-03').length} icon={<Clock3 className="h-4 w-4 text-amber-600 sm:h-5 sm:w-5" />} detail={`${overdueTasks} overdue`} />
+                <SummaryCard label="Due soon" value={tasks.filter(task => { const today = new Date(); const soon = new Date(today); soon.setDate(today.getDate() + 7); return task.status !== 'done' && task.dueDate >= dateKey(today) && task.dueDate <= dateKey(soon) }).length} icon={<Clock3 className="h-4 w-4 text-amber-600 sm:h-5 sm:w-5" />} detail={`${overdueTasks} overdue`} />
             </div>
 
             <Card className="overflow-hidden rounded-3xl border-slate-200/80 shadow-sm">
@@ -212,7 +225,7 @@ export function TaskWorkspace() {
         </div>
 
         <TaskDetailDialog task={selectedTask} onClose={() => setSelectedTaskId(null)} onUpdate={updateTask} onToggleSubtask={toggleSubtask} onAddComment={addComment} />
-        <TaskCreateDialog open={showCreate} onClose={() => setShowCreate(false)} onSubmit={createTask} projects={projectOptions} />
+        <TaskCreateDialog open={showCreate} onClose={() => setShowCreate(false)} onSubmit={createTask} projects={projectOptions} employees={employees} defaultAssigneeId={meProfile?.employeeId} />
         <ProjectsDialog open={showProjects} onClose={() => setShowProjects(false)} projects={projectOptions} onCreate={createProject} onSelect={id => { setProjectId(id); setShowProjects(false) }} />
         <SearchFilterDialog open={showSearchFilters} onClose={() => setShowSearchFilters(false)} search={search} onSearchChange={setSearch} projectId={projectId} onProjectChange={setProjectId} statusFilter={statusFilter} onStatusChange={setStatusFilter} projects={projectOptions} onClear={() => { setSearch(''); setProjectId('all'); setStatusFilter('all') }} />
     </div>
@@ -241,7 +254,8 @@ function TaskRow({ task, onSelect, onStatusChange }: { task: MockTask; onSelect:
 }
 
 function GanttView({ tasks, onSelect }: { tasks: MockTask[]; onSelect: (id: string) => void }) {
-    const timelineStart = new Date('2026-09-26T12:00:00')
+    const timelineStart = new Date()
+    timelineStart.setHours(12, 0, 0, 0)
     const days = Array.from({ length: 14 }, (_, index) => { const date = new Date(timelineStart); date.setDate(date.getDate() + index); return date })
     const dayOffset = (date: string) => Math.max(0, Math.min(13, Math.round((new Date(`${date}T12:00:00`).getTime() - timelineStart.getTime()) / 86400000)))
 
