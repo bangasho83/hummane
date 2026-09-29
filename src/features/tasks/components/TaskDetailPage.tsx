@@ -1,6 +1,7 @@
 'use client'
 
 import { useEffect, useState } from 'react'
+import { useApp } from '@/lib/context/AppContext'
 import { ArrowLeft, CalendarDays, Check, MessageSquare, Plus, UserRound } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 import { Card, CardContent } from '@/components/ui/card'
@@ -8,18 +9,22 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@
 import { Textarea } from '@/components/ui/textarea'
 import { cn } from '@/lib/utils'
 import { TaskCreateDialog, type TaskCreateValues } from '@/features/tasks/components/TaskCreateDialog'
+import { addTaskCommentApi, createTaskApi, fetchTaskApi, updateTaskApi, type TaskApi } from '@/lib/api/client'
 
 type TaskStatus = 'todo' | 'in_progress' | 'blocked' | 'done'
 type TaskPriority = 'low' | 'normal' | 'high' | 'urgent'
 type Task = {
     id: string
     projectId: string
+    projectName?: string
+    projectColor?: string
     parentTaskId?: string
     title: string
     description: string
     status: TaskStatus
     priority: TaskPriority
     assignee: string
+    assigneeId?: string
     dueDate: string
     labels: string[]
     subtasks: { id: string; title: string; done: boolean }[]
@@ -27,7 +32,6 @@ type Task = {
     createdAt: string
 }
 
-const STORAGE_KEY = 'hummane-task-workspace-v1'
 const projects = [
     { id: 'website', name: 'Website refresh', color: '#2563eb' },
     { id: 'onboarding', name: 'New team onboarding', color: '#10b981' },
@@ -41,8 +45,12 @@ const statusMeta: Record<TaskStatus, { label: string; badge: 'default' | 'second
 }
 const priorityMeta: Record<TaskPriority, string> = { low: 'Low', normal: 'Normal', high: 'High', urgent: 'Urgent' }
 
-function projectFor(id: string) {
-    return projects.find(project => project.id === id) || projects[0]
+function mapTask(task: TaskApi): Task {
+    return { id: task.id, projectId: task.projectId, projectName: task.projectName, projectColor: task.projectColor, parentTaskId: task.parentTaskId || undefined, title: task.title, description: task.description || '', status: task.status, priority: task.priority, assignee: task.assignee || 'Unassigned', assigneeId: task.assigneeId || undefined, dueDate: task.dueDate || '', labels: task.labels || [], subtasks: task.subtasks || [], comments: (task.comments || []).map(comment => ({ id: comment.id, author: comment.authorName || comment.authorId || 'Team member', body: comment.body, createdAt: comment.createdAt })), createdAt: task.createdAt }
+}
+
+function projectFor(id: string, name?: string, color?: string) {
+    return name ? { id, name, color: color || '#2563eb' } : projects.find(project => project.id === id) || projects[0]
 }
 
 function formatDate(date: string) {
@@ -51,60 +59,51 @@ function formatDate(date: string) {
 }
 
 export function TaskDetailPage({ taskId, onBack }: { taskId: string; onBack: () => void }) {
+    const { apiAccessToken, isHydrating } = useApp()
     const [task, setTask] = useState<Task | null>(null)
     const [comment, setComment] = useState('')
     const [showCreateSubtask, setShowCreateSubtask] = useState(false)
     const [hydrated, setHydrated] = useState(false)
 
     useEffect(() => {
-        try {
-            const stored = window.localStorage.getItem(STORAGE_KEY)
-            const tasks = stored ? JSON.parse(stored) as Task[] : []
-            setTask(tasks.find(item => item.id === taskId) || null)
-        } finally {
-            setHydrated(true)
-        }
-    }, [taskId])
+        if (isHydrating || !apiAccessToken) return
+        fetchTaskApi(taskId, apiAccessToken).then(result => setTask(result ? mapTask(result) : null)).catch(() => setTask(null)).finally(() => setHydrated(true))
+    }, [apiAccessToken, isHydrating, taskId])
 
-    function save(nextTask: Task) {
-        setTask(nextTask)
-        const stored = window.localStorage.getItem(STORAGE_KEY)
-        const tasks = stored ? JSON.parse(stored) as Task[] : []
-        window.localStorage.setItem(STORAGE_KEY, JSON.stringify(tasks.map(item => item.id === nextTask.id ? nextTask : item)))
+    async function update(changes: Partial<Task>) {
+        if (!task || !apiAccessToken) return
+        const updated = await updateTaskApi(task.id, { status: changes.status, priority: changes.priority, title: changes.title, description: changes.description, dueDate: changes.dueDate || null, labels: changes.labels, assigneeId: changes.assigneeId || null }, apiAccessToken)
+        if (updated) setTask(mapTask(updated))
     }
 
-    function update(changes: Partial<Task>) {
-        if (task) save({ ...task, ...changes })
-    }
-
-    function toggleSubtask(id: string) {
-        if (task) update({ subtasks: task.subtasks.map(item => item.id === id ? { ...item, done: !item.done } : item) })
+    async function toggleSubtask(id: string) {
+        if (!task || !apiAccessToken) return
+        const subtask = task.subtasks.find(item => item.id === id)
+        if (!subtask) return
+        await updateTaskApi(id, { status: subtask.done ? 'todo' : 'done' }, apiAccessToken)
+        const updated = await fetchTaskApi(task.id, apiAccessToken)
+        if (updated) setTask(mapTask(updated))
     }
 
     function addComment() {
         const body = comment.trim()
         if (!task || !body) return
-        update({ comments: [...task.comments, { id: `comment-${Date.now()}`, author: 'You', body, createdAt: 'Just now' }] })
+        if (!apiAccessToken) return
+        addTaskCommentApi(task.id, body, apiAccessToken).then(updated => { if (updated) setTask(mapTask(updated)) })
         setComment('')
     }
 
     function createSubtask(values: TaskCreateValues) {
         if (!task) return
-        const subtaskId = `task-${Date.now()}`
-        const subtask: Task = { id: subtaskId, projectId: task.projectId, parentTaskId: task.id, title: values.title, description: values.description, status: 'todo', priority: values.priority, assignee: task.assignee, dueDate: values.dueDate, labels: [], subtasks: [], comments: [], createdAt: new Date().toISOString().slice(0, 10) }
-        const updatedTask = { ...task, subtasks: [...task.subtasks, { id: subtaskId, title: values.title, done: false }] }
-        const stored = window.localStorage.getItem(STORAGE_KEY)
-        const tasks = stored ? JSON.parse(stored) as Task[] : []
-        const nextTasks = [subtask, ...tasks.map(item => item.id === task.id ? updatedTask : item)]
-        window.localStorage.setItem(STORAGE_KEY, JSON.stringify(nextTasks))
-        setTask(updatedTask)
+        if (!apiAccessToken) return
+        createTaskApi({ projectId: task.projectId, parentTaskId: task.id, title: values.title, description: values.description, priority: values.priority, dueDate: values.dueDate || null, assigneeId: task.assigneeId || null }, apiAccessToken).then(() => fetchTaskApi(task.id, apiAccessToken)).then(updated => { if (updated) setTask(mapTask(updated)) })
         setShowCreateSubtask(false)
     }
 
     if (!hydrated) return <div className="flex items-center justify-center p-12 text-sm text-slate-500">Loading task...</div>
     if (!task) return <div className="space-y-5"><Button variant="ghost" className="rounded-xl" onClick={onBack}><ArrowLeft className="mr-2 h-4 w-4" />Back to tasks</Button><Card className="rounded-3xl"><CardContent className="p-10 text-center text-sm text-slate-500">This task could not be found.</CardContent></Card></div>
 
-    const project = projectFor(task.projectId)
+    const project = projectFor(task.projectId, task.projectName, task.projectColor)
     const completedSubtasks = task.subtasks.filter(item => item.done).length
     return <div className="animate-in fade-in duration-500 slide-in-from-bottom-4 max-w-3xl space-y-6">
         <header className="flex items-center gap-3"><Button variant="ghost" size="icon" className="shrink-0 rounded-xl border border-transparent hover:border-slate-100 hover:bg-white hover:shadow-sm" onClick={onBack} aria-label="Back to tasks"><ArrowLeft className="h-5 w-5" /></Button><p className="flex items-center gap-2 text-xs font-bold uppercase tracking-[0.18em] text-blue-600"><span className="h-2 w-2 rounded-full" style={{ backgroundColor: project.color }} />{project.name}</p></header>
@@ -113,7 +112,7 @@ export function TaskDetailPage({ taskId, onBack }: { taskId: string; onBack: () 
             <main className="contents">
                 <Card className="order-1 rounded-3xl border-slate-100 bg-white shadow-premium"><CardContent className="p-5 sm:p-8"><div><h1 className={cn('text-2xl font-extrabold leading-tight tracking-tight text-slate-950 sm:text-3xl', task.status === 'done' && 'text-slate-400 line-through')}>{task.title}</h1><p className="mt-2 text-sm text-slate-400">Created {formatDate(task.createdAt)}</p><p className="mt-7 mb-2 text-[11px] font-bold uppercase tracking-wider text-slate-400">Description</p><p className="whitespace-pre-wrap text-sm leading-7 text-slate-600">{task.description || 'No description yet.'}</p><div className="mt-6 flex items-center gap-3 rounded-2xl bg-slate-50 px-4 py-3"><CalendarDays className="h-4 w-4 text-slate-400" /><div><p className="text-[10px] font-bold uppercase tracking-wider text-slate-400">Deadline</p><p className={cn('text-sm font-bold', task.dueDate && task.dueDate < '2026-09-26' && task.status !== 'done' ? 'text-rose-600' : 'text-slate-700')}>{formatDate(task.dueDate)}</p></div></div></div>{task.labels.length > 0 && <div className="mt-6 flex flex-wrap gap-2">{task.labels.map(label => <span className="rounded-full bg-slate-50 px-3 py-1 text-xs font-semibold text-slate-500" key={label}>{label}</span>)}</div>}</CardContent></Card>
 
-                <Card className="order-2 rounded-3xl border-slate-100 bg-white shadow-premium"><CardContent className="p-5 sm:p-6"><div className="mb-4 flex items-center justify-between gap-3"><div><h2 className="font-bold text-slate-900">Next steps</h2><p className="mt-1 text-xs text-slate-400">{completedSubtasks} of {task.subtasks.length} complete</p></div><Button variant="outline" className="h-9 shrink-0 rounded-xl px-3" onClick={() => setShowCreateSubtask(true)}><Plus className="h-4 w-4" /><span className="hidden sm:inline">Add subtask</span><span className="sm:hidden">Add</span></Button></div>{task.subtasks.length > 0 && <div className="mb-4 h-2 w-full overflow-hidden rounded-full bg-slate-100"><div className="h-full rounded-full bg-blue-600" style={{ width: `${completedSubtasks / task.subtasks.length * 100}%` }} /></div>}<div className="space-y-2">{task.subtasks.length > 0 ? task.subtasks.map(item => <button key={item.id} className="flex w-full items-center gap-3 rounded-xl p-3 text-left transition-colors hover:bg-slate-50" onClick={() => toggleSubtask(item.id)}><span className={cn('flex h-5 w-5 shrink-0 items-center justify-center rounded-full border', item.done ? 'border-emerald-500 bg-emerald-500 text-white' : 'border-slate-300')}>{item.done && <Check className="h-3 w-3" />}</span><span className={cn('text-sm font-medium', item.done && 'text-slate-400 line-through')}>{item.title}</span></button>) : <p className="py-3 text-sm text-slate-400">Add the first step when you are ready.</p>}</div></CardContent></Card>
+                <Card className="order-2 rounded-3xl border-slate-100 bg-white shadow-premium"><CardContent className="p-5 sm:p-6"><div className="mb-4 flex items-center justify-between gap-3"><div><h2 className="font-bold text-slate-900">Next steps</h2><p className="mt-1 text-xs text-slate-400">{completedSubtasks} of {task.subtasks.length} complete</p></div><Button className="h-9 shrink-0 rounded-xl bg-blue-600 px-3 text-white hover:bg-blue-700" onClick={() => setShowCreateSubtask(true)}><Plus className="h-4 w-4" /><span className="hidden sm:inline">Add subtask</span><span className="sm:hidden">Add</span></Button></div>{task.subtasks.length > 0 && <div className="mb-4 h-2 w-full overflow-hidden rounded-full bg-slate-100"><div className="h-full rounded-full bg-blue-600" style={{ width: `${completedSubtasks / task.subtasks.length * 100}%` }} /></div>}<div className="space-y-2">{task.subtasks.length > 0 ? task.subtasks.map(item => <button key={item.id} className="flex w-full items-center gap-3 rounded-xl p-3 text-left transition-colors hover:bg-slate-50" onClick={() => toggleSubtask(item.id)}><span className={cn('flex h-5 w-5 shrink-0 items-center justify-center rounded-full border', item.done ? 'border-emerald-500 bg-emerald-500 text-white' : 'border-slate-300')}>{item.done && <Check className="h-3 w-3" />}</span><span className={cn('text-sm font-medium', item.done && 'text-slate-400 line-through')}>{item.title}</span></button>) : <p className="py-3 text-sm text-slate-400">Add the first step when you are ready.</p>}</div></CardContent></Card>
 
                 <Card className="order-4 rounded-3xl border-slate-100 bg-white shadow-premium"><CardContent className="p-5 sm:p-6"><div className="mb-4 flex items-center justify-between"><div><h2 className="font-bold text-slate-900">Conversation</h2><p className="mt-1 text-xs text-slate-400">Keep useful context with the work.</p></div><span className="text-xs text-slate-400">{task.comments.length}</span></div><div className="space-y-3">{task.comments.map(item => <div className="rounded-2xl bg-slate-50 p-4" key={item.id}><div className="flex items-center justify-between gap-3"><span className="text-xs font-bold text-slate-700">{item.author}</span><span className="text-[11px] text-slate-400">{item.createdAt}</span></div><p className="mt-2 text-sm leading-6 text-slate-600">{item.body}</p></div>)}<div className="flex gap-2"><Textarea value={comment} onChange={event => setComment(event.target.value)} placeholder="Add context or a question..." className="min-h-11 rounded-xl" /><Button className="h-11 shrink-0 rounded-xl bg-blue-600 text-white hover:bg-blue-700" disabled={!comment.trim()} onClick={addComment} aria-label="Add comment"><MessageSquare className="h-4 w-4" /></Button></div></div></CardContent></Card>
             </main>

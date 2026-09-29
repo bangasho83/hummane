@@ -2,6 +2,7 @@
 
 import { useEffect, useMemo, useState } from 'react'
 import { useRouter } from 'next/navigation'
+import { useApp } from '@/lib/context/AppContext'
 import type { ReactNode } from 'react'
 import {
     CalendarDays,
@@ -30,6 +31,7 @@ import { Input } from '@/components/ui/input'
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select'
 import { cn } from '@/lib/utils'
 import { TaskCreateDialog, type TaskCreateValues } from '@/features/tasks/components/TaskCreateDialog'
+import { addTaskCommentApi, createTaskApi, fetchTaskProjectsApi, fetchTasksApi, updateTaskApi, type TaskApi, type TaskProjectApi } from '@/lib/api/client'
 
 type TaskStatus = 'todo' | 'in_progress' | 'blocked' | 'done'
 type TaskPriority = 'low' | 'normal' | 'high' | 'urgent'
@@ -50,12 +52,15 @@ type MockComment = { id: string; author: string; body: string; createdAt: string
 type MockTask = {
     id: string
     projectId: string
+    projectName?: string
+    projectColor?: string
     parentTaskId?: string
     title: string
     description: string
     status: TaskStatus
     priority: TaskPriority
     assignee: string
+    assigneeId?: string
     dueDate: string
     labels: string[]
     subtasks: { id: string; title: string; done: boolean }[]
@@ -63,22 +68,12 @@ type MockTask = {
     createdAt: string
 }
 
-const STORAGE_KEY = 'hummane-task-workspace-v1'
 const currentPerson = 'You'
 
 const projects: MockProject[] = [
     { id: 'website', name: 'Website refresh', description: 'A clearer, calmer home for Hummane.', color: '#2563eb', owner: 'Omair', taskCount: 8 },
     { id: 'onboarding', name: 'New team onboarding', description: 'Make the first week feel welcoming and simple.', color: '#10b981', owner: 'Sarah', taskCount: 5 },
     { id: 'office', name: 'Office setup', description: 'The practical things that help everyone do good work.', color: '#f59e0b', owner: 'John', taskCount: 4 },
-]
-
-const initialTasks: MockTask[] = [
-    { id: 'task-1', projectId: 'website', title: 'Review the new homepage copy', description: 'Read through the first draft and leave thoughts where the message can be clearer.', status: 'in_progress', priority: 'high', assignee: currentPerson, dueDate: '2026-10-02', labels: ['Content', 'This week'], subtasks: [{ id: 'sub-1', title: 'Check the hero message', done: true }, { id: 'sub-2', title: 'Review the feature sections', done: false }], comments: [{ id: 'comment-1', author: 'Sarah', body: 'The trust section feels especially strong. Would love your view on the opening paragraph.', createdAt: 'Today, 10:24 AM' }], createdAt: '2026-09-24' },
-    { id: 'task-2', projectId: 'website', title: 'Collect customer stories', description: 'Find three short stories that show how teams use Hummane in real life.', status: 'todo', priority: 'normal', assignee: currentPerson, dueDate: '2026-10-07', labels: ['Research'], subtasks: [], comments: [], createdAt: '2026-09-25' },
-    { id: 'task-3', projectId: 'website', title: 'Prepare design handoff', description: 'Package the approved direction and share it with the design team.', status: 'blocked', priority: 'urgent', assignee: 'Sarah', dueDate: '2026-09-29', labels: ['Design'], subtasks: [], comments: [{ id: 'comment-2', author: 'Sarah', body: 'Waiting on the final brand illustrations before this can move.', createdAt: 'Yesterday' }], createdAt: '2026-09-22' },
-    { id: 'task-4', projectId: 'onboarding', title: 'Set up the welcome guide', description: 'Keep it short: what people need to know in their first week.', status: 'todo', priority: 'normal', assignee: currentPerson, dueDate: '2026-10-10', labels: ['People'], subtasks: [], comments: [], createdAt: '2026-09-26' },
-    { id: 'task-5', projectId: 'onboarding', title: 'Book first-week conversations', description: 'Create space for new teammates to meet the people they will work with.', status: 'done', priority: 'normal', assignee: 'John', dueDate: '2026-09-25', labels: ['People'], subtasks: [], comments: [], createdAt: '2026-09-18' },
-    { id: 'task-6', projectId: 'office', title: 'Choose meeting room chairs', description: 'Compare the two shortlisted options and make a practical choice.', status: 'in_progress', priority: 'low', assignee: currentPerson, dueDate: '2026-10-14', labels: ['Office'], subtasks: [], comments: [], createdAt: '2026-09-21' },
 ]
 
 const statusMeta: Record<TaskStatus, { label: string; color: string; badge: 'default' | 'secondary' | 'warning' | 'destructive' | 'success' }> = {
@@ -95,8 +90,12 @@ const priorityMeta: Record<TaskPriority, { label: string; className: string }> =
     urgent: { label: 'Urgent', className: 'text-rose-600' },
 }
 
-function projectFor(id: string) {
-    return projects.find(project => project.id === id) || projects[0]
+function projectFor(id: string, name?: string, color?: string) {
+    return name ? { id, name, color: color || '#2563eb', description: '', owner: '', taskCount: 0 } : projects.find(project => project.id === id) || projects[0]
+}
+
+function mapTask(task: TaskApi): MockTask {
+    return { id: task.id, projectId: task.projectId, projectName: task.projectName, projectColor: task.projectColor, parentTaskId: task.parentTaskId || undefined, title: task.title, description: task.description || '', status: task.status, priority: task.priority, assignee: task.assignee || 'Unassigned', assigneeId: task.assigneeId || undefined, dueDate: task.dueDate || '', labels: task.labels || [], subtasks: task.subtasks || [], comments: (task.comments || []).map(comment => ({ id: comment.id, author: comment.authorName || comment.authorId || 'Team member', body: comment.body, createdAt: comment.createdAt })), createdAt: task.createdAt }
 }
 
 function formatDueDate(date: string) {
@@ -110,8 +109,10 @@ function isOverdue(task: MockTask) {
 
 export function TaskWorkspace() {
     const router = useRouter()
-    const [tasks, setTasks] = useState<MockTask[]>(initialTasks)
-    const [hydrated, setHydrated] = useState(false)
+    const { apiAccessToken, meProfile, isHydrating } = useApp()
+    const [tasks, setTasks] = useState<MockTask[]>([])
+    const [projectOptions, setProjectOptions] = useState<MockProject[]>(projects)
+    const [loading, setLoading] = useState(true)
     const [scope, setScope] = useState<TaskScope>('my')
     const [layout, setLayout] = useState<TaskLayout>('list')
     const [projectId, setProjectId] = useState('all')
@@ -122,51 +123,58 @@ export function TaskWorkspace() {
     const [showSearchFilters, setShowSearchFilters] = useState(false)
 
     useEffect(() => {
-        try {
-            const stored = window.localStorage.getItem(STORAGE_KEY)
-            if (stored) setTasks(JSON.parse(stored) as MockTask[])
-        } catch {
-            // The prototype falls back to the fixture data if local storage is unavailable.
-        } finally {
-            setHydrated(true)
-        }
-    }, [])
-
-    useEffect(() => {
-        if (hydrated) window.localStorage.setItem(STORAGE_KEY, JSON.stringify(tasks))
-    }, [hydrated, tasks])
+        if (isHydrating || !apiAccessToken) return
+        Promise.all([fetchTaskProjectsApi(apiAccessToken), fetchTasksApi(apiAccessToken, { scope: 'all' })])
+            .then(([apiProjects, apiTasks]) => {
+                setProjectOptions(apiProjects.map((project: TaskProjectApi) => ({ id: project.id, name: project.name, description: project.description, color: project.color, owner: '', taskCount: 0 })))
+                setTasks(apiTasks.map(mapTask))
+            })
+            .catch(error => console.error('Could not load tasks', error))
+            .finally(() => setLoading(false))
+    }, [apiAccessToken, isHydrating])
 
     const filteredTasks = useMemo(() => tasks.filter(task => {
         const matchesProject = projectId === 'all' || task.projectId === projectId
         const matchesStatus = statusFilter === 'all' || task.status === statusFilter
-        const matchesView = scope !== 'my' || task.assignee === currentPerson
+        const matchesView = scope !== 'my' || (meProfile?.employeeId ? task.assigneeId === meProfile.employeeId : task.assignee === currentPerson)
         const query = search.trim().toLowerCase()
         const matchesSearch = !query || `${task.title} ${task.description} ${task.labels.join(' ')}`.toLowerCase().includes(query)
         return matchesProject && matchesStatus && matchesView && matchesSearch
-    }), [projectId, search, statusFilter, tasks, scope])
+    }), [meProfile, projectId, search, statusFilter, tasks, scope])
 
     const selectedTask = tasks.find(task => task.id === selectedTaskId) || null
     const openTasks = tasks.filter(task => task.status !== 'done').length
     const overdueTasks = tasks.filter(isOverdue).length
 
-    function updateTask(id: string, changes: Partial<MockTask>) {
-        setTasks(previous => previous.map(task => task.id === id ? { ...task, ...changes } : task))
+    if (isHydrating || loading) return <div className="flex min-h-64 items-center justify-center text-sm text-slate-500">Loading tasks...</div>
+
+    async function updateTask(id: string, changes: Partial<MockTask>) {
+        if (!apiAccessToken) return
+        const updated = await updateTaskApi(id, { status: changes.status, priority: changes.priority, title: changes.title, description: changes.description, dueDate: changes.dueDate || null, labels: changes.labels, assigneeId: changes.assigneeId || null }, apiAccessToken)
+        if (updated) setTasks(previous => previous.map(task => task.id === id ? mapTask(updated) : task))
     }
 
-    function toggleSubtask(taskId: string, subtaskId: string) {
-        setTasks(previous => previous.map(task => task.id === taskId ? { ...task, subtasks: task.subtasks.map(subtask => subtask.id === subtaskId ? { ...subtask, done: !subtask.done } : subtask) } : task))
+    async function toggleSubtask(taskId: string, subtaskId: string) {
+        if (!apiAccessToken) return
+        const parent = tasks.find(task => task.id === taskId)
+        const subtask = parent?.subtasks.find(item => item.id === subtaskId)
+        if (!subtask) return
+        await updateTask(subtaskId, { status: subtask.done ? 'todo' : 'done' })
+        setTasks(previous => previous.map(task => task.id === taskId ? { ...task, subtasks: task.subtasks.map(item => item.id === subtaskId ? { ...item, done: !item.done } : item) } : task))
     }
 
-    function addComment(taskId: string, body: string) {
-        setTasks(previous => previous.map(task => task.id === taskId ? { ...task, comments: [...task.comments, { id: `comment-${Date.now()}`, author: currentPerson, body, createdAt: 'Just now' }] } : task))
+    async function addComment(taskId: string, body: string) {
+        if (!apiAccessToken) return
+        const updated = await addTaskCommentApi(taskId, body, apiAccessToken)
+        if (updated) setTasks(previous => previous.map(task => task.id === taskId ? mapTask(updated) : task))
     }
 
-    function createTask(values: TaskCreateValues) {
-        const task: MockTask = { id: `task-${Date.now()}`, projectId: values.projectId, title: values.title, description: values.description, status: 'todo', priority: values.priority, assignee: currentPerson, dueDate: values.dueDate, labels: [], subtasks: [], comments: [], createdAt: new Date().toISOString().slice(0, 10) }
-        setTasks(previous => [task, ...previous])
-        window.localStorage.setItem(STORAGE_KEY, JSON.stringify([task, ...tasks]))
+    async function createTask(values: TaskCreateValues) {
+        if (!apiAccessToken) return
+        const created = await createTaskApi({ projectId: values.projectId, title: values.title, description: values.description, priority: values.priority, dueDate: values.dueDate || null, assigneeId: meProfile?.employeeId || null }, apiAccessToken)
+        setTasks(previous => [mapTask(created), ...previous])
         setShowCreate(false)
-        router.push(`/member/tasks/${task.id}`)
+        router.push(`/member/tasks/${created.id}`)
     }
 
     return <div className="min-h-[calc(100vh-4rem)] bg-slate-50/70">
@@ -196,8 +204,8 @@ export function TaskWorkspace() {
         </div>
 
         <TaskDetailDialog task={selectedTask} onClose={() => setSelectedTaskId(null)} onUpdate={updateTask} onToggleSubtask={toggleSubtask} onAddComment={addComment} />
-        <TaskCreateDialog open={showCreate} onClose={() => setShowCreate(false)} onSubmit={createTask} />
-        <SearchFilterDialog open={showSearchFilters} onClose={() => setShowSearchFilters(false)} search={search} onSearchChange={setSearch} projectId={projectId} onProjectChange={setProjectId} statusFilter={statusFilter} onStatusChange={setStatusFilter} onClear={() => { setSearch(''); setProjectId('all'); setStatusFilter('all') }} />
+        <TaskCreateDialog open={showCreate} onClose={() => setShowCreate(false)} onSubmit={createTask} projects={projectOptions} />
+        <SearchFilterDialog open={showSearchFilters} onClose={() => setShowSearchFilters(false)} search={search} onSearchChange={setSearch} projectId={projectId} onProjectChange={setProjectId} statusFilter={statusFilter} onStatusChange={setStatusFilter} projects={projectOptions} onClear={() => { setSearch(''); setProjectId('all'); setStatusFilter('all') }} />
     </div>
 }
 
@@ -211,7 +219,7 @@ function TaskList({ tasks, onSelect, onStatusChange }: { tasks: MockTask[]; onSe
 }
 
 function TaskRow({ task, onSelect, onStatusChange }: { task: MockTask; onSelect: (id: string) => void; onStatusChange: (id: string, status: TaskStatus) => void }) {
-    const project = projectFor(task.projectId)
+    const project = projectFor(task.projectId, task.projectName, task.projectColor)
     const status = statusMeta[task.status]
     const priority = priorityMeta[task.priority]
     return <button className="group flex w-full items-center gap-4 px-5 py-4 text-left transition-colors hover:bg-slate-50 sm:px-6" onClick={() => onSelect(task.id)}>
@@ -228,7 +236,7 @@ function GanttView({ tasks, onSelect }: { tasks: MockTask[]; onSelect: (id: stri
     const days = Array.from({ length: 14 }, (_, index) => { const date = new Date(timelineStart); date.setDate(date.getDate() + index); return date })
     const dayOffset = (date: string) => Math.max(0, Math.min(13, Math.round((new Date(`${date}T12:00:00`).getTime() - timelineStart.getTime()) / 86400000)))
 
-    return <div className="overflow-x-auto bg-white"><div className="min-w-[760px] p-4 sm:p-6"><div className="grid grid-cols-[220px_repeat(14,minmax(36px,1fr))] border-b border-slate-100 text-[10px] font-bold uppercase tracking-wider text-slate-400"><div className="pb-3">Task</div>{days.map(day => <div className="border-l border-slate-100 pb-3 text-center" key={day.toISOString()}>{day.toLocaleDateString(undefined, { weekday: 'narrow', day: 'numeric' })}</div>)}</div><div className="divide-y divide-slate-100">{tasks.length ? tasks.map(task => { const start = dayOffset(task.createdAt); const end = Math.max(start + 1, dayOffset(task.dueDate)); const span = end - start + 1; return <button className="grid w-full grid-cols-[220px_repeat(14,minmax(36px,1fr))] items-center py-3 text-left hover:bg-slate-50" key={task.id} onClick={() => onSelect(task.id)}><span className="truncate pr-4 text-xs font-bold text-slate-700">{task.title}</span><span className="col-span-14 grid grid-cols-subgrid"><span className="h-7 self-center rounded-lg px-2 py-1 text-[10px] font-bold text-white" style={{ gridColumn: `${start + 1} / span ${span}`, backgroundColor: projectFor(task.projectId).color }}>{statusMeta[task.status].label}</span></span></button> }) : <EmptyState />}</div></div></div>
+    return <div className="overflow-x-auto bg-white"><div className="min-w-[760px] p-4 sm:p-6"><div className="grid grid-cols-[220px_repeat(14,minmax(36px,1fr))] border-b border-slate-100 text-[10px] font-bold uppercase tracking-wider text-slate-400"><div className="pb-3">Task</div>{days.map(day => <div className="border-l border-slate-100 pb-3 text-center" key={day.toISOString()}>{day.toLocaleDateString(undefined, { weekday: 'narrow', day: 'numeric' })}</div>)}</div><div className="divide-y divide-slate-100">{tasks.length ? tasks.map(task => { const start = dayOffset(task.createdAt); const end = Math.max(start + 1, dayOffset(task.dueDate)); const span = end - start + 1; return <button className="grid w-full grid-cols-[220px_repeat(14,minmax(36px,1fr))] items-center py-3 text-left hover:bg-slate-50" key={task.id} onClick={() => onSelect(task.id)}><span className="truncate pr-4 text-xs font-bold text-slate-700">{task.title}</span><span className="col-span-14 grid grid-cols-subgrid"><span className="h-7 self-center rounded-lg px-2 py-1 text-[10px] font-bold text-white" style={{ gridColumn: `${start + 1} / span ${span}`, backgroundColor: projectFor(task.projectId, task.projectName, task.projectColor).color }}>{statusMeta[task.status].label}</span></span></button> }) : <EmptyState />}</div></div></div>
 }
 
 function BoardView({ tasks, onSelect }: { tasks: MockTask[]; onSelect: (id: string) => void }) {
@@ -238,7 +246,7 @@ function BoardView({ tasks, onSelect }: { tasks: MockTask[]; onSelect: (id: stri
 function TaskDetailDialog({ task, onClose, onUpdate, onToggleSubtask, onAddComment }: { task: MockTask | null; onClose: () => void; onUpdate: (id: string, changes: Partial<MockTask>) => void; onToggleSubtask: (taskId: string, subtaskId: string) => void; onAddComment: (taskId: string, body: string) => void }) {
     const [comment, setComment] = useState('')
     if (!task) return null
-    const project = projectFor(task.projectId)
+    const project = projectFor(task.projectId, task.projectName, task.projectColor)
     return <Dialog open={Boolean(task)} onOpenChange={open => !open && onClose()}><DialogContent key={task.id} className="max-h-[90vh] max-w-2xl overflow-y-auto rounded-3xl p-0"><div className="border-b border-slate-100 px-6 py-5"><div className="flex items-start justify-between gap-4"><div><div className="mb-3 flex items-center gap-2 text-xs font-bold text-slate-400"><span className="h-2 w-2 rounded-full" style={{ backgroundColor: project.color }} />{project.name}<ChevronRight className="h-3 w-3" />Task details</div><DialogTitle className="text-2xl font-extrabold leading-tight">{task.title}</DialogTitle><DialogDescription className="mt-2">Created {formatDueDate(task.createdAt)}</DialogDescription></div><button className="rounded-xl p-2 text-slate-400 hover:bg-slate-100" onClick={onClose}><X className="h-5 w-5" /></button></div></div><div className="space-y-6 px-6 py-6"><div className="grid gap-3 sm:grid-cols-3"><DetailSelect label="Status" value={task.status} options={Object.entries(statusMeta).map(([value, meta]) => ({ value, label: meta.label }))} onChange={value => onUpdate(task.id, { status: value as TaskStatus })} /><DetailSelect label="Priority" value={task.priority} options={Object.entries(priorityMeta).map(([value, meta]) => ({ value, label: meta.label }))} onChange={value => onUpdate(task.id, { priority: value as TaskPriority })} /><div><p className="mb-2 text-[11px] font-bold uppercase tracking-wider text-slate-400">Assigned to</p><div className="flex h-10 items-center gap-2 rounded-xl bg-slate-50 px-3 text-sm font-semibold text-slate-700"><UserRound className="h-4 w-4 text-slate-400" />{task.assignee}</div></div></div><div><p className="mb-2 text-[11px] font-bold uppercase tracking-wider text-slate-400">Description</p><p className="whitespace-pre-wrap text-sm leading-6 text-slate-600">{task.description || 'No description yet.'}</p></div>{task.subtasks.length > 0 && <div><p className="mb-3 text-[11px] font-bold uppercase tracking-wider text-slate-400">Subtasks <span className="ml-1 normal-case tracking-normal">{task.subtasks.filter(item => item.done).length}/{task.subtasks.length}</span></p><div className="space-y-2">{task.subtasks.map(subtask => <button className="flex w-full items-center gap-3 rounded-xl border border-slate-100 p-3 text-left hover:bg-slate-50" key={subtask.id} onClick={() => onToggleSubtask(task.id, subtask.id)}><span className={cn('flex h-5 w-5 items-center justify-center rounded-full border', subtask.done ? 'border-emerald-500 bg-emerald-500 text-white' : 'border-slate-300')}>{subtask.done && <Check className="h-3 w-3" />}</span><span className={cn('text-sm font-medium', subtask.done && 'text-slate-400 line-through')}>{subtask.title}</span></button>)}</div></div>}<div><div className="mb-3 flex items-center justify-between"><p className="text-[11px] font-bold uppercase tracking-wider text-slate-400">Conversation</p><span className="text-xs text-slate-400">{task.comments.length} comment{task.comments.length === 1 ? '' : 's'}</span></div><div className="space-y-3">{task.comments.map(item => <div className="rounded-2xl bg-slate-50 p-4" key={item.id}><div className="flex items-center justify-between"><span className="text-xs font-bold text-slate-700">{item.author}</span><span className="text-[11px] text-slate-400">{item.createdAt}</span></div><p className="mt-2 text-sm leading-5 text-slate-600">{item.body}</p></div>)}<div className="flex gap-2"><Input value={comment} onChange={event => setComment(event.target.value)} placeholder="Add context or a question..." className="h-11 rounded-xl" onKeyDown={event => { if (event.key === 'Enter' && !event.shiftKey && comment.trim()) { event.preventDefault(); onAddComment(task.id, comment.trim()); setComment('') } }} /><Button className="h-11 rounded-xl" disabled={!comment.trim()} onClick={() => { onAddComment(task.id, comment.trim()); setComment('') }}><MessageSquare className="h-4 w-4" /></Button></div></div></div></div><DialogFooter className="border-t border-slate-100 px-6 py-4"><Button variant="outline" className="rounded-xl" onClick={onClose}>Close</Button><Button className="rounded-xl" onClick={() => onUpdate(task.id, { status: task.status === 'done' ? 'todo' : 'done' })}>{task.status === 'done' ? 'Reopen task' : 'Mark complete'}</Button></DialogFooter></DialogContent></Dialog>
 }
 
@@ -246,9 +254,9 @@ function DetailSelect({ label, value, options, onChange }: { label: string; valu
     return <div><p className="mb-2 text-[11px] font-bold uppercase tracking-wider text-slate-400">{label}</p><Select value={value} onValueChange={onChange}><SelectTrigger className="h-10 rounded-xl"><SelectValue /></SelectTrigger><SelectContent>{options.map(option => <SelectItem key={option.value} value={option.value}>{option.label}</SelectItem>)}</SelectContent></Select></div>
 }
 
-function SearchFilterDialog({ open, onClose, search, onSearchChange, projectId, onProjectChange, statusFilter, onStatusChange, onClear }: { open: boolean; onClose: () => void; search: string; onSearchChange: (value: string) => void; projectId: string; onProjectChange: (value: string) => void; statusFilter: string; onStatusChange: (value: string) => void; onClear: () => void }) {
+function SearchFilterDialog({ open, onClose, search, onSearchChange, projectId, onProjectChange, statusFilter, onStatusChange, projects: projectOptions, onClear }: { open: boolean; onClose: () => void; search: string; onSearchChange: (value: string) => void; projectId: string; onProjectChange: (value: string) => void; statusFilter: string; onStatusChange: (value: string) => void; projects: MockProject[]; onClear: () => void }) {
     const activeFilters = Number(Boolean(search)) + Number(projectId !== 'all') + Number(statusFilter !== 'all')
-    return <Dialog open={open} onOpenChange={value => !value && onClose()}><DialogContent className="rounded-3xl sm:max-w-lg"><DialogHeader><DialogTitle className="text-2xl font-extrabold">Search and filter tasks</DialogTitle><DialogDescription>Find the work you want to focus on.</DialogDescription></DialogHeader><div className="space-y-4"><div className="relative"><Search className="pointer-events-none absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-slate-400" /><Input autoFocus value={search} onChange={event => onSearchChange(event.target.value)} className="h-12 rounded-xl pl-9" placeholder="Search tasks" /></div><div className="grid gap-3 sm:grid-cols-2"><div><p className="mb-2 text-[11px] font-bold uppercase tracking-wider text-slate-400">Project</p><Select value={projectId} onValueChange={onProjectChange}><SelectTrigger className="h-11 rounded-xl"><SelectValue placeholder="All projects" /></SelectTrigger><SelectContent><SelectItem value="all">All projects</SelectItem>{projects.map(project => <SelectItem key={project.id} value={project.id}>{project.name}</SelectItem>)}</SelectContent></Select></div><div><p className="mb-2 text-[11px] font-bold uppercase tracking-wider text-slate-400">Status</p><Select value={statusFilter} onValueChange={onStatusChange}><SelectTrigger className="h-11 rounded-xl"><SelectValue placeholder="All statuses" /></SelectTrigger><SelectContent><SelectItem value="all">All statuses</SelectItem>{Object.entries(statusMeta).map(([value, meta]) => <SelectItem key={value} value={value}>{meta.label}</SelectItem>)}</SelectContent></Select></div></div></div><DialogFooter className="flex-row justify-between sm:justify-between"><Button type="button" variant="ghost" className="rounded-xl text-slate-500" disabled={!activeFilters} onClick={onClear}>Clear all</Button><Button type="button" className="rounded-xl bg-blue-600 text-white hover:bg-blue-700" onClick={onClose}>Show tasks</Button></DialogFooter></DialogContent></Dialog>
+    return <Dialog open={open} onOpenChange={value => !value && onClose()}><DialogContent className="rounded-3xl sm:max-w-lg"><DialogHeader><DialogTitle className="text-2xl font-extrabold">Search and filter tasks</DialogTitle><DialogDescription>Find the work you want to focus on.</DialogDescription></DialogHeader><div className="space-y-4"><div className="relative"><Search className="pointer-events-none absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-slate-400" /><Input autoFocus value={search} onChange={event => onSearchChange(event.target.value)} className="h-12 rounded-xl pl-9" placeholder="Search tasks" /></div><div className="grid gap-3 sm:grid-cols-2"><div><p className="mb-2 text-[11px] font-bold uppercase tracking-wider text-slate-400">Project</p><Select value={projectId} onValueChange={onProjectChange}><SelectTrigger className="h-11 rounded-xl"><SelectValue placeholder="All projects" /></SelectTrigger><SelectContent><SelectItem value="all">All projects</SelectItem>{projectOptions.map(project => <SelectItem key={project.id} value={project.id}>{project.name}</SelectItem>)}</SelectContent></Select></div><div><p className="mb-2 text-[11px] font-bold uppercase tracking-wider text-slate-400">Status</p><Select value={statusFilter} onValueChange={onStatusChange}><SelectTrigger className="h-11 rounded-xl"><SelectValue placeholder="All statuses" /></SelectTrigger><SelectContent><SelectItem value="all">All statuses</SelectItem>{Object.entries(statusMeta).map(([value, meta]) => <SelectItem key={value} value={value}>{meta.label}</SelectItem>)}</SelectContent></Select></div></div></div><DialogFooter className="flex-row justify-between sm:justify-between"><Button type="button" variant="ghost" className="rounded-xl text-slate-500" disabled={!activeFilters} onClick={onClear}>Clear all</Button><Button type="button" className="rounded-xl bg-blue-600 text-white hover:bg-blue-700" onClick={onClose}>Show tasks</Button></DialogFooter></DialogContent></Dialog>
 }
 
 function EmptyState() {

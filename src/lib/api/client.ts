@@ -73,6 +73,8 @@ const RESOURCES_PATH = `${API_BASE_URL}/resources`
 const RESOURCE_TEMPLATES_PATH = `${API_BASE_URL}/resource-templates`
 const VENDORS_PATH = `${API_BASE_URL}/vendors`
 const OKRS_PATH = `${API_BASE_URL}/okrs`
+const TASK_PROJECTS_PATH = `${API_BASE_URL}/task-projects`
+const TASKS_PATH = `${API_BASE_URL}/tasks`
 const ACCESS_TOKEN_KEY = 'hummaneApiAccessToken'
 const API_USER_KEY = 'hummaneApiUser'
 const COMPANY_ID_KEY = 'hummaneCompanyId'
@@ -1921,6 +1923,52 @@ export const parseApiError = (body: string, fallback: string): string => {
   }
   return body
 }
+
+export type TaskProjectApi = { id: string; companyId: string; parentProjectId?: string | null; name: string; description: string; color: string; createdBy?: string | null; createdAt: string; updatedAt: string }
+export type TaskCommentApi = { id: string; authorId?: string | null; authorName?: string; body: string; createdAt: string }
+export type TaskApi = { id: string; companyId: string; projectId: string; projectName?: string; projectColor?: string; parentTaskId?: string | null; title: string; description: string; status: 'todo' | 'in_progress' | 'blocked' | 'done'; priority: 'low' | 'normal' | 'high' | 'urgent'; assigneeId?: string | null; assignee: string; dueDate?: string | null; labels: string[]; comments: TaskCommentApi[]; subtasks: { id: string; title: string; done: boolean }[]; createdBy?: string | null; createdAt: string; updatedAt: string }
+export type TaskPayload = { projectId: string; parentTaskId?: string | null; title: string; description?: string; status?: TaskApi['status']; priority?: TaskApi['priority']; assigneeId?: string | null; dueDate?: string | null; labels?: string[] }
+
+const taskRequest = async <T>(path: string, accessToken: string, init: RequestInit = {}): Promise<T> => {
+  let response: Response
+  try {
+    response = await fetch(`${TASKS_PATH}${path}`, { ...init, headers: { ...(init.body ? { 'Content-Type': 'application/json' } : {}), Authorization: `Bearer ${accessToken}`, ...init.headers } })
+  } catch (error) {
+    console.error(`API /tasks${path} network error:`, error)
+    throw new Error('Network error while contacting the API')
+  }
+  if (!response.ok) throw new Error(parseApiError(await response.text(), 'Task request failed'))
+  if (response.status === 204) return undefined as T
+  const data = await response.json().catch(() => null)
+  return (data?.data || data?.task || data?.tasks || data) as T
+}
+
+const taskProjectRequest = async <T>(path: string, accessToken: string, init: RequestInit = {}): Promise<T> => {
+  let response: Response
+  try {
+    response = await fetch(`${TASK_PROJECTS_PATH}${path}`, { ...init, headers: { ...(init.body ? { 'Content-Type': 'application/json' } : {}), Authorization: `Bearer ${accessToken}`, ...init.headers } })
+  } catch {
+    throw new Error('Network error while contacting the API')
+  }
+  if (!response.ok) throw new Error(parseApiError(await response.text(), 'Project request failed'))
+  if (response.status === 204) return undefined as T
+  const data = await response.json().catch(() => null)
+  return (data?.data || data?.project || data?.projects || data) as T
+}
+
+export const fetchTaskProjectsApi = (accessToken: string): Promise<TaskProjectApi[]> => taskProjectRequest<TaskProjectApi[]>('', accessToken)
+export const fetchTasksApi = (accessToken: string, filters: { scope?: 'my' | 'all'; projectId?: string; status?: string; search?: string } = {}): Promise<TaskApi[]> => {
+  const query = new URLSearchParams()
+  if (filters.scope) query.set('scope', filters.scope)
+  if (filters.projectId && filters.projectId !== 'all') query.set('projectId', filters.projectId)
+  if (filters.status && filters.status !== 'all') query.set('status', filters.status)
+  if (filters.search) query.set('search', filters.search)
+  return taskRequest<TaskApi[]>(query.size ? `?${query.toString()}` : '', accessToken)
+}
+export const fetchTaskApi = (id: string, accessToken: string): Promise<TaskApi | null> => taskRequest<TaskApi>(`/${encodeURIComponent(id)}`, accessToken)
+export const createTaskApi = (payload: TaskPayload, accessToken: string): Promise<TaskApi> => taskRequest<TaskApi>('', accessToken, { method: 'POST', body: JSON.stringify(payload) })
+export const updateTaskApi = (id: string, payload: Partial<TaskPayload>, accessToken: string): Promise<TaskApi | null> => taskRequest<TaskApi>(`/${encodeURIComponent(id)}`, accessToken, { method: 'PATCH', body: JSON.stringify(payload) })
+export const addTaskCommentApi = (id: string, body: string, accessToken: string): Promise<TaskApi | null> => taskRequest<TaskApi>(`/${encodeURIComponent(id)}/comments`, accessToken, { method: 'POST', body: JSON.stringify({ body }) })
 
 const resourceRequest = async <T>(
   path: string,
