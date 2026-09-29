@@ -3,7 +3,7 @@
 import { useEffect, useMemo, useState } from 'react'
 import { useRouter } from 'next/navigation'
 import { useApp } from '@/lib/context/AppContext'
-import type { ReactNode } from 'react'
+import type { FormEvent, ReactNode } from 'react'
 import {
     CalendarDays,
     Check,
@@ -12,6 +12,7 @@ import {
     Circle,
     Clock3,
     Filter,
+    FolderKanban,
     GanttChart,
     LayoutGrid,
     List,
@@ -31,7 +32,7 @@ import { Input } from '@/components/ui/input'
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select'
 import { cn } from '@/lib/utils'
 import { TaskCreateDialog, type TaskCreateValues } from '@/features/tasks/components/TaskCreateDialog'
-import { addTaskCommentApi, createTaskApi, fetchTaskProjectsApi, fetchTasksApi, updateTaskApi, type TaskApi, type TaskProjectApi } from '@/lib/api/client'
+import { addTaskCommentApi, createTaskApi, createTaskProjectApi, fetchTaskProjectsApi, fetchTasksApi, updateTaskApi, type TaskApi, type TaskProjectApi } from '@/lib/api/client'
 
 type TaskStatus = 'todo' | 'in_progress' | 'blocked' | 'done'
 type TaskPriority = 'low' | 'normal' | 'high' | 'urgent'
@@ -120,6 +121,7 @@ export function TaskWorkspace() {
     const [search, setSearch] = useState('')
     const [selectedTaskId, setSelectedTaskId] = useState<string | null>(null)
     const [showCreate, setShowCreate] = useState(false)
+    const [showProjects, setShowProjects] = useState(false)
     const [showSearchFilters, setShowSearchFilters] = useState(false)
 
     useEffect(() => {
@@ -177,11 +179,17 @@ export function TaskWorkspace() {
         router.push(`/member/tasks/${created.id}`)
     }
 
+    async function createProject(name: string, description: string) {
+        if (!apiAccessToken) return
+        const created = await createTaskProjectApi({ name, description }, apiAccessToken)
+        setProjectOptions(previous => [...previous, { id: created.id, name: created.name, description: created.description, color: created.color, owner: meProfile?.name || '', taskCount: 0 }])
+    }
+
     return <div className="min-h-[calc(100vh-4rem)] bg-slate-50/70">
         <div className="space-y-6">
             <header className="flex items-center justify-between gap-4">
                 <div className="min-w-0"><h1 className="text-2xl font-extrabold tracking-tight text-slate-950 sm:text-3xl">Tasks</h1><p className="mt-1 truncate text-sm text-slate-500">See what needs attention and what comes next.</p></div>
-                <Button className="h-10 shrink-0 rounded-xl bg-blue-600 px-3 text-white shadow-sm hover:bg-blue-700 sm:px-5" onClick={() => setShowCreate(true)}><Plus className="h-4 w-4" /><span className="hidden sm:inline">Add task</span><span className="sm:hidden">Add</span></Button>
+                <div className="flex shrink-0 items-center gap-2"><Button variant="ghost" className="h-10 rounded-xl px-2 text-slate-600 hover:bg-white hover:text-blue-600 sm:px-3" onClick={() => setShowProjects(true)}><FolderKanban className="h-4 w-4" /><span>Projects</span></Button><Button className="h-10 rounded-xl bg-blue-600 px-3 text-white shadow-sm hover:bg-blue-700 sm:px-5" onClick={() => setShowCreate(true)}><Plus className="h-4 w-4" /><span className="hidden sm:inline">Add task</span><span className="sm:hidden">Add</span></Button></div>
             </header>
 
             <div className="grid grid-cols-2 gap-2 sm:max-w-md sm:gap-3">
@@ -205,6 +213,7 @@ export function TaskWorkspace() {
 
         <TaskDetailDialog task={selectedTask} onClose={() => setSelectedTaskId(null)} onUpdate={updateTask} onToggleSubtask={toggleSubtask} onAddComment={addComment} />
         <TaskCreateDialog open={showCreate} onClose={() => setShowCreate(false)} onSubmit={createTask} projects={projectOptions} />
+        <ProjectsDialog open={showProjects} onClose={() => setShowProjects(false)} projects={projectOptions} onCreate={createProject} onSelect={id => { setProjectId(id); setShowProjects(false) }} />
         <SearchFilterDialog open={showSearchFilters} onClose={() => setShowSearchFilters(false)} search={search} onSearchChange={setSearch} projectId={projectId} onProjectChange={setProjectId} statusFilter={statusFilter} onStatusChange={setStatusFilter} projects={projectOptions} onClear={() => { setSearch(''); setProjectId('all'); setStatusFilter('all') }} />
     </div>
 }
@@ -257,6 +266,31 @@ function DetailSelect({ label, value, options, onChange }: { label: string; valu
 function SearchFilterDialog({ open, onClose, search, onSearchChange, projectId, onProjectChange, statusFilter, onStatusChange, projects: projectOptions, onClear }: { open: boolean; onClose: () => void; search: string; onSearchChange: (value: string) => void; projectId: string; onProjectChange: (value: string) => void; statusFilter: string; onStatusChange: (value: string) => void; projects: MockProject[]; onClear: () => void }) {
     const activeFilters = Number(Boolean(search)) + Number(projectId !== 'all') + Number(statusFilter !== 'all')
     return <Dialog open={open} onOpenChange={value => !value && onClose()}><DialogContent className="rounded-3xl sm:max-w-lg"><DialogHeader><DialogTitle className="text-2xl font-extrabold">Search and filter tasks</DialogTitle><DialogDescription>Find the work you want to focus on.</DialogDescription></DialogHeader><div className="space-y-4"><div className="relative"><Search className="pointer-events-none absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-slate-400" /><Input autoFocus value={search} onChange={event => onSearchChange(event.target.value)} className="h-12 rounded-xl pl-9" placeholder="Search tasks" /></div><div className="grid gap-3 sm:grid-cols-2"><div><p className="mb-2 text-[11px] font-bold uppercase tracking-wider text-slate-400">Project</p><Select value={projectId} onValueChange={onProjectChange}><SelectTrigger className="h-11 rounded-xl"><SelectValue placeholder="All projects" /></SelectTrigger><SelectContent><SelectItem value="all">All projects</SelectItem>{projectOptions.map(project => <SelectItem key={project.id} value={project.id}>{project.name}</SelectItem>)}</SelectContent></Select></div><div><p className="mb-2 text-[11px] font-bold uppercase tracking-wider text-slate-400">Status</p><Select value={statusFilter} onValueChange={onStatusChange}><SelectTrigger className="h-11 rounded-xl"><SelectValue placeholder="All statuses" /></SelectTrigger><SelectContent><SelectItem value="all">All statuses</SelectItem>{Object.entries(statusMeta).map(([value, meta]) => <SelectItem key={value} value={value}>{meta.label}</SelectItem>)}</SelectContent></Select></div></div></div><DialogFooter className="flex-row justify-between sm:justify-between"><Button type="button" variant="ghost" className="rounded-xl text-slate-500" disabled={!activeFilters} onClick={onClear}>Clear all</Button><Button type="button" className="rounded-xl bg-blue-600 text-white hover:bg-blue-700" onClick={onClose}>Show tasks</Button></DialogFooter></DialogContent></Dialog>
+}
+
+function ProjectsDialog({ open, onClose, projects: projectOptions, onCreate, onSelect }: { open: boolean; onClose: () => void; projects: MockProject[]; onCreate: (name: string, description: string) => Promise<void>; onSelect: (id: string) => void }) {
+    const [name, setName] = useState('')
+    const [description, setDescription] = useState('')
+    const [creating, setCreating] = useState(false)
+    const [error, setError] = useState('')
+
+    async function submit(event: FormEvent<HTMLFormElement>) {
+        event.preventDefault()
+        if (!name.trim()) return
+        setCreating(true)
+        setError('')
+        try {
+            await onCreate(name.trim(), description.trim())
+            setName('')
+            setDescription('')
+        } catch (reason) {
+            setError(reason instanceof Error ? reason.message : 'Could not create project')
+        } finally {
+            setCreating(false)
+        }
+    }
+
+    return <Dialog open={open} onOpenChange={value => !value && onClose()}><DialogContent className="max-h-[90vh] overflow-y-auto rounded-3xl sm:max-w-lg"><DialogHeader><DialogTitle className="text-2xl font-extrabold">Projects</DialogTitle><DialogDescription>Projects available in your workspace. Create one when you want to bring work together.</DialogDescription></DialogHeader><div className="space-y-3">{projectOptions.length ? projectOptions.map(project => <button key={project.id} type="button" className="flex w-full items-start gap-3 rounded-2xl border border-slate-200 p-4 text-left transition-colors hover:border-blue-200 hover:bg-blue-50/40" onClick={() => onSelect(project.id)}><span className="mt-1 h-3 w-3 shrink-0 rounded-full" style={{ backgroundColor: project.color }} /><span className="min-w-0"><span className="block truncate text-sm font-bold text-slate-900">{project.name}</span><span className="mt-1 block text-xs leading-5 text-slate-500">{project.description || 'No description yet.'}</span></span></button>) : <p className="rounded-2xl bg-slate-50 p-4 text-sm text-slate-500">No projects yet.</p>}</div><div className="border-t border-slate-100 pt-5"><p className="mb-3 text-xs font-bold uppercase tracking-wider text-slate-400">Add a project</p><form className="space-y-3" onSubmit={submit}><Input value={name} onChange={event => setName(event.target.value)} placeholder="Project name" className="h-11 rounded-xl" required /><Input value={description} onChange={event => setDescription(event.target.value)} placeholder="Short description (optional)" className="h-11 rounded-xl" />{error && <p className="text-sm text-rose-600">{error}</p>}<Button type="submit" disabled={creating || !name.trim()} className="h-11 rounded-xl bg-blue-600 text-white hover:bg-blue-700">{creating ? 'Creating...' : <><Plus className="h-4 w-4" />Create project</>}</Button></form></div><DialogFooter><Button type="button" variant="outline" className="rounded-xl" onClick={onClose}>Close</Button></DialogFooter></DialogContent></Dialog>
 }
 
 function EmptyState() {

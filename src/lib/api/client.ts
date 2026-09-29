@@ -1925,6 +1925,7 @@ export const parseApiError = (body: string, fallback: string): string => {
 }
 
 export type TaskProjectApi = { id: string; companyId: string; parentProjectId?: string | null; name: string; description: string; color: string; createdBy?: string | null; createdAt: string; updatedAt: string }
+export type TaskProjectPayload = { name: string; description?: string; color?: string; parentProjectId?: string | null }
 export type TaskCommentApi = { id: string; authorId?: string | null; authorName?: string; body: string; createdAt: string }
 export type TaskApi = { id: string; companyId: string; projectId: string; projectName?: string; projectColor?: string; parentTaskId?: string | null; title: string; description: string; status: 'todo' | 'in_progress' | 'blocked' | 'done'; priority: 'low' | 'normal' | 'high' | 'urgent'; assigneeId?: string | null; assignee: string; dueDate?: string | null; labels: string[]; comments: TaskCommentApi[]; subtasks: { id: string; title: string; done: boolean }[]; createdBy?: string | null; createdAt: string; updatedAt: string }
 export type TaskPayload = { projectId: string; parentTaskId?: string | null; title: string; description?: string; status?: TaskApi['status']; priority?: TaskApi['priority']; assigneeId?: string | null; dueDate?: string | null; labels?: string[] }
@@ -1955,6 +1956,8 @@ const taskProjectRequest = async <T>(path: string, accessToken: string, init: Re
   const data = await response.json().catch(() => null)
   return (data?.data || data?.project || data?.projects || data) as T
 }
+
+export const createTaskProjectApi = (payload: TaskProjectPayload, accessToken: string): Promise<TaskProjectApi> => taskProjectRequest<TaskProjectApi>('', accessToken, { method: 'POST', body: JSON.stringify(payload) })
 
 export const fetchTaskProjectsApi = (accessToken: string): Promise<TaskProjectApi[]> => taskProjectRequest<TaskProjectApi[]>('', accessToken)
 export const fetchTasksApi = (accessToken: string, filters: { scope?: 'my' | 'all'; projectId?: string; status?: string; search?: string } = {}): Promise<TaskApi[]> => {
