@@ -17,9 +17,12 @@ import {
     CalendarPlus,
     Users,
     Cake,
-    PartyPopper
+    PartyPopper,
+    AlertTriangle,
+    Goal
 } from 'lucide-react'
 import { formatDate, parseLocalDate, getLocalTodayKey } from '@/lib/utils'
+import { fetchActiveOkrBoardApi } from '@/lib/api/client'
 import type { LeaveRecord, FeedbackEntry, Employee } from '@/types'
 
 const API_BASE_URL = 'https://api.hummane.com'
@@ -40,6 +43,7 @@ export default function MemberDashboardPage() {
     const [employee, setEmployee] = useState<Employee | null>(null)
     const [myLeaves, setMyLeaves] = useState<LeaveRecord[]>([])
     const [myFeedback, setMyFeedback] = useState<FeedbackEntry[]>([])
+    const [hasMyOkr, setHasMyOkr] = useState<boolean | null>(null)
     const [loading, setLoading] = useState(true)
 
     const employeeId = meProfile?.employeeId
@@ -54,6 +58,7 @@ export default function MemberDashboardPage() {
             setEmployee(null)
             setMyLeaves([])
             setMyFeedback([])
+            setHasMyOkr(null)
             setLoading(false)
             return
         }
@@ -61,7 +66,7 @@ export default function MemberDashboardPage() {
         const fetchData = async () => {
             setLoading(true)
             try {
-                const [empRes, leavesRes, feedbackRes] = await Promise.all([
+                const [empRes, leavesRes, feedbackRes, okrBoard] = await Promise.all([
                     fetch(`${API_BASE_URL}/employees/${encodeURIComponent(employeeId)}`, {
                         method: 'GET',
                         headers: { Authorization: `Bearer ${apiAccessToken}` },
@@ -73,7 +78,8 @@ export default function MemberDashboardPage() {
                     fetch(`${API_BASE_URL}/feedback-entries?subjectId=${encodeURIComponent(employeeId)}`, {
                         method: 'GET',
                         headers: { Authorization: `Bearer ${apiAccessToken}` },
-                    })
+                    }),
+                    fetchActiveOkrBoardApi(apiAccessToken).catch(() => null)
                 ])
 
                 if (empRes.ok) {
@@ -97,11 +103,14 @@ export default function MemberDashboardPage() {
                 } else {
                     setMyFeedback([])
                 }
+
+                setHasMyOkr(Boolean(okrBoard?.departments?.some(department => department.individuals.some(objective => objective.employeeId === employeeId))))
             } catch (error) {
                 console.error('Error fetching data:', error)
                 setEmployee(null)
                 setMyLeaves([])
                 setMyFeedback([])
+                setHasMyOkr(null)
             } finally {
                 setLoading(false)
             }
@@ -355,6 +364,26 @@ export default function MemberDashboardPage() {
                     </Link>
                 </div>
             </div>
+
+            {hasMyOkr === false && (
+                <div className="flex flex-wrap items-center justify-between gap-4 rounded-3xl border border-amber-200 bg-amber-50 p-5 shadow-sm">
+                    <div className="flex items-start gap-3">
+                        <div className="flex h-11 w-11 shrink-0 items-center justify-center rounded-2xl bg-amber-100">
+                            <AlertTriangle className="h-5 w-5 text-amber-600" />
+                        </div>
+                        <div>
+                            <p className="font-bold text-amber-900">Your OKR is not defined yet</p>
+                            <p className="mt-1 text-sm text-amber-800">Add your objective and key results so your progress is visible to your team.</p>
+                        </div>
+                    </div>
+                    <Link href="/member/okrs">
+                        <Button className="rounded-xl bg-amber-600 font-bold text-white shadow-sm hover:bg-amber-700">
+                            <Goal className="mr-2 h-4 w-4" />
+                            Add your OKR
+                        </Button>
+                    </Link>
+                </div>
+            )}
 
             {/* Quick Stats */}
             <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
