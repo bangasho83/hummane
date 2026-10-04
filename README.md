@@ -9,6 +9,8 @@ A comprehensive, secure HR management system built with Next.js 16, React 19, Ty
 - 🏢 **Department Management** - Organize teams and departments
 - 💰 **Payroll Processing** - Streamlined payroll management
 - ⏰ **Attendance Tracking** - Monitor employee attendance
+- ✅ **Collaborative Tasks** - Shared tasks, subtasks, projects, comments, and assignment
+- 🗂️ **Project Membership** - Create, edit, archive, and manage project members
 - 🔐 **Secure Authentication** - Password hashing with bcryptjs
 - 🛡️ **Input Validation** - Zod schema validation for all forms
 - 🚨 **Error Boundaries** - Graceful error handling
@@ -106,6 +108,16 @@ Navigate to [http://localhost:3000](http://localhost:3000)
 npm run build
 npm start
 ```
+
+## ✅ Task Workspace
+
+The member task workspace is available at `/member/tasks` and is backed by the Hummane API rather than local storage.
+
+- All Tasks is the default view; My Tasks is available as a filter.
+- Projects are limited to the authenticated employee's active project memberships.
+- Tasks support list, board, and Gantt views, search, status/project filters, assignments, subtasks, comments, and due dates.
+- The Projects dialog supports project creation, editing, archiving, and member management.
+- Project database migrations and API details are documented in `documentation/task-management.md`.
 
 ## 🔒 Security Features
 

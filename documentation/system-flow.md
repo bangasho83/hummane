@@ -15,9 +15,15 @@ flowchart TD
     G --> G1[Apply Leaves]
     B --> H[Feedback Cards]
     H --> I[Submit Feedback]
+    B --> J[Collaborative Tasks]
+    J --> J1[Projects]
+    J1 --> J2[Project Membership]
+    J2 --> J3[Tasks and Subtasks]
+    J3 --> J4[Comments and Assignment]
 ```
 
 Notes
 - Organization setup unlocks downstream modules (jobs, employees, feedback, leaves).
 - Applicants flow depends on Jobs.
 - Feedback flow depends on Feedback Cards and team/applicant context.
+- Task flow depends on authenticated project membership; tasks may contain subtasks and JSONB comments/labels.
