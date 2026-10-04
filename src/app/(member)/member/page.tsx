@@ -124,27 +124,6 @@ export default function MemberDashboardPage() {
         return myLeaves.filter(l => (l.startDate || l.date)?.startsWith(year))
     }, [myLeaves])
 
-    // Leave balance calculation
-    const leaveBalance = useMemo(() => {
-        if (!employee) return []
-        const empLeaveTypes = leaveTypes.filter(lt => lt.employmentType === employee.employmentType)
-        return empLeaveTypes.map(lt => {
-            const used = myLeavesThisYear
-                .filter(l => l.leaveTypeId === lt.id)
-                .reduce((sum, l) => sum + (l.amount || 1), 0)
-            return {
-                id: lt.id,
-                name: lt.name,
-                code: lt.code,
-                employmentType: lt.employmentType,
-                quota: lt.quota,
-                used,
-                remaining: Math.max(0, lt.quota - used),
-                unit: lt.unit
-            }
-        })
-    }, [employee, leaveTypes, myLeavesThisYear])
-
     // Calculate average feedback score
     const avgFeedbackScore = useMemo(() => {
         if (myFeedback.length === 0) return null
@@ -492,53 +471,8 @@ export default function MemberDashboardPage() {
 
             {/* Main Content Grid */}
             <div className="grid grid-cols-1 xl:grid-cols-3 gap-6">
-                {/* Left Column - Leave Balance & Recent Feedback */}
+                {/* Recent Feedback */}
                 <div className="xl:col-span-2 space-y-6">
-                    {/* Leave Balance */}
-                    <Card className="border border-slate-100 shadow-premium rounded-3xl bg-white">
-                        <CardContent className="p-6">
-                            <div className="flex items-center justify-between mb-4">
-                                <div>
-                                    <h3 className="text-lg font-bold text-slate-900">Leave Balance</h3>
-                                    <p className="text-sm text-slate-500">Your leave quota for this year</p>
-                                </div>
-                                <Link href="/member/leaves" className="text-sm font-semibold text-blue-600 hover:text-blue-700">
-                                    View All →
-                                </Link>
-                            </div>
-                            {leaveBalance.length === 0 ? (
-                                <p className="text-sm text-slate-500 py-4">No leave types configured.</p>
-                            ) : (
-                                <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
-                                    {leaveBalance.map(lb => (
-                                        <div key={lb.id} className="rounded-2xl border border-slate-100 p-4">
-                                            <div className="flex items-center justify-between mb-2">
-                                                <span className="text-sm font-bold text-slate-700">{lb.name}</span>
-                                                <span className="text-xs font-mono text-slate-400 bg-slate-100 px-2 py-0.5 rounded">{lb.code}</span>
-                                            </div>
-                                            <div className="flex items-end justify-between">
-                                                <div>
-                                                    <p className="text-2xl font-bold text-slate-900">{lb.remaining}</p>
-                                                    <p className="text-xs text-slate-500">of {lb.quota} {lb.unit}s remaining</p>
-                                                </div>
-                                                <div className="text-right">
-                                                    <p className="text-sm font-semibold text-amber-600">{lb.used} used</p>
-                                                </div>
-                                            </div>
-                                            <div className="mt-3 h-2 rounded-full bg-slate-100 overflow-hidden">
-                                                <div
-                                                    className="h-2 rounded-full bg-blue-500"
-                                                    style={{ width: `${lb.quota > 0 ? (lb.remaining / lb.quota) * 100 : 0}%` }}
-                                                />
-                                            </div>
-                                        </div>
-                                    ))}
-                                </div>
-                            )}
-                        </CardContent>
-                    </Card>
-
-                    {/* Recent Feedback */}
                     <Card className="border border-slate-100 shadow-premium rounded-3xl bg-white">
                         <CardContent className="p-6">
                             <div className="flex items-center justify-between mb-4">

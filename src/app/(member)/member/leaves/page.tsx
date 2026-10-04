@@ -20,7 +20,6 @@ export default function MemberLeavesPage() {
     const { employees, leaveTypes, meProfile, isHydrating, addLeave, refreshLeaveTypes, apiAccessToken } = useApp()
     const [employee, setEmployee] = useState<Employee | null>(null)
     const [employeeLeaves, setEmployeeLeaves] = useState<LeaveRecord[]>([])
-    const [leaveSummary, setLeaveSummary] = useState<Array<{ id: string; name: string; code: string; unit: string; quota: number; color: string; used: number; remaining: number }>>([])
     const [loading, setLoading] = useState(true)
 
     // Leave application form state
@@ -65,15 +64,9 @@ export default function MemberLeavesPage() {
             const data = await response.json()
             const list = data?.records || data?.data || data?.leaves || data
             setEmployeeLeaves(Array.isArray(list) ? list : [])
-            if (Array.isArray(data?.summary)) {
-                setLeaveSummary(data.summary)
-            } else {
-                setLeaveSummary([])
-            }
         } catch (error) {
             console.error('Error fetching employee leaves:', error)
             setEmployeeLeaves([])
-            setLeaveSummary([])
         } finally {
             setLoading(false)
         }
@@ -88,6 +81,20 @@ export default function MemberLeavesPage() {
         if (!employee) return []
         return leaveTypes.filter(lt => lt.employmentType === employee.employmentType)
     }, [leaveTypes, employee])
+
+    const leaveBalance = useMemo(() => {
+        const year = new Date().getFullYear().toString()
+        return filteredLeaveTypes.map(leaveType => {
+            const used = employeeLeaves
+                .filter(leave => leave.leaveTypeId === leaveType.id && (leave.startDate || leave.date)?.startsWith(year))
+                .reduce((sum, leave) => sum + (leave.amount || 1), 0)
+            return {
+                ...leaveType,
+                used,
+                remaining: Math.max(0, leaveType.quota - used),
+            }
+        })
+    }, [employeeLeaves, filteredLeaveTypes])
 
     // Auto-select first leave type when dialog opens or leave types change
     useEffect(() => {
@@ -430,50 +437,38 @@ export default function MemberLeavesPage() {
                 </Dialog>
             </div>
 
-            {leaveSummary.length > 0 && (
-                <div className="flex flex-wrap items-center gap-6">
-                    {leaveSummary.filter(item => item.unit === 'Day').length > 0 && (
-                        <div className="flex items-center gap-2">
-                            <span className="text-xs font-bold text-slate-400 uppercase tracking-wider">Days</span>
-                            <div className="flex flex-wrap gap-2">
-                                {leaveSummary.filter(item => item.unit === 'Day').map((item) => (
-                                    <div
-                                        key={item.id}
-                                        className="flex items-center gap-2 px-3 py-1.5 rounded-lg border border-slate-100 bg-white shadow-sm"
-                                    >
-                                        <div
-                                            className="w-2.5 h-2.5 rounded-full"
-                                            style={{ backgroundColor: item.color || '#94a3b8' }}
-                                        />
-                                        <span className="text-sm font-medium text-slate-700">{item.name}</span>
-                                        <span className="text-sm font-bold text-slate-900">{item.used}/{item.quota}</span>
+            <Card className="border border-slate-100 shadow-premium rounded-3xl bg-white">
+                <CardContent className="p-6">
+                    <div className="mb-4">
+                        <h2 className="text-lg font-bold text-slate-900">Leave Balance</h2>
+                        <p className="text-sm text-slate-500">Your leave quota for this year</p>
+                    </div>
+                    {leaveBalance.length === 0 ? (
+                        <p className="py-4 text-sm text-slate-500">No leave types configured.</p>
+                    ) : (
+                        <div className="grid grid-cols-1 gap-4 md:grid-cols-2 lg:grid-cols-3">
+                            {leaveBalance.map(leaveType => (
+                                <div key={leaveType.id} className="rounded-2xl border border-slate-100 p-4">
+                                    <div className="mb-2 flex items-center justify-between">
+                                        <span className="text-sm font-bold text-slate-700">{leaveType.name}</span>
+                                        <span className="rounded bg-slate-100 px-2 py-0.5 font-mono text-xs text-slate-400">{leaveType.code}</span>
                                     </div>
-                                ))}
-                            </div>
+                                    <div className="flex items-end justify-between">
+                                        <div>
+                                            <p className="text-2xl font-bold text-slate-900">{leaveType.remaining}</p>
+                                            <p className="text-xs text-slate-500">of {leaveType.quota} {leaveType.unit}s remaining</p>
+                                        </div>
+                                        <p className="text-sm font-semibold text-amber-600">{leaveType.used} used</p>
+                                    </div>
+                                    <div className="mt-3 h-2 overflow-hidden rounded-full bg-slate-100">
+                                        <div className="h-2 rounded-full bg-blue-500" style={{ width: `${leaveType.quota > 0 ? (leaveType.remaining / leaveType.quota) * 100 : 0}%` }} />
+                                    </div>
+                                </div>
+                            ))}
                         </div>
                     )}
-                    {leaveSummary.filter(item => item.unit === 'Hour').length > 0 && (
-                        <div className="flex items-center gap-2">
-                            <span className="text-xs font-bold text-slate-400 uppercase tracking-wider">Hours</span>
-                            <div className="flex flex-wrap gap-2">
-                                {leaveSummary.filter(item => item.unit === 'Hour').map((item) => (
-                                    <div
-                                        key={item.id}
-                                        className="flex items-center gap-2 px-3 py-1.5 rounded-lg border border-slate-100 bg-white shadow-sm"
-                                    >
-                                        <div
-                                            className="w-2.5 h-2.5 rounded-full"
-                                            style={{ backgroundColor: item.color || '#94a3b8' }}
-                                        />
-                                        <span className="text-sm font-medium text-slate-700">{item.name}</span>
-                                        <span className="text-sm font-bold text-slate-900">{item.used}/{item.quota}</span>
-                                    </div>
-                                ))}
-                            </div>
-                        </div>
-                    )}
-                </div>
-            )}
+                </CardContent>
+            </Card>
 
             <Card className="border border-slate-100 shadow-premium rounded-3xl bg-white">
                 <CardContent className="p-0">
