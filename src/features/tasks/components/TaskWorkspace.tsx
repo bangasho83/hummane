@@ -32,7 +32,7 @@ import { Input } from '@/components/ui/input'
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select'
 import { cn } from '@/lib/utils'
 import { TaskCreateDialog, type TaskCreateValues } from '@/features/tasks/components/TaskCreateDialog'
-import { addTaskCommentApi, createTaskApi, createTaskProjectApi, fetchTaskProjectsApi, fetchTasksApi, updateTaskApi, type TaskApi, type TaskProjectApi } from '@/lib/api/client'
+import { addTaskCommentApi, addTaskProjectMemberApi, archiveTaskProjectApi, createTaskApi, createTaskProjectApi, fetchTaskProjectMembersApi, fetchTaskProjectsApi, fetchTasksApi, removeTaskProjectMemberApi, updateTaskApi, updateTaskProjectApi, type TaskApi, type TaskProjectApi } from '@/lib/api/client'
 
 type TaskStatus = 'todo' | 'in_progress' | 'blocked' | 'done'
 type TaskPriority = 'low' | 'normal' | 'high' | 'urgent'
@@ -198,6 +198,19 @@ export function TaskWorkspace() {
         setProjectOptions(previous => [...previous, { id: created.id, name: created.name, description: created.description, color: created.color, owner: meProfile?.name || '', taskCount: 0 }])
     }
 
+    async function updateProject(id: string, name: string, description: string) {
+        if (!apiAccessToken) return
+        const updated = await updateTaskProjectApi(id, { name, description }, apiAccessToken)
+        if (updated) setProjectOptions(previous => previous.map(project => project.id === id ? { ...project, name: updated.name, description: updated.description, color: updated.color } : project))
+    }
+
+    async function archiveProject(id: string) {
+        if (!apiAccessToken) return
+        await archiveTaskProjectApi(id, apiAccessToken)
+        setProjectOptions(previous => previous.filter(project => project.id !== id))
+        if (projectId === id) setProjectId('all')
+    }
+
     return <div className="min-h-[calc(100vh-4rem)] bg-slate-50/70">
         <div className="space-y-6">
             <header className="flex items-center justify-between gap-4">
@@ -226,7 +239,7 @@ export function TaskWorkspace() {
 
         <TaskDetailDialog task={selectedTask} onClose={() => setSelectedTaskId(null)} onUpdate={updateTask} onToggleSubtask={toggleSubtask} onAddComment={addComment} />
         <TaskCreateDialog open={showCreate} onClose={() => setShowCreate(false)} onSubmit={createTask} projects={projectOptions} employees={employees} defaultAssigneeId={meProfile?.employeeId} />
-        <ProjectsDialog open={showProjects} onClose={() => setShowProjects(false)} projects={projectOptions} onCreate={createProject} onSelect={id => { setProjectId(id); setShowProjects(false) }} />
+        <ProjectsDialog open={showProjects} onClose={() => setShowProjects(false)} projects={projectOptions} employees={employees} accessToken={apiAccessToken} onCreate={createProject} onUpdate={updateProject} onArchive={archiveProject} onSelect={id => { setProjectId(id); setShowProjects(false) }} />
         <SearchFilterDialog open={showSearchFilters} onClose={() => setShowSearchFilters(false)} search={search} onSearchChange={setSearch} projectId={projectId} onProjectChange={setProjectId} statusFilter={statusFilter} onStatusChange={setStatusFilter} projects={projectOptions} onClear={() => { setSearch(''); setProjectId('all'); setStatusFilter('all') }} />
     </div>
 }
@@ -282,11 +295,24 @@ function SearchFilterDialog({ open, onClose, search, onSearchChange, projectId, 
     return <Dialog open={open} onOpenChange={value => !value && onClose()}><DialogContent className="rounded-3xl sm:max-w-lg"><DialogHeader><DialogTitle className="text-2xl font-extrabold">Search and filter tasks</DialogTitle><DialogDescription>Find the work you want to focus on.</DialogDescription></DialogHeader><div className="space-y-4"><div className="relative"><Search className="pointer-events-none absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-slate-400" /><Input autoFocus value={search} onChange={event => onSearchChange(event.target.value)} className="h-12 rounded-xl pl-9" placeholder="Search tasks" /></div><div className="grid gap-3 sm:grid-cols-2"><div><p className="mb-2 text-[11px] font-bold uppercase tracking-wider text-slate-400">Project</p><Select value={projectId} onValueChange={onProjectChange}><SelectTrigger className="h-11 rounded-xl"><SelectValue placeholder="All projects" /></SelectTrigger><SelectContent><SelectItem value="all">All projects</SelectItem>{projectOptions.map(project => <SelectItem key={project.id} value={project.id}>{project.name}</SelectItem>)}</SelectContent></Select></div><div><p className="mb-2 text-[11px] font-bold uppercase tracking-wider text-slate-400">Status</p><Select value={statusFilter} onValueChange={onStatusChange}><SelectTrigger className="h-11 rounded-xl"><SelectValue placeholder="All statuses" /></SelectTrigger><SelectContent><SelectItem value="all">All statuses</SelectItem>{Object.entries(statusMeta).map(([value, meta]) => <SelectItem key={value} value={value}>{meta.label}</SelectItem>)}</SelectContent></Select></div></div></div><DialogFooter className="flex-row justify-between sm:justify-between"><Button type="button" variant="ghost" className="rounded-xl text-slate-500" disabled={!activeFilters} onClick={onClear}>Clear all</Button><Button type="button" className="rounded-xl bg-blue-600 text-white hover:bg-blue-700" onClick={onClose}>Show tasks</Button></DialogFooter></DialogContent></Dialog>
 }
 
-function ProjectsDialog({ open, onClose, projects: projectOptions, onCreate, onSelect }: { open: boolean; onClose: () => void; projects: MockProject[]; onCreate: (name: string, description: string) => Promise<void>; onSelect: (id: string) => void }) {
+function ProjectsDialog({ open, onClose, projects: projectOptions, employees, accessToken, onCreate, onUpdate, onArchive, onSelect }: { open: boolean; onClose: () => void; projects: MockProject[]; employees: { id: string; name: string }[]; accessToken: string | null; onCreate: (name: string, description: string) => Promise<void>; onUpdate: (id: string, name: string, description: string) => Promise<void>; onArchive: (id: string) => Promise<void>; onSelect: (id: string) => void }) {
     const [name, setName] = useState('')
     const [description, setDescription] = useState('')
     const [creating, setCreating] = useState(false)
     const [error, setError] = useState('')
+    const [selectedProjectId, setSelectedProjectId] = useState<string | null>(null)
+    const [members, setMembers] = useState<{ id: string; name: string; email: string }[]>([])
+    const [memberId, setMemberId] = useState('')
+    const [editing, setEditing] = useState(false)
+    const [editName, setEditName] = useState('')
+    const [editDescription, setEditDescription] = useState('')
+
+    const selectedProject = projectOptions.find(project => project.id === selectedProjectId)
+
+    useEffect(() => {
+        if (!selectedProjectId || !accessToken) { setMembers([]); return }
+        fetchTaskProjectMembersApi(selectedProjectId, accessToken).then(setMembers).catch(reason => setError(reason instanceof Error ? reason.message : 'Could not load project members'))
+    }, [accessToken, selectedProjectId])
 
     async function submit(event: FormEvent<HTMLFormElement>) {
         event.preventDefault()
@@ -304,7 +330,27 @@ function ProjectsDialog({ open, onClose, projects: projectOptions, onCreate, onS
         }
     }
 
-    return <Dialog open={open} onOpenChange={value => !value && onClose()}><DialogContent className="max-h-[90vh] overflow-y-auto rounded-3xl sm:max-w-lg"><DialogHeader><DialogTitle className="text-2xl font-extrabold">Projects</DialogTitle><DialogDescription>Projects available in your workspace. Create one when you want to bring work together.</DialogDescription></DialogHeader><div className="space-y-3">{projectOptions.length ? projectOptions.map(project => <button key={project.id} type="button" className="flex w-full items-start gap-3 rounded-2xl border border-slate-200 p-4 text-left transition-colors hover:border-blue-200 hover:bg-blue-50/40" onClick={() => onSelect(project.id)}><span className="mt-1 h-3 w-3 shrink-0 rounded-full" style={{ backgroundColor: project.color }} /><span className="min-w-0"><span className="block truncate text-sm font-bold text-slate-900">{project.name}</span><span className="mt-1 block text-xs leading-5 text-slate-500">{project.description || 'No description yet.'}</span></span></button>) : <p className="rounded-2xl bg-slate-50 p-4 text-sm text-slate-500">No projects yet.</p>}</div><div className="border-t border-slate-100 pt-5"><p className="mb-3 text-xs font-bold uppercase tracking-wider text-slate-400">Add a project</p><form className="space-y-3" onSubmit={submit}><Input value={name} onChange={event => setName(event.target.value)} placeholder="Project name" className="h-11 rounded-xl" required /><Input value={description} onChange={event => setDescription(event.target.value)} placeholder="Short description (optional)" className="h-11 rounded-xl" />{error && <p className="text-sm text-rose-600">{error}</p>}<Button type="submit" disabled={creating || !name.trim()} className="h-11 rounded-xl bg-blue-600 text-white hover:bg-blue-700">{creating ? 'Creating...' : <><Plus className="h-4 w-4" />Create project</>}</Button></form></div><DialogFooter><Button type="button" variant="outline" className="rounded-xl" onClick={onClose}>Close</Button></DialogFooter></DialogContent></Dialog>
+    async function addMember() {
+        if (!selectedProjectId || !memberId || !accessToken) return
+        try { setMembers(await addTaskProjectMemberApi(selectedProjectId, memberId, accessToken)); setMemberId('') } catch (reason) { setError(reason instanceof Error ? reason.message : 'Could not add member') }
+    }
+
+    async function removeMember(id: string) {
+        if (!selectedProjectId || !accessToken) return
+        try { setMembers(await removeTaskProjectMemberApi(selectedProjectId, id, accessToken)) } catch (reason) { setError(reason instanceof Error ? reason.message : 'Could not remove member') }
+    }
+
+    async function saveProject() {
+        if (!selectedProject || !editName.trim()) return
+        try { await onUpdate(selectedProject.id, editName.trim(), editDescription.trim()); setEditing(false) } catch (reason) { setError(reason instanceof Error ? reason.message : 'Could not update project') }
+    }
+
+    async function archiveSelectedProject() {
+        if (!selectedProject) return
+        try { await onArchive(selectedProject.id); setSelectedProjectId(null) } catch (reason) { setError(reason instanceof Error ? reason.message : 'Could not archive project') }
+    }
+
+    return <Dialog open={open} onOpenChange={value => !value && onClose()}><DialogContent className="max-h-[90vh] overflow-y-auto rounded-3xl sm:max-w-lg"><DialogHeader><DialogTitle className="text-2xl font-extrabold">Projects</DialogTitle><DialogDescription>Projects available in your workspace. Create one when you want to bring work together.</DialogDescription></DialogHeader><div className="space-y-3">{projectOptions.length ? projectOptions.map(project => <div key={project.id} className="flex items-center gap-2 rounded-2xl border border-slate-200 p-3"><button type="button" className="flex min-w-0 flex-1 items-start gap-3 p-1 text-left" onClick={() => onSelect(project.id)}><span className="mt-1 h-3 w-3 shrink-0 rounded-full" style={{ backgroundColor: project.color }} /><span className="min-w-0"><span className="block truncate text-sm font-bold text-slate-900">{project.name}</span><span className="mt-1 block text-xs leading-5 text-slate-500">{project.description || 'No description yet.'}</span></span></button><Button type="button" variant="outline" className="h-8 shrink-0 rounded-lg px-2 text-xs" onClick={() => { setSelectedProjectId(project.id); setEditName(project.name); setEditDescription(project.description); setError('') }}>Manage</Button></div>) : <p className="rounded-2xl bg-slate-50 p-4 text-sm text-slate-500">No projects yet.</p>}</div>{selectedProject && <div className="space-y-4 border-t border-slate-100 pt-5"><div className="flex items-center justify-between"><p className="text-xs font-bold uppercase tracking-wider text-slate-400">Manage {selectedProject.name}</p><Button type="button" variant="ghost" className="h-8 rounded-lg px-2 text-xs" onClick={() => setSelectedProjectId(null)}>Back</Button></div>{editing ? <div className="space-y-2"><Input value={editName} onChange={event => setEditName(event.target.value)} className="h-10 rounded-xl" /><Input value={editDescription} onChange={event => setEditDescription(event.target.value)} className="h-10 rounded-xl" /><Button type="button" className="h-9 rounded-xl bg-blue-600 text-white" onClick={saveProject}>Save project</Button></div> : <div className="flex gap-2"><Button type="button" variant="outline" className="h-9 rounded-xl" onClick={() => setEditing(true)}>Edit</Button><Button type="button" variant="outline" className="h-9 rounded-xl text-rose-600" onClick={archiveSelectedProject}>Archive</Button></div>}<div><p className="mb-2 text-xs font-bold uppercase tracking-wider text-slate-400">Members</p><div className="space-y-2">{members.map(member => <div key={member.id} className="flex items-center justify-between rounded-xl bg-slate-50 px-3 py-2 text-sm"><span>{member.name}</span><Button type="button" variant="ghost" className="h-7 px-2 text-xs text-slate-500" onClick={() => removeMember(member.id)}>Remove</Button></div>)}</div><div className="mt-3 flex gap-2"><select value={memberId} onChange={event => setMemberId(event.target.value)} className="h-10 min-w-0 flex-1 rounded-xl border border-slate-200 bg-white px-3 text-sm"><option value="">Add a member</option>{employees.filter(employee => !members.some(member => member.id === employee.id)).map(employee => <option key={employee.id} value={employee.id}>{employee.name}</option>)}</select><Button type="button" className="h-10 rounded-xl bg-blue-600 px-3 text-white" disabled={!memberId} onClick={addMember}>Add</Button></div></div></div>}<div className="border-t border-slate-100 pt-5"><p className="mb-3 text-xs font-bold uppercase tracking-wider text-slate-400">Add a project</p><form className="space-y-3" onSubmit={submit}><Input value={name} onChange={event => setName(event.target.value)} placeholder="Project name" className="h-11 rounded-xl" required /><Input value={description} onChange={event => setDescription(event.target.value)} placeholder="Short description (optional)" className="h-11 rounded-xl" />{error && <p className="text-sm text-rose-600">{error}</p>}<Button type="submit" disabled={creating || !name.trim()} className="h-11 rounded-xl bg-blue-600 text-white hover:bg-blue-700">{creating ? 'Creating...' : <><Plus className="h-4 w-4" />Create project</>}</Button></form></div><DialogFooter><Button type="button" variant="outline" className="rounded-xl" onClick={onClose}>Close</Button></DialogFooter></DialogContent></Dialog>
 }
 
 function EmptyState() {

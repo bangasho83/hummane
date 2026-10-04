@@ -1924,7 +1924,8 @@ export const parseApiError = (body: string, fallback: string): string => {
   return body
 }
 
-export type TaskProjectApi = { id: string; companyId: string; parentProjectId?: string | null; name: string; description: string; color: string; createdBy?: string | null; createdAt: string; updatedAt: string }
+export type TaskProjectApi = { id: string; companyId: string; parentProjectId?: string | null; name: string; description: string; color: string; createdBy?: string | null; archivedAt?: string | null; memberCount?: number; createdAt: string; updatedAt: string }
+export type TaskProjectMemberApi = { id: string; name: string; email: string }
 export type TaskProjectPayload = { name: string; description?: string; color?: string; parentProjectId?: string | null }
 export type TaskCommentApi = { id: string; authorId?: string | null; authorName?: string; body: string; createdAt: string }
 export type TaskApi = { id: string; companyId: string; projectId: string; projectName?: string; projectColor?: string; parentTaskId?: string | null; title: string; description: string; status: 'todo' | 'in_progress' | 'blocked' | 'done'; priority: 'low' | 'normal' | 'high' | 'urgent'; assigneeId?: string | null; assignee: string; dueDate?: string | null; labels: string[]; comments: TaskCommentApi[]; subtasks: { id: string; title: string; done: boolean }[]; createdBy?: string | null; createdAt: string; updatedAt: string }
@@ -1956,6 +1957,12 @@ const taskProjectRequest = async <T>(path: string, accessToken: string, init: Re
   const data = await response.json().catch(() => null)
   return (data?.data || data?.project || data?.projects || data) as T
 }
+
+export const updateTaskProjectApi = (id: string, payload: Partial<TaskProjectPayload>, accessToken: string): Promise<TaskProjectApi | null> => taskProjectRequest<TaskProjectApi>(`/${encodeURIComponent(id)}`, accessToken, { method: 'PATCH', body: JSON.stringify(payload) })
+export const archiveTaskProjectApi = (id: string, accessToken: string): Promise<{ archived: boolean }> => taskProjectRequest<{ archived: boolean }>(`/${encodeURIComponent(id)}`, accessToken, { method: 'DELETE' })
+export const fetchTaskProjectMembersApi = (id: string, accessToken: string): Promise<TaskProjectMemberApi[]> => taskProjectRequest<TaskProjectMemberApi[]>(`/${encodeURIComponent(id)}/members`, accessToken)
+export const addTaskProjectMemberApi = (id: string, employeeId: string, accessToken: string): Promise<TaskProjectMemberApi[]> => taskProjectRequest<TaskProjectMemberApi[]>(`/${encodeURIComponent(id)}/members/${encodeURIComponent(employeeId)}`, accessToken, { method: 'POST' })
+export const removeTaskProjectMemberApi = (id: string, employeeId: string, accessToken: string): Promise<TaskProjectMemberApi[]> => taskProjectRequest<TaskProjectMemberApi[]>(`/${encodeURIComponent(id)}/members/${encodeURIComponent(employeeId)}`, accessToken, { method: 'DELETE' })
 
 export const createTaskProjectApi = (payload: TaskProjectPayload, accessToken: string): Promise<TaskProjectApi> => taskProjectRequest<TaskProjectApi>('', accessToken, { method: 'POST', body: JSON.stringify(payload) })
 
