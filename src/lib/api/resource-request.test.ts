@@ -94,6 +94,14 @@ describe('createResourceRequestApi', () => {
         await expect(createResourceRequestApi(payload, 't')).rejects.toThrow('boom')
     })
 
+    it('extracts a JSON API error message on a non-ok response', async () => {
+        fetchMock.mockResolvedValue(errRes(JSON.stringify({
+            message: 'Employee does not belong to company',
+            statusCode: 400,
+        })))
+        await expect(createResourceRequestApi(payload, 't')).rejects.toThrow('Employee does not belong to company')
+    })
+
     it('wraps network errors', async () => {
         fetchMock.mockRejectedValue(new Error('down'))
         await expect(createResourceRequestApi(payload, 't')).rejects.toThrow('Network error')

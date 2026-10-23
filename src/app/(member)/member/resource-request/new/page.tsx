@@ -25,7 +25,9 @@ export default function MemberNewResourceRequestPage() {
     const [categoriesLoading, setCategoriesLoading] = useState(true)
     const [submitting, setSubmitting] = useState(false)
 
-    const companyId = currentCompany?.id || apiCompanyId || ''
+    // Use the API-issued company ID for API requests. The local company store can
+    // contain a different ID from the backend record.
+    const companyId = apiCompanyId || currentCompany?.id || ''
 
     const loadCategories = useCallback(async () => {
         setCategoriesLoading(true)
@@ -97,8 +99,8 @@ export default function MemberNewResourceRequestPage() {
             )
             toast('Resource request submitted.', 'success')
             router.push('/member/resource-request')
-        } catch {
-            toast('Failed to submit resource request. Please try again.', 'error')
+        } catch (error) {
+            toast(error instanceof Error ? error.message : 'Failed to submit resource request. Please try again.', 'error')
             setSubmitting(false)
         }
     }
