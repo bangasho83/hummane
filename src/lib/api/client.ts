@@ -1526,8 +1526,10 @@ export type ResourceRequestPayload = {
     teamMember?: string
     allocationPercentage?: number
   }
+  // Identity is derived by the API from the bearer token. These legacy optional
+  // fields are stripped before the request is sent.
   employeeId?: string
-  companyId: string
+  companyId?: string
 }
 
 export const fetchResourceCategoriesApi = async (): Promise<ResourceCategory[]> => {
@@ -1561,13 +1563,16 @@ export const createResourceRequestApi = async (
 ): Promise<ResourceRequest> => {
   let response: Response
   try {
+    const request = { ...payload }
+    delete request.employeeId
+    delete request.companyId
     response = await fetch(RESOURCE_REQUESTS_PATH, {
       method: 'POST',
       headers: {
         'Content-Type': 'application/json',
         Authorization: `Bearer ${accessToken}`,
       },
-      body: JSON.stringify(payload),
+      body: JSON.stringify(request),
     })
   } catch (error) {
     console.error('API /resource-requests POST network error:', error)
