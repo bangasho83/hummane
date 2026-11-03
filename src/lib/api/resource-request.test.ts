@@ -82,14 +82,11 @@ describe('createResourceRequestApi', () => {
         expect(String(url)).toContain('/resource-requests')
         expect(init.method).toBe('POST')
         expect(init.headers.Authorization).toBe('Bearer token-123')
-        const submitted = JSON.parse(init.body)
-        expect(submitted).toMatchObject({
+        expect(JSON.parse(init.body)).toMatchObject({
             title: 'Desk',
             category: 'Hardware',
             priority: 'high',
         })
-        expect(submitted.employeeId).toBeUndefined()
-        expect(submitted.companyId).toBeUndefined()
     })
 
     it('throws with the server message on a non-ok response', async () => {

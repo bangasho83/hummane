@@ -20,10 +20,14 @@ import {
 
 export default function MemberNewResourceRequestPage() {
     const router = useRouter()
-    const { meProfile, apiAccessToken, isHydrating } = useApp()
+    const { meProfile, currentCompany, apiCompanyId, apiAccessToken, isHydrating } = useApp()
     const [categories, setCategories] = useState<ResourceCategory[]>([])
     const [categoriesLoading, setCategoriesLoading] = useState(true)
     const [submitting, setSubmitting] = useState(false)
+
+    // Use the API-issued company ID for API requests. The local company store can
+    // contain a different ID from the backend record.
+    const companyId = apiCompanyId || currentCompany?.id || ''
 
     const loadCategories = useCallback(async () => {
         setCategoriesLoading(true)
@@ -50,6 +54,10 @@ export default function MemberNewResourceRequestPage() {
         }
         if (!employeeId) {
             toast('Your account is not linked to an employee profile.', 'error')
+            return
+        }
+        if (!companyId) {
+            toast('No company is selected for your account.', 'error')
             return
         }
         setSubmitting(true)
@@ -84,6 +92,8 @@ export default function MemberNewResourceRequestPage() {
                                 allocationPercentage: Number(values.allocationPercentage),
                             }
                             : undefined,
+                    employeeId,
+                    companyId,
                 },
                 apiAccessToken
             )
