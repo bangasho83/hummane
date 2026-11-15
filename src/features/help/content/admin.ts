@@ -3,6 +3,7 @@ import type { HelpSection } from '../types'
 export const adminSections: HelpSection[] = [
   {
     slug: 'organization',
+    group: 'Company setup',
     title: 'Organization',
     description: 'Set up departments, roles, leave types, company defaults, holidays, and vendors.',
     audience: 'admin',
@@ -112,6 +113,7 @@ export const adminSections: HelpSection[] = [
   },
   {
     slug: 'hiring',
+    group: 'Hiring',
     title: 'Hiring',
     description: 'Post jobs, track applicants, and move them through interview stages.',
     audience: 'admin',
@@ -192,6 +194,7 @@ export const adminSections: HelpSection[] = [
   },
   {
     slug: 'performance',
+    group: 'Performance',
     title: 'Performance',
     description: 'Build feedback cards and collect scored feedback on team members and applicants.',
     audience: 'admin',
@@ -249,6 +252,7 @@ export const adminSections: HelpSection[] = [
   },
   {
     slug: 'settings',
+    group: 'Account & support',
     title: 'Users, Settings & Support',
     description: 'Invite users, manage API access for your careers page, and find support.',
     audience: 'admin',

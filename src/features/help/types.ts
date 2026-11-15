@@ -1,7 +1,10 @@
 export type HelpAudience = 'admin' | 'member' | 'everyone'
 
+/** The two guides in the help center */
+export type HelpGuide = 'admin' | 'member'
+
 export type HelpFeature = {
-  /** Anchor id, unique across the whole help center (used as /help/<section>#<id>) */
+  /** Anchor id, unique across the whole help center (used as /help/<guide>/<section>#<id>) */
   id: string
   title: string
   /** One-line description shown in lists and search results */
@@ -20,9 +23,11 @@ export type HelpFeature = {
 
 export type HelpSection = {
   slug: string
+  /** Heading this section is listed under on its guide's hub page */
+  group: string
   title: string
   description: string
-  audience: HelpAudience
+  audience: HelpGuide
   whatItDoes: string
   features: HelpFeature[]
   tips: string[]

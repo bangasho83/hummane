@@ -3,6 +3,7 @@ import type { HelpSection } from '../types'
 export const resourceSections: HelpSection[] = [
   {
     slug: 'resources',
+    group: 'Company setup',
     title: 'Resources & Expenses',
     description: 'Review employee requests, track company assets, subscriptions, books, bills, and reimbursements.',
     audience: 'admin',

@@ -3,9 +3,10 @@ import type { HelpSection } from '../types'
 export const startSections: HelpSection[] = [
   {
     slug: 'account-and-access',
+    group: 'Getting started',
     title: 'Account & Access',
     description: 'Create an account, sign in, set up your company, and understand what owners and employees can see.',
-    audience: 'everyone',
+    audience: 'admin',
     whatItDoes:
       'Everyone starts here. A company owner creates an account and sets up the company. Employees are invited by the owner and sign in to a separate Employee Portal. Hummane sends each person to the right area automatically after sign-in.',
     features: [
@@ -88,6 +89,7 @@ export const startSections: HelpSection[] = [
   },
   {
     slug: 'dashboard',
+    group: 'Getting started',
     title: 'Dashboard',
     description: 'A live snapshot of your people, attendance, and hiring.',
     audience: 'admin',
@@ -128,6 +130,7 @@ export const startSections: HelpSection[] = [
   },
   {
     slug: 'team',
+    group: 'People',
     title: 'Team',
     description: 'Manage employee records, profiles, the org chart, and company OKRs.',
     audience: 'admin',
@@ -282,6 +285,7 @@ export const startSections: HelpSection[] = [
   },
   {
     slug: 'attendance',
+    group: 'People',
     title: 'Attendance & Leave',
     description: 'See who is present or away, register leave for employees, and review leave totals.',
     audience: 'admin',
@@ -362,6 +366,7 @@ export const startSections: HelpSection[] = [
   },
   {
     slug: 'payroll',
+    group: 'People',
     title: 'Payroll',
     description: 'A salary calculator that shows monthly, daily, and hourly rates.',
     audience: 'admin',

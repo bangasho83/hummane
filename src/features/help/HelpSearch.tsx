@@ -56,7 +56,7 @@ export function HelpSearch({ entries }: { entries: HelpSearchEntry[] }) {
               {results.map((entry) => (
                 <li key={entry.href}>
                   <Link href={entry.href} className="block border-b border-slate-100 px-5 py-3 last:border-b-0 hover:bg-slate-50">
-                    <span className="block text-xs font-semibold uppercase tracking-wide text-blue-600">{entry.sectionTitle}</span>
+                    <span className="block text-xs font-semibold uppercase tracking-wide text-blue-600">{entry.guideTitle} · {entry.sectionTitle}</span>
                     <span className="block text-sm font-bold text-slate-900">{entry.title}</span>
                     <span className="block text-sm text-slate-500">{entry.summary}</span>
                   </Link>

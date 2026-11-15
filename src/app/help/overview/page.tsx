@@ -30,32 +30,32 @@ const steps = [
   {
     title: 'Create your account and company',
     body: 'An owner signs up and sets up the company name, industry, and size.',
-    href: '/help/account-and-access',
+    href: '/help/admin/account-and-access',
   },
   {
     title: 'Set up your organization',
     body: 'Add departments, roles, leave types, working hours, holidays, and vendors. These feed every other form.',
-    href: '/help/organization',
+    href: '/help/admin/organization',
   },
   {
     title: 'Add your people',
     body: 'Register team members, set reporting lines, and invite them to the Employee Portal.',
-    href: '/help/team',
+    href: '/help/admin/team',
   },
   {
     title: 'Run time off and attendance',
     body: 'Register leave, see who is away, and review leave totals.',
-    href: '/help/attendance',
+    href: '/help/admin/attendance',
   },
   {
     title: 'Hire and develop',
     body: 'Post jobs, move applicants through stages, and use feedback cards and OKRs to grow your team.',
-    href: '/help/hiring',
+    href: '/help/admin/hiring',
   },
   {
     title: 'Track resources and expenses',
     body: 'Approve requests, assign equipment and subscriptions, and record bills and reimbursements.',
-    href: '/help/resources',
+    href: '/help/admin/resources',
   },
 ]
 
@@ -78,11 +78,11 @@ export default function HelpOverviewPage() {
           use their own portal.
         </p>
         <div className="flex flex-wrap gap-3">
-          <Link href="/help/account-and-access" className="rounded-xl bg-blue-600 px-5 py-3 text-sm font-semibold text-white shadow-sm hover:bg-blue-700">
+          <Link href="/help/admin/account-and-access" className="rounded-xl bg-blue-600 px-5 py-3 text-sm font-semibold text-white shadow-sm hover:bg-blue-700">
             Get started
           </Link>
           <Link href="/help" className="rounded-xl border border-slate-200 bg-white px-5 py-3 text-sm font-semibold text-slate-700 hover:bg-slate-50">
-            Browse feature guides
+            Browse both guides
           </Link>
         </div>
       </header>
@@ -123,14 +123,17 @@ export default function HelpOverviewPage() {
           <p className="mt-2 text-slate-600">
             Owners see the admin area: Dashboard, Team, Resources, OKRs, Attendance, Payroll, Organization, Hiring, Performance, Users, and Settings.
           </p>
+          <Link href="/help/admin" className="mt-3 inline-flex items-center gap-1 text-sm font-semibold text-blue-600 hover:underline">
+            Admin guide <ArrowRight className="h-4 w-4" />
+          </Link>
         </div>
         <div className="rounded-2xl border border-slate-200 bg-white p-6 shadow-sm">
           <h2 className="text-xl font-bold text-slate-900">Employees</h2>
           <p className="mt-2 text-slate-600">
             Employees see the Employee Portal: their dashboard, OKRs, tasks, applicants assigned to them, feedback, resources, leave, attendance, and profile.
           </p>
-          <Link href="/help/employee-portal" className="mt-3 inline-flex items-center gap-1 text-sm font-semibold text-blue-600 hover:underline">
-            Employee Portal help <ArrowRight className="h-4 w-4" />
+          <Link href="/help/member" className="mt-3 inline-flex items-center gap-1 text-sm font-semibold text-blue-600 hover:underline">
+            Employee guide <ArrowRight className="h-4 w-4" />
           </Link>
         </div>
       </section>
@@ -140,7 +143,7 @@ export default function HelpOverviewPage() {
         <p className="mt-2 text-slate-700">
           Set up departments, roles, and leave types first. Then add a few team members and try registering a leave request. Everything else builds on that.
         </p>
-        <Link href="/help/organization" className="mt-3 inline-flex items-center gap-1 text-sm font-semibold text-blue-600 hover:underline">
+        <Link href="/help/admin/organization" className="mt-3 inline-flex items-center gap-1 text-sm font-semibold text-blue-600 hover:underline">
           Start with Organization <ArrowRight className="h-4 w-4" />
         </Link>
       </section>

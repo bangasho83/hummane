@@ -2,22 +2,22 @@ import type { Metadata } from 'next'
 import Link from 'next/link'
 import { notFound } from 'next/navigation'
 import { ArrowUpRight, Lightbulb } from 'lucide-react'
-import { AUDIENCE_LABEL, HELP_SECTIONS, getHelpSection, type HelpFeature } from '@/features/help'
+import { GUIDES, HELP_SECTIONS, getHelpSection, sectionHref, type HelpFeature } from '@/features/help'
 
-type PageProps = { params: Promise<{ section: string }> }
+type PageProps = { params: Promise<{ guide: string; section: string }> }
 
 export const dynamicParams = false
 
 export function generateStaticParams() {
-  return HELP_SECTIONS.map((section) => ({ section: section.slug }))
+  return HELP_SECTIONS.map((section) => ({ guide: section.audience, section: section.slug }))
 }
 
 export async function generateMetadata({ params }: PageProps): Promise<Metadata> {
-  const { section: slug } = await params
-  const section = getHelpSection(slug)
+  const { guide, section: slug } = await params
+  const section = getHelpSection(guide, slug)
   if (!section) return {}
   return {
-    title: `${section.title} | Hummane Help`,
+    title: `${section.title} | ${GUIDES[section.audience].title} | Hummane Help`,
     description: section.description,
   }
 }
@@ -27,7 +27,6 @@ function FeatureGuide({ feature }: { feature: HelpFeature }) {
     <article id={feature.id} className="scroll-mt-24 rounded-2xl border border-slate-200 bg-white p-6 shadow-sm sm:p-8">
       <div className="flex flex-wrap items-center gap-3">
         <h3 className="text-2xl font-bold text-slate-900">How to use {feature.title}</h3>
-        <span className="rounded-full bg-slate-100 px-2.5 py-1 text-xs font-semibold text-slate-600">{AUDIENCE_LABEL[feature.audience]}</span>
       </div>
       <p className="mt-2 text-slate-600">{feature.summary}</p>
 
@@ -85,15 +84,20 @@ function FeatureGuide({ feature }: { feature: HelpFeature }) {
 }
 
 export default async function HelpSectionPage({ params }: PageProps) {
-  const { section: slug } = await params
-  const section = getHelpSection(slug)
+  const { guide, section: slug } = await params
+  const section = getHelpSection(guide, slug)
   if (!section) notFound()
+  const guideInfo = GUIDES[section.audience]
 
   return (
     <div className="space-y-10">
       <nav aria-label="Breadcrumb" className="text-sm text-slate-500">
         <Link href="/help" className="font-semibold text-blue-600 hover:underline">
           Help
+        </Link>
+        <span className="mx-2">/</span>
+        <Link href={`/help/${guideInfo.guide}`} className="font-semibold text-blue-600 hover:underline">
+          {guideInfo.title}
         </Link>
         <span className="mx-2">/</span>
         <span>{section.title}</span>
@@ -121,6 +125,22 @@ export default async function HelpSectionPage({ params }: PageProps) {
               </li>
             ))}
           </ul>
+          <h2 className="mt-8 text-sm font-bold uppercase tracking-wide text-slate-500">{guideInfo.title}</h2>
+          <ul className="mt-3 space-y-1">
+            {guideInfo.sections.map((item) => (
+              <li key={item.slug}>
+                <Link
+                  href={sectionHref(item)}
+                  aria-current={item.slug === section.slug ? 'page' : undefined}
+                  className={`block rounded-lg px-3 py-2 text-sm font-semibold ${
+                    item.slug === section.slug ? 'bg-blue-50 text-blue-700' : 'text-slate-600 hover:bg-white hover:text-blue-700'
+                  }`}
+                >
+                  {item.title}
+                </Link>
+              </li>
+            ))}
+          </ul>
         </aside>
 
         <div className="space-y-8">
@@ -140,8 +160,8 @@ export default async function HelpSectionPage({ params }: PageProps) {
             </ul>
           </section>
 
-          <Link href="/help" className="inline-block text-sm font-semibold text-blue-600 hover:underline">
-            All help topics
+          <Link href={`/help/${guideInfo.guide}`} className="inline-block text-sm font-semibold text-blue-600 hover:underline">
+            All {guideInfo.title} topics
           </Link>
         </div>
       </div>
