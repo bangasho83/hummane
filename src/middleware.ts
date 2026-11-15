@@ -32,10 +32,20 @@ const AUTH_ROUTES = ['/login', '/signup']
 // Public routes that don't require auth
 const PUBLIC_ROUTES = ['/', ...AUTH_ROUTES]
 
+// Public help center: /help and everything beneath it, open to signed-in and signed-out visitors
+const HELP_ROOT = '/help'
+const isHelpRoute = (pathname: string) =>
+  pathname === HELP_ROOT || pathname.startsWith(`${HELP_ROOT}/`)
+
 export function middleware(request: NextRequest) {
   const { pathname } = request.nextUrl
   const isAuthenticated = request.cookies.get(IS_AUTHENTICATED_COOKIE)?.value === 'true'
   const userRole = request.cookies.get(USER_ROLE_COOKIE)?.value
+
+  // ===== HELP CENTER (no login required, no role redirects) =====
+  if (isHelpRoute(pathname)) {
+    return NextResponse.next()
+  }
 
   // ===== UNAUTHENTICATED USERS =====
   if (!isAuthenticated) {
