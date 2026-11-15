@@ -132,7 +132,7 @@ export default function HelpOverviewPage() {
           <p className="mt-2 text-slate-600">
             Employees see the Employee Portal: their dashboard, OKRs, tasks, applicants assigned to them, feedback, resources, leave, attendance, and profile.
           </p>
-          <Link href="/help/member" className="mt-3 inline-flex items-center gap-1 text-sm font-semibold text-blue-600 hover:underline">
+          <Link href="/help" className="mt-3 inline-flex items-center gap-1 text-sm font-semibold text-blue-600 hover:underline">
             Employee guide <ArrowRight className="h-4 w-4" />
           </Link>
         </div>

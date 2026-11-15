@@ -1,6 +1,8 @@
 import type { NextConfig } from "next";
 
-// Help sections used to live at /help/<section>. They now sit under /help/admin or /help/member.
+// Help URL history:
+//  1. Admin sections lived at /help/<section>. They now live at /help/admin/<section>.
+//  2. Briefly, the employee guide lived at /help/member/<section>. It now lives at /help (and /help/<section>).
 const legacyAdminHelpSections = [
   "account-and-access",
   "dashboard",
@@ -22,7 +24,9 @@ const nextConfig: NextConfig = {
         destination: `/help/admin/${slug}`,
         permanent: true,
       })),
-      { source: "/help/employee-portal", destination: "/help/member", permanent: true },
+      { source: "/help/employee-portal", destination: "/help", permanent: true },
+      { source: "/help/member", destination: "/help", permanent: true },
+      { source: "/help/member/:section", destination: "/help/:section", permanent: true },
     ];
   },
 };

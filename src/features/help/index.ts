@@ -27,6 +27,8 @@ export const HELP_SECTIONS: HelpSection[] = [...ADMIN_SECTIONS, ...MEMBER_SECTIO
 
 export type GuideInfo = {
   guide: HelpGuide
+  /** Landing page of the guide: employees live at /help, admins at /help/admin */
+  href: string
   title: string
   tagline: string
   audienceNote: string
@@ -36,6 +38,7 @@ export type GuideInfo = {
 export const GUIDES: Record<HelpGuide, GuideInfo> = {
   admin: {
     guide: 'admin',
+    href: '/help/admin',
     title: 'Admin guide',
     tagline: 'For company owners who set up and run the workspace.',
     audienceNote: 'Covers the admin area: Dashboard, Team, Attendance, Payroll, Organization, Resources, Hiring, Performance, and Settings.',
@@ -43,6 +46,7 @@ export const GUIDES: Record<HelpGuide, GuideInfo> = {
   },
   member: {
     guide: 'member',
+    href: '/help',
     title: 'Employee guide',
     tagline: 'For employees using their own Employee Portal.',
     audienceNote: 'Covers the Employee Portal: tasks, OKRs, leave, attendance, feedback, applicants, resources, and your profile.',
@@ -52,7 +56,7 @@ export const GUIDES: Record<HelpGuide, GuideInfo> = {
 
 export const isGuide = (value: string): value is HelpGuide => value === 'admin' || value === 'member'
 
-export const sectionHref = (section: Pick<HelpSection, 'audience' | 'slug'>) => `/help/${section.audience}/${section.slug}`
+export const sectionHref = (section: Pick<HelpSection, 'audience' | 'slug'>) => `${GUIDES[section.audience].href}/${section.slug}`
 
 export const featureHref = (section: Pick<HelpSection, 'audience' | 'slug'>, feature: Pick<HelpFeature, 'id'>) =>
   `${sectionHref(section)}#${feature.id}`

@@ -1,26 +1,6 @@
-import type { Metadata } from 'next'
 import Link from 'next/link'
-import { notFound } from 'next/navigation'
 import { ArrowUpRight, Lightbulb } from 'lucide-react'
-import { GUIDES, HELP_SECTIONS, getHelpSection, sectionHref, type HelpFeature } from '@/features/help'
-
-type PageProps = { params: Promise<{ guide: string; section: string }> }
-
-export const dynamicParams = false
-
-export function generateStaticParams() {
-  return HELP_SECTIONS.map((section) => ({ guide: section.audience, section: section.slug }))
-}
-
-export async function generateMetadata({ params }: PageProps): Promise<Metadata> {
-  const { guide, section: slug } = await params
-  const section = getHelpSection(guide, slug)
-  if (!section) return {}
-  return {
-    title: `${section.title} | ${GUIDES[section.audience].title} | Hummane Help`,
-    description: section.description,
-  }
-}
+import { GUIDES, sectionHref, type HelpFeature, type HelpSection } from './index'
 
 function FeatureGuide({ feature }: { feature: HelpFeature }) {
   return (
@@ -83,10 +63,7 @@ function FeatureGuide({ feature }: { feature: HelpFeature }) {
   )
 }
 
-export default async function HelpSectionPage({ params }: PageProps) {
-  const { guide, section: slug } = await params
-  const section = getHelpSection(guide, slug)
-  if (!section) notFound()
+export function SectionView({ section }: { section: HelpSection }) {
   const guideInfo = GUIDES[section.audience]
 
   return (
@@ -95,10 +72,14 @@ export default async function HelpSectionPage({ params }: PageProps) {
         <Link href="/help" className="font-semibold text-blue-600 hover:underline">
           Help
         </Link>
-        <span className="mx-2">/</span>
-        <Link href={`/help/${guideInfo.guide}`} className="font-semibold text-blue-600 hover:underline">
-          {guideInfo.title}
-        </Link>
+        {guideInfo.guide === 'admin' && (
+          <>
+            <span className="mx-2">/</span>
+            <Link href={guideInfo.href} className="font-semibold text-blue-600 hover:underline">
+              {guideInfo.title}
+            </Link>
+          </>
+        )}
         <span className="mx-2">/</span>
         <span>{section.title}</span>
       </nav>
@@ -160,7 +141,7 @@ export default async function HelpSectionPage({ params }: PageProps) {
             </ul>
           </section>
 
-          <Link href={`/help/${guideInfo.guide}`} className="inline-block text-sm font-semibold text-blue-600 hover:underline">
+          <Link href={guideInfo.href} className="inline-block text-sm font-semibold text-blue-600 hover:underline">
             All {guideInfo.title} topics
           </Link>
         </div>
